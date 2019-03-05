@@ -1,0 +1,3 @@
+parm $TOPOLOGY
+trajin $INPUT
+rmsd @CA first out data.txt
