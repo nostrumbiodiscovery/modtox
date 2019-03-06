@@ -1,4 +1,6 @@
 import pytraj as pt
+import sys
+import os
 from matplotlib import pyplot as plt
 import argparse
 import glob
@@ -10,33 +12,55 @@ class CpptajBuilder(object):
         self.topology = topology if topology else traj[0]
         self.traj =  pt.iterload(traj, top=self.topology, autoimage=True) 
 
-    def strip(self, ions=True, water=True, membrane=True, others=""):
+    def strip(self, traj, ions=True, water=True, membrane=True, others="", output_path="analisis"):
+	# Check output path
+	if not os.path.exists(output_path):
+		os.mkdir(output_path)
+	traj2 = pt.autoimage(traj[:])
+        # Strip traj
         if ions:
-            traj_nowat = pt.strip(self.traj, ":Na+, Cl-")
+            traj_nowat = pt.strip(traj2, ":Na+, Cl-")
         if water:
             traj_nowat = pt.strip(traj_nowat, ":WAT")
         if membrane:
-            traj_nowat = pt.strip(traj_nowat, ":Na+, Cl-")
+            traj_nowat = pt.strip(traj_nowat, ":PA, PC, OL")
         if others:
             traj_nowat = pt.strip(traj_nowat, others)
-        pt.save('traj_strip_autoimaged.nc', traj_nowat, overwrite=True)
-        pt.save('traj_strip_autoimaged.top', traj_nowat.top , overwrite=True)
-        self.traj_strip = pt.iterload('traj_strip_autoimaged.nc', top='traj_strip_autoimaged.top', autoimage=True)
+        # Save output
+	n_frames = self.traj.n_frames
+	output_strip_top = os.path.join(output_path, 'traj_strip_autoimaged.top')
+	output_strip_converged_traj = os.path.join(output_path, 'traj_strip_converged.nc')
+	# Write strip traj
+        pt.save(output_strip_top, traj_nowat.top , overwrite=True)
+        pt.write_traj(output_strip_converged_traj, traj_nowat, overwrite=True, frame_indices=range(n_frames/2, n_frames-1))
+	# Load new traj
+        self.traj_converged = pt.load(output_strip_converged_traj, top=output_strip_top)
+ 	print("Preprocessed done succesfully")
 
     def RMSD(self, traj, mask='', ref=0):
-        self.rmsd_data = pt.rmsd(self.traj, mask=mask, ref=ref)
+        self.rmsd_data = pt.rmsd(traj, mask=mask, ref=ref)
         print("RMSD done succesfully")
 
-    def plot(self, values, output="rmsd.png"):
+    def plot(self, values, output="rmsd.png", output_path="analisis"):
+        # Check initial data
         assert isinstance(values, np.ndarray), "data rmsd must be a numpy array"
+	# Check output path
+	if not os.path.exists(output_path):
+		os.mkdir(output_path)
+	# Plot
         frames = range(len(values))
         plt.plot(frames, values)
-        plt.savefig(output)
+        plt.savefig(os.path.join(output_path, output))
         print("Plot done succesfully")
 
 
-    def cluster(self, traj, mask='@CA', ref=0, options='sieve 5 summary clusters.out repout dani repfmt pdb'):
-        self.clusters = pt.cluster.kmeans(traj,  n_clusters=10, mask=mask, options=options) 
+    def cluster(self, traj, mask='*', ref=0, options='sieve 200 summary {}/clusters.out repout analisis/system repfmt pdb',
+		output_path="analisis"):
+        # Check output path
+	if not os.path.exists(output_path):
+		os.mkdir(output_path)
+	# Cluster
+        self.clusters = pt.cluster.dbscan(traj,  n_clusters=10, mask=mask, options=options.format(output_path), dtype='ndarray') 
         print("Clustering done succesfully")
 
 def parse_args():
@@ -49,10 +73,10 @@ def parse_args():
 
 def analise(traj, top):
     trajectory = CpptajBuilder(traj, top)
-    trajectory.strip()
-    trajectory.RMSD(trajectory.traj_strip, mask="@CA")
+    trajectory.strip(trajectory.traj)
+    trajectory.RMSD(trajectory.traj, mask="@CA")
     trajectory.plot(trajectory.rmsd_data)
-    trajectory.cluster(trajectory.traj_strip)
+    trajectory.cluster(trajectory.traj_converged)
     print("Trajectory {} sucessfuly analised".format(traj))
 
 
