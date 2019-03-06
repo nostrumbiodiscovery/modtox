@@ -1,5 +1,0 @@
-parm $TOPOLOGY
-trajin $INPUT
-strip :WAT, Na+, Cl-, (membrane stuff)
-autoimage
-trajout
