@@ -7,14 +7,14 @@ import subprocess
 DIR = os.path.dirname(__file__)
 
 
-class Docker(object):
+class rDocker(object):
     
     def __init__(self, receptor, ligand_to_dock, ligand_for_grid):
         self.receptor = receptor
         self.ligand_to_dock = ligand_to_dock
         self.ligand_for_grid = ligand_for_grid
 
-    def rdock(self, grid="grid.prm", output="output"):
+    def dock(self, grid="grid.prm", output="output"):
         # Set grid, output and commands
         self.grid = os.path.abspath(os.path.join(DIR, grid))
         self.output = output
@@ -47,5 +47,5 @@ def parse_args():
 
 if __name__ == "__main__":
     receptor, ligands_to_dock, ligand_for_grid = parse_args()
-    docking_obj = Docker(receptor, ligands_to_dock, ligand_for_grid) 
-    docking_obj.rdock()
+    docking_obj = RDocker(receptor, ligands_to_dock, ligand_for_grid) 
+    docking_obj.dock()
