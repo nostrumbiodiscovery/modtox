@@ -3,11 +3,13 @@ import argparse
 import os
 from argparse import RawTextHelpFormatter
 import subprocess
+import ModTox.Helpers.formats as fm
+import ModTox.constants.constants as cs
 
 DIR = os.path.dirname(__file__)
 COMPLEX_LINE = "COMPLEX   {},2"
 LIGAND_LINE = "LIGAND   {}"
-
+ACCEPTED_FORMATS = ["pdb", "mae", "sdf"]
 
 class Glide_Docker(object):
     
@@ -15,10 +17,18 @@ class Glide_Docker(object):
         self.systems = systems
         self.ligands_to_dock = ligands_to_dock
 
-    def dock(self, input_file="input.in", schr="/opt/schrodinger2018-2/", host="localhost:1", cpus=1, output="glide_output"):
+    def dock(self, input_file="input.in", schr=cs.SCHR, host="localhost:1", cpus=1, output="glide_output"):
 	# Security type check
+	extension_receptor = self.systems[0].split(".")[-1]
+	extension_ligand = self.ligands_to_dock[0].split(".")[-1]
 	assert type(self.systems) == list, "receptor must be of list type"
 	assert type(self.ligands_to_dock) == list, "ligand file must be of list type"
+	assert extension_receptor in ACCEPTED_FORMATS, "receptor must be a pdb, sdf or mae"
+	assert extension_receptor in ACCEPTED_FORMATS, "ligand must be a pdb, sdf or mae at the moment"
+
+        #Formats
+        self.systems_mae = fm.convert_to_mae(self.systems)
+        self.ligands_to_dock_mae = fm.convert_to_mae(self.ligands_to_dock)
 
         # Set dock command
         self.docking_command = '{}run xglide.py {} -OVERWRITE -HOST {} -NJOBS {} -TMPLAUNCHDIR -ATTACHED'.format(
@@ -26,8 +36,8 @@ class Glide_Docker(object):
 
 	# Set variables for docking        
         self.grid_template = os.path.abspath(os.path.join(DIR, input_file))
-	complexes = [COMPLEX_LINE.format(system) for system in self.systems]
-	ligands = [LIGAND_LINE.format(ligand) for ligand in self.ligands_to_dock]
+	complexes = [COMPLEX_LINE.format(system) for system in self.systems_mae]
+	ligands = [LIGAND_LINE.format(ligand) for ligand in self.ligands_to_dock_mae]
 
         # Templetize grid
         with open(self.grid_template, "r") as f:
@@ -39,6 +49,8 @@ class Glide_Docker(object):
         # Run docking
         print(self.docking_command)
         subprocess.call(self.docking_command.split())
+
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Specify Receptor and ligand to be docked\n  \
