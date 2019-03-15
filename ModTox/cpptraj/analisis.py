@@ -146,7 +146,7 @@ def parse_args():
 def analise(traj, top, RMSD, cluster, last):
     trajectory = CpptajBuilder(traj, top)
     if RMSD:
-    	trajectory.strip(trajectory.traj, autoimage=False)
+    	trajectory.strip(trajectory.traj, autoimage=True)
     	trajectory.RMSD(trajectory.traj, mask="@CA")
     	trajectory.plot_line(trajectory.rmsd_data)
     if cluster:
