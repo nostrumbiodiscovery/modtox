@@ -75,11 +75,12 @@ def join_results(files, output="glide_features.csv"):
             return df
 
 
-def conf(TP, FP, TN, FN):
+def conf(TP, FP, TN, FN, output="confusion_matrix.png"):
     df_cm = pd.DataFrame([[TP, FP], [FN,TN]], index = [i for i in "PN"],
                       columns = [i for i in "PN"])
     plt.figure(figsize = (10,7))
-    sn.heatmap(df_cm, annot=True)
+    sn.heatmap(df_cm, annot=True, fmt='g')
+    plt.savefig(output)
 
 
 def parse_args():
@@ -90,6 +91,6 @@ def parse_args():
     return args.glide_files
 
 if __name__ == "__main__":
-    glide_files = parse_args()
+    #glide_files = parse_args()
     #analyze(glide_files)
-    conf(116, 46, 345, 47)
+    conf(258, 128, 273, 118, output="confusion_matrix_xtray_394act_404inact_AR.png")
