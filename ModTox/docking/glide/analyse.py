@@ -177,7 +177,7 @@ def join_results(files, output="glide_features.csv"):
             return df
 
 
-def conf(TP, FP, TN, FN, output="./conf.png"):
+def conf(TP, FP, TN, FN, output="confusion_matrix.png"):
     df_cm = pd.DataFrame([[TP, FP], [FN,TN]], index = [i for i in "PN"],
                       columns = [i for i in "PN"])
     plt.figure(figsize = (10,7))
