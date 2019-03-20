@@ -150,6 +150,7 @@ def analise(traj, top, RMSD, cluster, last):
     	trajectory.RMSD(trajectory.traj, mask="@CA")
     	trajectory.plot_line(trajectory.rmsd_data)
     if cluster:
+    	trajectory.strip(trajectory.traj, autoimage=True)
     	trajectory.cluster(trajectory.traj_converged)
     if last:
     	trajectory.save_traj(trajectory.traj, frame_indices=[trajectory.traj.n_frames-1], output_path=".", output="last_snap.pdb")
