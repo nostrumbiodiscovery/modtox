@@ -185,19 +185,17 @@ def conf(TP, FP, TN, FN, output="confusion_matrix.png"):
     plt.savefig(output)
 
 
-def parse_args():
-    parser = argparse.ArgumentParser(description="Analyze glide docking\n  \
-    i.e python -m ModTox.docking.glide.analyze glide_file1 glide_file2", formatter_class=RawTextHelpFormatter)
+def parse_args(parser):
     parser.add_argument("--glide_files",  nargs="+", help='Glide files to be analyze')
     parser.add_argument("--csv",  nargs="+", help='Csv to be analyze')
     parser.add_argument("--model",  action="store_true", help='Create model matrix from docking results')
     parser.add_argument("--best",  action="store_true", help='Retrieve best poses from docking results')
-    parser.add_argument("--act",  nargs="+", help='Files with all active structures used for docking. Must be a sdf file', default=None)
-    parser.add_argument("--inact",  nargs="+", help='Files with all inactive structures used for docking. Must be a sdf file', default=None)
-    args = parser.parse_args()
-    return args.glide_files, args.csv, args.model, args.best, args.act, args.inact
+    parser.add_argument("--active",  nargs="+", help='Files with all active structures used for docking. Must be a sdf file', default=None)
+    parser.add_argument("--inactive",  nargs="+", help='Files with all inactive structures used for docking. Must be a sdf file', default=None)
 
 if __name__ == "__main__":
-    glide_files, csv, model, best, act, inact = parse_args()
-    analyze(glide_files, model=model, best=best, csv=csv, active=act, inactive=inact)
-    #conf(116, 46, 345, 47)
+    parser = argparse.ArgumentParser(description="Analyze glide docking\n  \
+    i.e python -m ModTox.docking.glide.analyze glide_file1 glide_file2", formatter_class=RawTextHelpFormatter)
+    parse_args()
+    args = parser.parse_args(parser)
+    analyze(args.glide_files, model=args.model, best=args.best, csv=args.csv, active=args.active, inactive=args.inactive)

@@ -5,6 +5,7 @@ from matplotlib import pyplot as plt
 import argparse
 import glob
 import numpy as np
+import ModTox.Helpers.masks as mk
 
 
 class CpptajBuilder(object):
@@ -36,6 +37,7 @@ class CpptajBuilder(object):
         output_strip_top = os.path.join(output_path, 'traj_strip_autoimaged.top')
         output_strip_converged_traj = os.path.join(output_path, 'traj_strip_converged.nc')
         # Write strip traj
+        self.save_topology(traj_nowat)
         pt.save(output_strip_top, traj_nowat.top , overwrite=True)
         pt.write_traj(output_strip_converged_traj, traj_nowat, overwrite=True, frame_indices=range(n_frames/2, n_frames-1))
         # Load new traj
@@ -86,7 +88,7 @@ class CpptajBuilder(object):
             np.savetxt(os.path.join(output_path, output), values,  delimiter=" ", fmt="%s")
         print("Txt file done succesfully")
 
-    def save_topology(self, traj, output="topology.pdb", output_path="analisis"):
+    def save_topology(self, traj, output="topology_nowat.top", output_path="analisis"):
         self.topology_pdb = os.path.join(output_path, output)
         pt.save(self.topology_pdb, traj.top , overwrite=True)
         print("Topology file done succesfully")
@@ -95,6 +97,7 @@ class CpptajBuilder(object):
         self.traj_out = os.path.join(output_path, output)
         pt.write_traj(self.traj_out, traj, frame_indices=frame_indices, overwrite=True)
         print("Trajectory file done succesfully")
+        return self.traj_out
 
     def residues(self, traj):
         self.save_traj(traj, output="traj.pdb", frame_indices=[1])
@@ -119,44 +122,63 @@ class CpptajBuilder(object):
         self.correlation = np.array(pt.matrix.covar(traj, mask))
         return self.correlation
 
-    def cluster(self, traj, mask='*', ref=0, options='sieve 10 normframe summary {0}/clusters.out repout {0}/cluster repfmt pdb',
+    def cluster(self, traj, mask='*', ref=0, 
+	options='sieve 10 normframe out {0}/cnumvtime.dat summary {0}/clusters.out info {0}/info.dat repout {0}/cluster repfmt pdb',
         output_path="analisis"):
         # Check output path
         if not os.path.exists(output_path):
             os.mkdir(output_path)
         # Cluster
         #output_cluster = os.path.join(output_path, "clusters.pdb")
-        #self.clusters = pt.cluster.hieragglo(traj, mask=mask, options=options.format(output_path), dtype='ndarray')
-        self.clusters = pt.cluster.kmeans(traj, mask=mask, options=options.format(output_path), dtype='ndarray')
+        pt.align(traj)
+        self.clusters = pt.cluster.hieragglo(traj, mask=mask, options=options.format(output_path), dtype='ndarray')
+        #self.clusters = pt.cluster.kmeans(traj, mask=mask, options=options.format(output_path), dtype='ndarray')
         #frames = [int(cluster) for cluster in self.clusters._cpp_out[1].split()[-10:]]
         #pt.write_traj(output_cluster, traj, overwrite=True, frame_indices=frames)
         print("Clustering done succesfully")
 
-def parse_args():
-    
-    parser = argparse.ArgumentParser(description='Specify trajectory and topology to be analised')
+def parse_args(parser):
     parser.add_argument('traj', nargs="+", help='Trajectory to analise')
+    parser.add_argument('resname', type=str, help='Resname of the ligand')
     parser.add_argument('--top', type=str, help='Topology of your trajectory')
     parser.add_argument('--RMSD', action="store_true", help='Calculate RMSD plot')
     parser.add_argument('--cluster', action="store_true", help='Perform clustering')
     parser.add_argument('--last', action="store_true", help='Extract last snapshot')
-    args = parser.parse_args()
-    return args.traj, args.top, args.RMSD, args.cluster, args.last
+    parser.add_argument('--clust_type', type=str, help='Type of clustring [BS (default), CA, all]', default="BS")
+    parser.add_argument('--rmsd_type', type=str, help='Type of RMSD [BS (default), CA, all]', default="BS")
 
-def analise(traj, top, RMSD, cluster, last):
+def analise(traj, resname, top, RMSD, cluster, last, clust_type, rmsd_type):
     trajectory = CpptajBuilder(traj, top)
     if RMSD:
     	trajectory.strip(trajectory.traj, autoimage=True)
-    	trajectory.RMSD(trajectory.traj, mask="@CA")
+        if rmsd_type == "CA": 
+            mask = ":1-10000,@CA"
+        elif rmsd_type == "BS":
+    	    output = trajectory.save_traj(trajectory.traj_converged, frame_indices=[trajectory.traj_converged.n_frames-1],
+		output_path="analisis", output="last_snap.pdb")
+            mask = mk.retrieve_closest(output, resname) 
+        elif rmsd_type == "all": 
+            mask="*" 
+    	trajectory.RMSD(trajectory.traj, mask="mask")
     	trajectory.plot_line(trajectory.rmsd_data)
     if cluster:
     	trajectory.strip(trajectory.traj, autoimage=True)
-    	trajectory.cluster(trajectory.traj_converged)
+    	output = trajectory.save_traj(trajectory.traj_converged, frame_indices=[trajectory.traj_converged.n_frames-1],
+		output_path="analisis", output="last_snap.pdb")
+        if clust_type == "CA":
+            mask = ":1-10000,@CA"
+        elif clust_type == "BS":
+            mask = mk.retrieve_closest(output, resname) 
+        elif clust_type == "all":
+            mask="*"
+    	trajectory.cluster(trajectory.traj_converged, mask=mask)
     if last:
     	trajectory.save_traj(trajectory.traj, frame_indices=[trajectory.traj.n_frames-1], output_path=".", output="last_snap.pdb")
     print("Trajectory {} sucessfuly analised".format(traj))
 
 
 if __name__ == "__main__":
-    traj, top, RMSD, cluster, last = parse_args()
-    analise(traj, top, RMSD, cluster, last)
+    parser = argparse.ArgumentParser(description='Analyze molecular dynamics trajectory (RMSD & clustering)')
+    parse_args()
+    args = parser.parse_args()
+    analise(args.traj, args.resname, args.top, args.RMSD, args.cluster, args.last, args.clust_type, args.rmsd_type)

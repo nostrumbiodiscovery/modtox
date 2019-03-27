@@ -17,7 +17,8 @@ class Glide_Docker(object):
         self.systems = systems
         self.ligands_to_dock = ligands_to_dock
 
-    def dock(self, input_file="input.in", schr=cs.SCHR, host="localhost:1", cpus=1, output="glide_output"):
+    def dock(self, input_file="input.in", schr=cs.SCHR, host="localhost:1", cpus=1, output="glide_output", precision="SP",
+		maxkeep=500, maxref=40):
 	# Security type check
 	extension_receptor = self.systems[0].split(".")[-1]
 	extension_ligand = self.ligands_to_dock[0].split(".")[-1]
@@ -42,7 +43,8 @@ class Glide_Docker(object):
         # Templetize grid
         with open(self.grid_template, "r") as f:
             template = Template("".join(f.readlines()))
-            content = template.safe_substitute(COMPLEXES="\n".join(complexes), LIGANDS="\n".join(ligands))
+            content = template.safe_substitute(COMPLEXES="\n".join(complexes), LIGANDS="\n".join(ligands),
+		 PRECISION=precision, MAXKEEP=maxkeep, MAXREF=maxref)
         with open(input_file, "w") as fout:
             fout.write(content)
 
@@ -52,16 +54,18 @@ class Glide_Docker(object):
 
 
 
-def parse_args():
-    parser = argparse.ArgumentParser(description='Specify Receptor and ligand to be docked\n  \
-    i.e python -m ModTox.docking.dock receptor ligand_to_dock --grid ligand_for_grid', formatter_class=RawTextHelpFormatter)
+def parse_args(parser):
     parser.add_argument('--receptor', "-r",  nargs="+", help='Receptor to build the grid for docking on')
     parser.add_argument('--ligands_to_dock', "-l", nargs="+", help='sdf file for ligands to be docked')
     parser.add_argument('--grid', type=str, help='sdf file with a single ligand to build from')
-    args = parser.parse_args()
-    return args.receptor, args.ligands_to_dock, args.grid
+    parser.add_argument('--precision', type=str, help='Docking precision [SP (default), XP]', default="SP")
+    parser.add_argument('--maxkeep', type=int, help='Maximum number of initial poses (Major speed up)', default=500)
+    parser.add_argument('--maxref', type=str, help='Maximum number fo poses to keep at the end of each iteration', default=40)
 
 if __name__ == "__main__":
-    system, ligands_to_dock, ligand_for_grid = parse_args()
-    docking_obj = Glide_Docker(system, ligands_to_dock) 
-    docking_obj.dock()
+    parser = argparse.ArgumentParser(description='Specify Receptor and ligand to be docked\n  \
+    i.e python -m ModTox.docking.dock receptor ligand_to_dock --grid ligand_for_grid', formatter_class=RawTextHelpFormatter)
+    parse_args(parser)
+    args = parser.parse_args()
+    docking_obj = Glide_Docker(args.receptor, args.ligands_to_dock) 
+    docking_obj.dock(precision=args.precision, maxkeep=args.maxkeep, maxref=args.maxref)
