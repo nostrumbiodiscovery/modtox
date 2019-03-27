@@ -16,8 +16,15 @@ def parse_args():
 def retrieve_closest(pdb, resname, radius=5):
 
     atoms = pd.parsePDB(pdb)
-    residues = atoms.select("within {} of resname {} and protein".format(radius, resname))
-    resnumbers = residues.getResnums()
+    try:
+        print("within {} of resname {} and protein".format(radius, resname))
+    	residues = atoms.select("within {} of resname {} and protein".format(radius, resname))
+    except AttributeError:
+        raise AttributeError("{} not found".format(pdb))
+    try:
+        resnumbers = residues.getResnums()
+    except AttributeError:
+        raise AttributeError("Check ligand resname. Must conceed with the extracted last_sanapshot.pdb resname")
     resnumbers = [str(resnum) for resnum in set(resnumbers)] #We need a list of strings to join later
     mask = ":{}".format(",".join(resnumbers))
     print(mask)
