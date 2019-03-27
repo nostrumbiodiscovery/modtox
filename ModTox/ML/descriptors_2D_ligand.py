@@ -153,14 +153,14 @@ class Descriptors():
         print("\tBuilding Descriptors")
         df = pd.DataFrame()
         molecules = molecules["molecules"].tolist()
-        df["MW"] = [dc.FpDensityMorgan1(mol) for mol in molecules]
+        #df["MW"] = [dc.FpDensityMorgan1(mol) for mol in molecules]
         if self.descriptors:
             print(self.descriptors)
             calcs = Calculator(self.descriptors, ignore_3D=True) 
         else:
             calcs = Calculator(descriptors, ignore_3D=True)
         #calcs = Calculator([md.CarbonTypes, md.LogS, md.ABCIndex, md.BondCount, md.ZagrebIndex, md.WienerIndex,md.TopologicalCharge, md.InformationContent, md.AcidBase,md.RingCount, md.AtomCount, md.Polarizability, md.HydrogenBond,md.SLogP,md.RotatableBond, md.Aromatic, md.CPSA], ignore_3D=True) 
-        df["MG"] = [dc.FpDensityMorgan1(mol) for mol in molecules]
+        #df["MG"] = [dc.FpDensityMorgan1(mol) for mol in molecules]
         #df["headers"] = list(df)*(df.shape[0]+1)
         descriptors_df = pd.concat([df, calcs.pandas(molecules)], axis=1)
         if self.headers:
