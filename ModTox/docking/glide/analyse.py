@@ -13,14 +13,7 @@ from itertools import chain
 
 def analyze(glide_files, active=False, inactive=False, model=True, best=False, csv=[]):
     glide_results = []
-    if model:
-        for i, glide_file in enumerate(glide_files):
-        	results_merge = merge([glide_file], output="results_merge_{}.mae".format(i))
-        	results_mae = sort_by_dock_score([results_merge,], output="data_{}.txt".format(i))
-        	glide_results.append(to_dataframe(results_mae, output="results_{}.csv".format(i), iteration=i))
-        all_results = join_results(glide_results)
-        print(all_results)
-    elif best:
+    if best:
         results_merge = merge(glide_files,  output="results_merge.mae")
         best_poses_mae = best_poses(results_merge)
         best_poses_csv = csv_report(best_poses_mae)
@@ -30,6 +23,13 @@ def analyze(glide_files, active=False, inactive=False, model=True, best=False, c
             output, n_active, n_initial_active, n_initial_inactive = add_activity_feature(best_poses_csv, active, inactive)
             TP, FP, TN, FN = summeryze_results(output, n_active, n_initial_active, n_initial_inactive)
             conf(TP, FP, TN, FN)
+    else:
+        for i, glide_file in enumerate(glide_files):
+        	results_merge = merge([glide_file], output="results_merge_{}.mae".format(i))
+        	results_mae = sort_by_dock_score([results_merge,], output="data_{}.txt".format(i))
+        	glide_results.append(to_dataframe(results_mae, output="results_{}.csv".format(i), iteration=i))
+        all_results = join_results(glide_results)
+        print(all_results)
             
 
 def sort_by_dock_score(glide_files, schr=cs.SCHR, output="data.txt"):
@@ -169,9 +169,10 @@ def join_results(files, output="glide_features.csv"):
     for i, glide_file in enumerate(files):
         try:
             if i == 0:
-                df = pd.merge(files[i], files[i+1], on="Title", how="outer")
+                df = pd.merge(files[i].drop_duplicates(subset=["Title"]), files[i+1].drop_duplicates(subset=["Title"]), on="Title", how="outer")
             else:
-	        df = pd.merge(df, files[i+1], on="Title", how="outer")
+	        df = pd.merge(df, files[i+1].drop_duplicates(subset=["Title"]), on="Title", how="outer")
+            df.to_csv(output)
         except IndexError:
             df.to_csv(output)
             return df
@@ -186,12 +187,11 @@ def conf(TP, FP, TN, FN, output="confusion_matrix.png"):
 
 
 def parse_args(parser):
-    parser.add_argument("--glide_files",  nargs="+", help='Glide files to be analyze')
+    parser.add_argument("--glide_files",  nargs="+", help='Glide files to be analyze', default="*dock*.maegz")
     parser.add_argument("--csv",  nargs="+", help='Csv to be analyze')
-    parser.add_argument("--model",  action="store_true", help='Create model matrix from docking results')
     parser.add_argument("--best",  action="store_true", help='Retrieve best poses from docking results')
-    parser.add_argument("--active",  nargs="+", help='Files with all active structures used for docking. Must be a sdf file', default=None)
-    parser.add_argument("--inactive",  nargs="+", help='Files with all inactive structures used for docking. Must be a sdf file', default=None)
+    parser.add_argument("--active",  type=str, help='Files with all active structures used for docking. Must be a sdf file', default=None)
+    parser.add_argument("--inactive",  type=str, help='Files with all inactive structures used for docking. Must be a sdf file', default=None)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Analyze glide docking\n  \
