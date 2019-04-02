@@ -57,18 +57,32 @@ class GenericModel():
 
         self.n_initial_active = len([mol for mol in Chem.SDMolSupplier(self.active)])
         self.n_initial_inactive = len([mol for mol in Chem.SDMolSupplier(self.inactive)])
-
         print("Active, Inactive")
         print(self.n_initial_active, self.n_initial_inactive)
 
         self.n_final_active = len(actives)
         self.n_final_inactive = len(inactives)
+        print("Read Active, Read Inactive")
+        print(self.n_final_active, self.n_final_inactive)
 
-        self.mol_names = [ mol.GetProp("_Name") for mol in actives ] 
-        self.mol_names.extend([mol.GetProp("_Name") for mol in inactives])
-        
-        actives_df = pd.DataFrame({TITLE_MOL: actives })
-        inactives_df =  pd.DataFrame({TITLE_MOL: inactives })
+        #Do not handle tautomers with same molecule Name
+        self.mol_names = []
+        actives_non_repited = [] 
+        inactives_non_repited = [] 
+        for mol in actives:
+            mol_name = mol.GetProp("_Name")
+            if mol_name not in self.mol_names:
+                self.mol_names.append(mol_name)
+                actives_non_repited.append(mol)
+        for mol in inactives:
+            mol_name = mol.GetProp("_Name")
+            if mol_name not in self.mol_names:
+                self.mol_names.append(mol_name)
+                inactives_non_repited.append(mol)
+
+        #Main Dataframe
+        actives_df = pd.DataFrame({TITLE_MOL: actives_non_repited })
+        inactives_df =  pd.DataFrame({TITLE_MOL: inactives_non_repited })
 
         actives_df[LABELS] = [1,] * actives_df.shape[0]
         inactives_df[LABELS] = [0,] * inactives_df.shape[0]
@@ -77,7 +91,7 @@ class GenericModel():
     
         self.data = molecules
 
-        print("Active Read, Inactive Read")
+        print("Non Repited Active, Non Repited Inactive")
         print(actives_df.shape[0], inactives_df.shape[0])
 
         print("Shape Dataset")
@@ -85,7 +99,7 @@ class GenericModel():
     
         return self.data
 
-    def feature_transform(self, X, phisics_based=True):
+    def feature_transform(self, X, pb=False):
         molecular_data = [ TITLE_MOL, ]
         
         numeric_transformer = Pipeline(steps=[
@@ -93,11 +107,11 @@ class GenericModel():
             ('scaler', StandardScaler())
                 ])
         
-        if phisics_based:
+        if pb:
             numeric_features = ['fingerprint', 'fingerprintMACS', 'descriptors']
             features = [
-                #('fingerprint', Fingerprints()),
-                #('descriptors', Descriptors()),
+                ('fingerprint', Fingerprints()),
+                ('descriptors', Descriptors()),
                 ('fingerprintMACS',Fingerprints_MACS()),
                         ]        
         else:
@@ -121,10 +135,11 @@ class GenericModel():
             
         
 
-    def fit_transform(self, load=False, grid_search=False, output=None, save=False, cv=100):
+    def fit_transform(self, load=False, grid_search=False, output=None, save=False, cv=100, pb=False):
         
     
-        x_train_trans = self.feature_transform(self.features)
+        x_train_trans = self.feature_transform(self.features, pb=pb)
+        
     
         np.random.seed(7)
 
@@ -159,18 +174,22 @@ class GenericModel():
         pickle.dump(model, open(output, 'wb'))
 
 def parse_args(parser):
-    parser.add_argument('active',type=str, 
+    parser.add_argument('active', type=str, 
                         help='sdf file with active compounds')
     parser.add_argument('inactive', type=str,
                         help='sdf file with inactive compounds')
     parser.add_argument('--test', type=str,
                         help='sdf file with test compounds', default=None)
     parser.add_argument('--external_data', type=str,
-                        help='csv with external data to add to the model', default=None)
+                        help='csv with external data to add to the model', default="glide_features.csv")
     parser.add_argument('--load', type=str,
                         help='load model from file', default=None)
     parser.add_argument('--save', type=str,
                         help='save model to file', default=None)
+    parser.add_argument('--pb', action="store_true",
+                        help='Compute physic based model (ligand topology, logP, logD...) or just glide model')
+    parser.add_argument('--cv', type=int,
+                        help='cross validation k folds', default=2)
 
 
 if __name__ == "__main__":
@@ -182,10 +201,10 @@ if __name__ == "__main__":
     if args.load:
         model_fitted = model.load(args.load)
     else:
-        X_train = model.feature_transform(model.features)
+        X_train = model.feature_transform(model.features, pb=args.pb)
         model_fitted =  clf.fit(X_train, model.labels)
     if args.save:
         model.save(args.save)
-    X_test = model.feature_transform(model.data_test)
+    X_test = model.feature_transform(model.data_test, pb=args.pb)
     prediction = model_fitted.predict(X_test)
     np.savetxt("results.txt", prediction)
