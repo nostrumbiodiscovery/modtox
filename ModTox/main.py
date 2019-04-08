@@ -1,47 +1,79 @@
 import glob
+import os
 import argparse
 from argparse import RawTextHelpFormatter
-from sklearn import svm
 import ModTox.cpptraj.analisis as an
 import ModTox.docking.glide.glide as dk
 import ModTox.docking.glide.analyse as gl
 import ModTox.ML.model as md
+import ModTox.ML.classifiers as cl
+import ModTox.data.dude as dd
+
+MODELS = [{"csv":None, "pb":True, "fingerprint":True, "MACCS":False, "descriptors":False,
+            "output_feat":"fingerprint_important_features.txt", "conf_matrix":"fingerprint_conf_matrix.png"},
+         {"csv":None, "pb":True, "fingerprint":False, "MACCS":True, "descriptors":False,
+            "output_feat":"MACCS_important_features.txt", "conf_matrix":"MACCS_conf_matrix.png"},
+         {"csv":None, "pb":True, "fingerprint":False, "MACCS":False, "descriptors":True,
+            "output_feat":"descriptors_important_features.txt", "conf_matrix":"descriptors_conf_matrix.png"},
+          {"csv":"glide_features.csv", "pb":False, "fingerprint":False, "MACCS":False, "descriptors":False,
+            "output_feat":"glide_important_features.txt", "conf_matrix":"glide_conf_matrix.png"},
+          {"csv":False, "pb":True, "fingerprint":True, "MACCS":True, "descriptors":True,
+            "output_feat":"pb_important_features.txt", "conf_matrix":"pb_conf_matrix.png"}
+         ]
 
 def parse_args():
     
     parser = argparse.ArgumentParser(description='Specify trajectories and topology to be analised.\n  \
-    i.e python -m ModTox.main traj.xtc --top topology.pdb', formatter_class=RawTextHelpFormatter)
+    i.e python -m ModTox.main traj.xtc --top topology.pdb', formatter_class=RawTextHelpFormatter,  conflict_handler='resolve')
     an.parse_args(parser)
+    dd.parse_args(parser)
     gl.parse_args(parser)
     dk.parse_args(parser)
     md.parse_args(parser)
     parser.add_argument('--dock',  action="store_true", help='Topology of your trajectory')
     parser.add_argument('--analysis', action="store_true", help='Calculate RMSD plot')
     args = parser.parse_args()
-    return args.traj, args.resname, args.active, args.inactive, args.top, args.glide_files, args.best, args.csv, args.RMSD, args.cluster, args.last, args.clust_type, args.rmsd_type, args.receptor, args.ligands_to_dock, args.grid, args.precision, args.maxkeep, args.maxref, args.dock, args.analysis, args.test, args.save, args.load, args.external_data, args.pb, args.cv
+    return args.traj, args.resname, args.active, args.inactive, args.top, args.glide_files, args.best, args.csv, args.RMSD, args.cluster, args.last, args.clust_type, args.rmsd_type, args.receptor, args.ligands_to_dock, args.grid, args.precision, args.maxkeep, args.maxref, args.dock, args.analysis, args.test, args.save, args.load, args.external_data, args.pb, args.cv, args.features, args.features_cv, args.descriptors, args.classifier, args.dude
 
-def main(traj, resname, active, inactive, top=None, glide_files="*dock*.maegz", best=False, csv=False, RMSD=True, cluster=True, last=True, clust_type="BS", rmsd_type="BS", receptor="*pv*.maegz", grid=None, precision="SP", maxkeep=500, maxref=400, dock=False, analysis=True, test=None, save=None, load=None, external_data=None, pb=False, cv=2):
+def main(traj, resname, active=None, inactive=None, top=None, glide_files="*dock*.maegz", best=False, csv=False, RMSD=True, cluster=True, last=True, clust_type="BS", rmsd_type="BS", receptor="*pv*.maegz", grid=None, precision="SP", maxkeep=500, maxref=400, dock=False, analysis=True, test=None, save=None, load=None, external_data=None, pb=False, cv=2, features=5, features_cv=1, descriptors=[], classifier="svm", dude=None):
     if dock:
         # Analyze trajectory&extract clusters
-        an.analise(traj, resname, top, RMSD, cluster, last, clust_type, rmsd_type)
+        if not os.path.exists("analisis"):
+            an.analise(traj, resname, top, RMSD, cluster, last, clust_type, rmsd_type)
         # Cross dock all ligand to the extracted clusters
+        if dude:
+            active, inactive = dd.process_dude(dude)
+            
         docking_obj = dk.Glide_Docker(glob.glob("analisis/*clust*.pdb"), [active, inactive])
         docking_obj.dock(precision=precision, maxkeep=maxkeep, maxref=maxref)
         print("Docking in process... Once is finished run the same command exchanging --dock by --analysis flag to build model")
     elif analysis:
+        if classifier == "xgboost":
+            clf = cl.XGBOOST
+        elif classifier == "svm":
+            clf = cl.SVM
         # Analyze dockig files and build model features
         inp_files = glob.glob(glide_files)
         gl.analyze(inp_files, best=best, csv=csv, active=active, inactive=inactive)
         # Build Model
-        clf = svm.SVC(C=1, gamma=1, kernel="linear")
-        model = md.GenericModel(active, inactive, clf, csv=external_data, test=test)
-        model.fit_transform(cv=cv, pb=pb)
-        print("Model sucesfully build. Confusion_matrix.png outputted")
+        clf = cl.XGBOOST
+        for model in MODELS:
+            try:
+                model_obj = md.GenericModel(active, inactive, clf, csv=model["csv"], test=test, pb=model["pb"], 
+                     fp=model["fingerprint"], descriptors=model["descriptors"], MACCS=model["MACCS"])
+	        model_obj.fit_transform(cv=cv, output_conf=model["conf_matrix"])
+                model_obj.feature_importance(clf, cv=features_cv, number_feat=features, classifier=classifier, output_features=model["output_feat"])
+            except IOError:
+                print("Model with descriptors not build for failure to connect to client webserver")
+        print("Models sucesfully build. Confusion_matrix.png outputted")
 
 
 
 if __name__ == "__main__":
     trajs, resname, active, inactive, top, glide_files, best, csv, RMSD, cluster, last, clust_type, rmsd_type, \
-       receptor, ligands_to_dock, grid, precision, maxkeep, maxref, dock, analysis, test, save, load, external_data, pb, cv = parse_args()
+       receptor, ligands_to_dock, grid, precision, maxkeep, maxref, dock, analysis, test, \
+       save, load, external_data, pb, cv, features, features_cv, descriptors, \
+       classifier, dude = parse_args()
     main(trajs, resname, active, inactive, top, glide_files, best, csv, RMSD, cluster, last, clust_type, rmsd_type, 
-        receptor, grid, precision, maxkeep, maxref, dock, analysis, test, save, load, external_data, pb, cv)
+        receptor, grid, precision, maxkeep, maxref, dock, analysis, test, save, load, external_data, pb, cv, features, features_cv, descriptors,
+        classifier, dude)
