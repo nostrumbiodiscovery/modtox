@@ -101,7 +101,7 @@ class Fingerprints_MACS():
         fingerprints = [MACCSkeys.GenMACCSKeys(mol).ToBitString() for mol in molecules]
         for i, fingerprint in enumerate(fingerprints):
             df = df.append(pd.Series({"rdkit_fingerprintMACS_{}".format(j):element for j, element in enumerate(fingerprint)}), ignore_index=True)
-        print(df.shape[1])
+        np.savetxt("MAC_descriptors.txt", list(df), fmt="%s")
         return df.astype(float)
     
 class Fingerprints_Morgan():
@@ -134,7 +134,7 @@ class Fingerprints():
         fingerprints = [FingerprintMols.FingerprintMol(mol).ToBitString() for mol in molecules]
         for i, fingerprint in enumerate(fingerprints):
             df = df.append(pd.Series({"rdkit_fingerprint_{}".format(j):element for j, element in enumerate(fingerprint)}), ignore_index=True)   
-        print(df.shape[1])
+        np.savetxt("daylight_descriptors.txt", list(df), fmt="%s")
         return df.astype(float)
 
 class Descriptors():
@@ -165,7 +165,7 @@ class Descriptors():
         descriptors_df = pd.concat([df, calcs.pandas(molecules)], axis=1)
         if self.headers:
             descriptors_df["headers"] = [list(descriptors_df)]*descriptors_df.shape[0]
-        print(descriptors_df.shape[1])
+        np.savetxt("2D_descriptors.txt", list(descriptors_df), fmt="%s")
         return  descriptors_df.astype(float)
     
 class Descriptors_Schordinger():

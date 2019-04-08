@@ -1,5 +1,9 @@
 import matplotlib.cm as cm
+import operator
+import collections
+from sklearn.feature_selection import RFE
 import argparse
+import pandas as pd
 import pickle
 from sklearn.metrics import confusion_matrix
 from sklearn import svm
@@ -13,18 +17,23 @@ from sklearn.preprocessing import StandardScaler
 from ModTox.ML.descriptors_2D_ligand import *
 from ModTox.ML.external_descriptors import *
 from ModTox.docking.glide import analyse as md
-
+import ModTox.ML.classifiers as cl
 
 TITLE_MOL = "molecules"
+COLUMNS_TO_EXCLUDE = [ "Lig#", "Title", "Rank", "Conf#", "Pose#" ]
 LABELS = "labels"
 
 
 class GenericModel():
 
-    def __init__(self, active, inactive, clf, csv=None, test=None):
+    def __init__(self, active, inactive, clf, csv=None, test=None, pb=False, fp=False, descriptors=False, MACCS=True):
         self.active = active
         self.inactive = inactive
         self.clf = clf
+        self.pb = pb
+        self.fp = fp
+        self.descriptors = descriptors
+        self.MACCS = MACCS
         self.external_data = csv
         self.test = test
         self.data = self._load_training_set()
@@ -99,7 +108,7 @@ class GenericModel():
     
         return self.data
 
-    def feature_transform(self, X, pb=False):
+    def feature_transform(self, X, exclude=COLUMNS_TO_EXCLUDE):
         molecular_data = [ TITLE_MOL, ]
         
         numeric_transformer = Pipeline(steps=[
@@ -107,20 +116,22 @@ class GenericModel():
             ('scaler', StandardScaler())
                 ])
         
-        if pb:
-            numeric_features = ['fingerprint', 'fingerprintMACS', 'descriptors']
-            features = [
-                ('fingerprint', Fingerprints()),
-                ('descriptors', Descriptors()),
-                ('fingerprintMACS',Fingerprints_MACS()),
-                        ]        
-        else:
-            numeric_features = []
-            features = []
+        numeric_features = []
+        features = []
+        if self.pb:
+            if self.fp:
+                numeric_features.extend('fingerprint')
+                features.extend([('fingerprint', Fingerprints())])
+            if self.descriptors:
+                numeric_features.extend('descriptors')
+                features.extend([('descriptors', Descriptors())])
+            if self.MACCS:
+                numeric_features.extend('fingerprintMACCS')
+                features.extend([('fingerprintMACCS', Fingerprints_MACS())])
 
         if self.external_data:
             numeric_features.extend(['external_descriptors'])
-            features.extend([('external_descriptors', ExternalData(self.external_data, self.mol_names))])
+            features.extend([('external_descriptors', ExternalData(self.external_data, self.mol_names, exclude=exclude))])
 
         molec_transformer = FeatureUnion(features)
 
@@ -135,10 +146,10 @@ class GenericModel():
             
         
 
-    def fit_transform(self, load=False, grid_search=False, output=None, save=False, cv=100, pb=False):
+    def fit_transform(self, load=False, grid_search=False, output_model=None, save=False, cv=None, output_conf=None):
         
     
-        x_train_trans = self.feature_transform(self.features, pb=pb)
+        self.x_train_trans = self.feature_transform(self.features)
         
     
         np.random.seed(7)
@@ -148,35 +159,79 @@ class GenericModel():
         if grid_search:
             param_grid = {"C":[1,10,100,1000], "gamma" : [1,0.1,0.001,0.0001], "kernel": ["linear", "rbf"]}
             grid = GridSearchCV(SVC(), param_grid, refit=True, verbose=0)
-            grid.fit(x_train_trans, self.labels)
+            grid.fit(self.x_train_trans, self.labels)
             print("Best Parameters")
             print(grid.best_params_)
 
-        prediction = cross_val_predict(self.clf, x_train_trans, self.labels, cv=cv)
+        cv = self.n_final_active if not cv else cv
+
+        prediction = cross_val_predict(self.clf, self.x_train_trans, self.labels, cv=cv)
     
         conf = confusion_matrix(self.labels, prediction)
 
         conf[1][0] += (self.n_initial_active - self.n_final_active)
         conf[0][0] += (self.n_initial_inactive - self.n_final_inactive)
 
-        print("100 KFOLD Training Crossvalidation")
+        print("{} KFOLD Training Crossvalidation".format(cv))
 	print(conf.T)
 
-        md.conf(conf[1][1], conf[0][1], conf[0][0], conf[1][0])
+        md.conf(conf[1][1], conf[0][1], conf[0][0], conf[1][0], output=output_conf)
 
-        if output:
+        if output_model:
             pickle.dump(model, open(output, 'wb'))
 
     def load_model(self, model_file):
+        print("Loading model")
         return pickle.load(open(model_file, 'rb'))
 
     def save(self, output):
+        print("Saving Model")
         pickle.dump(model, open(output, 'wb'))
 
+    def retrieve_header(self, exclude=COLUMNS_TO_EXCLUDE):
+        headers = []
+        #Return training headers
+        if self.pb:
+            headers_pb = np.empty(0)
+            if self.fp:
+                headers_pb = np.hstack([headers_pb, np.loadtxt("daylight_descriptors.txt", dtype=np.str)])
+            if self.descriptors:
+                headers_pb = np.hstack([headers_pb, np.loadtxt("2D_descriptors.txt", dtype=np.str)])
+            if self.MACCS:
+                headers_pb = np.hstack([headers_pb, np.loadtxt("MAC_descriptors.txt", dtype=np.str)])
+            headers.extend(headers_pb.tolist())
+        if self.external_data:
+            headers.extend(list(pd.DataFrame.from_csv(self.external_data)))
+        # Remove specified headers
+        headers_to_remove = [feature for field in exclude for feature in headers if field in feature ]
+        for header in headers_to_remove: headers.remove(header)
+        return headers
+        
+    def feature_importance(self, clf, cv=1, number_feat=5, classifier="svm", output_features="important_fatures.txt"):
+        print("Extracting most importance features")
+        self.headers = self.retrieve_header()
+        assert len(self.headers) == self.x_train_trans.shape[1], "Headers and features should be the same length \
+            {} {}".format(len(self.headers), self.x_train_trans.shape[1])
+        clf = cl.XGBOOST
+        model = clf.fit(self.x_train_trans, self.labels)
+        important_features = model.get_booster().get_score(importance_type='gain')
+        important_features_sorted = sorted(important_features.items(), key=operator.itemgetter(1), reverse=True)
+        important_features_name = [[self.headers[int(feature[0].strip("f"))], feature[1]] for feature in important_features_sorted]
+        np.savetxt(output_features, important_features_name, fmt='%s')
+
+    def plot_descriptor(self, descriptor):
+        print("Plotting descriptor {}".format(descriptor))
+        headers = self.retrieve_header()
+        index = headers.index(descriptor)
+        data = self.x_train_trans[:, index]
+        fig, ax = plt.subplots()
+        ax.hist(data)
+        fig.savefig("{}_hist.png".format(descriptor))
+
 def parse_args(parser):
-    parser.add_argument('active', type=str, 
+    parser.add_argument('--active', type=str,
                         help='sdf file with active compounds')
-    parser.add_argument('inactive', type=str,
+    parser.add_argument('--inactive', type=str,
                         help='sdf file with inactive compounds')
     parser.add_argument('--test', type=str,
                         help='sdf file with test compounds', default=None)
@@ -189,7 +244,13 @@ def parse_args(parser):
     parser.add_argument('--pb', action="store_true",
                         help='Compute physic based model (ligand topology, logP, logD...) or just glide model')
     parser.add_argument('--cv', type=int,
-                        help='cross validation k folds', default=2)
+                        help='cross validation k folds', default=None)
+    parser.add_argument('--features', type=int,
+                        help='Number of important features to retrieve', default=5)
+    parser.add_argument('--features_cv', type=int,
+                        help='KFold when calculating important features', default=1)
+    parser.add_argument('--descriptors', nargs="+", help="descriptors to plot", default=[])
+    parser.add_argument('--classifier', type=str, help="classifier to use", default="svm")
 
 
 if __name__ == "__main__":

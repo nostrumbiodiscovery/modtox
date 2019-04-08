@@ -5,9 +5,10 @@ import numpy as np
 
 class ExternalData():
 
-    def __init__(self, csv, mol_names):
+    def __init__(self, csv, mol_names, exclude=[]):
 	self.csv = csv
         self.mol_names = mol_names       
+        self.exclude = exclude
 
     def fit(self, csv):
         return self.csv
@@ -32,7 +33,10 @@ class ExternalData():
         # Drop colum with high number of NaN
         df = df.replace("--",  np.nan)
         df.dropna(thresh=df.shape[0]/2, axis=1)
-        return df.iloc[:, 3:]
+        #Drop features
+        features_to_drop = [feature for field in self.exclude for feature in headers if field in feature ]
+        df.drop(features_to_drop, axis=1, inplace=True)
+        return df
 
     def retrieve_molecule_names(self):
         df = pd.DataFrame.from_csv(self.csv) 
