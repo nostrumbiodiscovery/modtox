@@ -15,7 +15,7 @@ class CpptajBuilder(object):
         self.topology = topology if topology else traj[0]
         self.traj =  pt.iterload(traj, top=self.topology, autoimage=True) 
 
-    def strip(self, traj, ions=True, water=True, membrane=True, others="", output_path="analisis", autoimage=True):
+    def strip(self, traj, ions=True, water=True, membrane=True, others="", output_path="analisis", autoimage=True, lipid=True):
         # Check output path
         if not os.path.exists(output_path):
             os.mkdir(output_path)
@@ -29,7 +29,7 @@ class CpptajBuilder(object):
         if water:
             traj_nowat = pt.strip(traj_nowat, ":WAT")
         if membrane:
-            traj_nowat = pt.strip(traj_nowat, ":PA, PC, OL")
+            traj_nowat = pt.strip(traj_nowat, ":PA, PC, OL, CHL")
         if others:
             traj_nowat = pt.strip(traj_nowat, others)
         # Save output
@@ -142,8 +142,8 @@ def parse_args(parser):
     parser.add_argument('resname', type=str, help='Resname of the ligand')
     parser.add_argument('--top', type=str, help='Topology of your trajectory')
     parser.add_argument('--RMSD', action="store_true", help='Calculate RMSD plot')
-    parser.add_argument('--cluster', action="store_true", help='Perform clustering')
-    parser.add_argument('--last', action="store_true", help='Extract last snapshot')
+    parser.add_argument('--cluster', action="store_false", help='Perform clustering')
+    parser.add_argument('--last', action="store_false", help='Extract last snapshot')
     parser.add_argument('--clust_type', type=str, help='Type of clustring [BS (default), CA, all]', default="BS")
     parser.add_argument('--rmsd_type', type=str, help='Type of RMSD [BS (default), CA, all]', default="BS")
 
