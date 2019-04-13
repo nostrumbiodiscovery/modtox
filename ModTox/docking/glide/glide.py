@@ -7,7 +7,7 @@ import ModTox.Helpers.formats as fm
 import ModTox.constants.constants as cs
 
 DIR = os.path.dirname(__file__)
-COMPLEX_LINE = "COMPLEX   {},2"
+COMPLEX_LINE = "COMPLEX   {},{}"
 LIGAND_LINE = "LIGAND   {}"
 ACCEPTED_FORMATS = ["pdb", "mae", "sdf"]
 
@@ -18,7 +18,7 @@ class Glide_Docker(object):
         self.ligands_to_dock = ligands_to_dock
 
     def dock(self, input_file="input.in", schr=cs.SCHR, host="localhost:1", cpus=1, output="glide_output", precision="SP",
-		maxkeep=500, maxref=40):
+		maxkeep=500, maxref=40, grid_mol=2):
 	# Security type check
 	extension_receptor = self.systems[0].split(".")[-1]
 	extension_ligand = self.ligands_to_dock[0].split(".")[-1]
@@ -37,7 +37,7 @@ class Glide_Docker(object):
 
 	# Set variables for docking        
         self.grid_template = os.path.abspath(os.path.join(DIR, input_file))
-	complexes = [COMPLEX_LINE.format(system) for system in self.systems_mae]
+	complexes = [COMPLEX_LINE.format(system, grid_mol) for system in self.systems_mae]
 	ligands = [LIGAND_LINE.format(ligand) for ligand in self.ligands_to_dock_mae]
 
         # Templetize grid
@@ -61,6 +61,7 @@ def parse_args(parser):
     parser.add_argument('--precision', type=str, help='Docking precision [SP (default), XP]', default="SP")
     parser.add_argument('--maxkeep', type=int, help='Maximum number of initial poses (Major speed up)', default=500)
     parser.add_argument('--maxref', type=str, help='Maximum number fo poses to keep at the end of each iteration', default=40)
+    parser.add_argument('--grid_mol', type=int, help='Number of the molecule to be used as grid. (Each TER is a molecule)', default=2)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Specify Receptor and ligand to be docked\n  \
