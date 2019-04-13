@@ -11,7 +11,7 @@ import ModTox.constants.constants as cs
 from itertools import chain
 
 
-def analyze(glide_files, active=False, inactive=False, model=True, best=False, csv=[]):
+def analyze(glide_files, active=False, inactive=False, best=False, csv=[], filter=None):
     glide_results = []
     if best:
         results_merge = merge(glide_files,  output="results_merge.mae")
@@ -23,14 +23,14 @@ def analyze(glide_files, active=False, inactive=False, model=True, best=False, c
             output, n_active, n_initial_active, n_initial_inactive = add_activity_feature(best_poses_csv, active, inactive)
             TP, FP, TN, FN = summeryze_results(output, n_active, n_initial_active, n_initial_inactive)
             conf(TP, FP, TN, FN)
+        return best_poses_csv
     else:
         for i, glide_file in enumerate(glide_files):
         	results_merge = merge([glide_file], output="results_merge_{}.mae".format(i))
         	results_mae = sort_by_dock_score([results_merge,], output="data_{}.txt".format(i))
-        	glide_results.append(to_dataframe(results_mae, output="results_{}.csv".format(i), iteration=i))
+        	glide_results.append(to_dataframe(results_mae, output="results_{}.csv".format(i), iteration=i, filter=filter))
         all_results = join_results(glide_results)
-        print(all_results)
-            
+        return(all_results)            
 
 def sort_by_dock_score(glide_files, schr=cs.SCHR, output="data.txt"):
     glide_sort_bin = os.path.join(schr, "utilities/glide_sort")
@@ -64,7 +64,7 @@ def csv_report(glide_file,  schr=cs.SCHR, properties = ["s_m_title", "r_i_dockin
     return output
 
 
-def to_dataframe(glide_results_file, output="results.csv", write=True, iteration=None):
+def to_dataframe(glide_results_file, output="results.csv", write=True, iteration=None, filter=None):
     found=False
     info = []
     with open(glide_results_file, "r") as f:
@@ -85,6 +85,9 @@ def to_dataframe(glide_results_file, output="results.csv", write=True, iteration
     
     df = pd.DataFrame(info, columns=headers)
     if write:
+        if filter:
+            filter.insert(0, "Title")
+            df = df[filter]
         df.to_csv(output)
     return df
 
@@ -106,7 +109,6 @@ def add_activity_feature(csv, active, inactive, output="csv_activity.csv"):
     actives_titles = [ mol.GetProp("_Name") for mol in actives if mol]
     inactives_titles = [ mol.GetProp("_Name") for mol in inactives if mol]
 
-    print("Active, Inactive")
     print(len(actives_titles), len(inactives_titles))
 
     new_lines = []
@@ -168,15 +170,16 @@ def summeryze_results(csv, tresh, n_active, n_inactive):
 def join_results(files, output="glide_features.csv"):
     for i, glide_file in enumerate(files):
         try:
-            if i == 0:
+            if len(files) == 1:
+                df = glide_file
+            elif i == 0:
                 df = pd.merge(files[i].drop_duplicates(subset=["Title"]), files[i+1].drop_duplicates(subset=["Title"]), on="Title", how="outer")
             else:
 	        df = pd.merge(df, files[i+1].drop_duplicates(subset=["Title"]), on="Title", how="outer")
             df.to_csv(output)
         except IndexError:
             df.to_csv(output)
-            return df
-
+    return output
 
 def conf(TP, FP, TN, FN, output="confusion_matrix.png"):
     df_cm = pd.DataFrame([[TP, FP], [FN,TN]], index = [i for i in "PN"],
@@ -192,10 +195,11 @@ def parse_args(parser):
     parser.add_argument("--best",  action="store_true", help='Retrieve best poses from docking results')
     parser.add_argument("--active",  type=str, help='Files with all active structures used for docking. Must be a sdf file', default=None)
     parser.add_argument("--inactive",  type=str, help='Files with all inactive structures used for docking. Must be a sdf file', default=None)
+    parser.add_argument("--filter",  nargs="+", help='Fields to include in model. i.e. GScore', default=None)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Analyze glide docking\n  \
     i.e python -m ModTox.docking.glide.analyze glide_file1 glide_file2", formatter_class=RawTextHelpFormatter)
-    parse_args()
-    args = parser.parse_args(parser)
-    analyze(args.glide_files, model=args.model, best=args.best, csv=args.csv, active=args.active, inactive=args.inactive)
+    parse_args(parser)
+    args = parser.parse_args()
+    analyze(args.glide_files,  best=args.best, csv=args.csv, active=args.active, inactive=args.inactive, filter=args.filter)
