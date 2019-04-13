@@ -10,22 +10,25 @@ class ExternalData():
         self.mol_names = mol_names       
         self.exclude = exclude
 
-    def fit(self, csv):
-        return self.csv
+    def fit(self, molecules):
+        return molecules
 
-    def fit_transform(self, csv, labels): 
-        return self.transform(self.fit(self.csv))
+    def fit_transform(self, molecules, labels): 
+        return self.transform(self.fit(molecules))
 
-    def transform(self, csv):
+    def transform(self, molecules):
         print("\tIncorporating external data")
         df = pd.DataFrame.from_csv(self.csv)
         n_drop = 0
+        #If not present on your dataset discard
+        self.mol_names = [m[0].GetProp("_Name") for m in molecules.values]
         for i, title in enumerate(df["Title"].values):
             if title not in self.mol_names:
                 df.drop(df.index[i- n_drop], inplace=True)
                 n_drop += 1
         headers = list(df)
         values = (None,) * len(headers)
+        #If not present on your glide discard
         for i, title in enumerate(self.mol_names):
             if title not in df["Title"].values:
                 line = pd.DataFrame.from_records([values], columns=headers, index=[i])
