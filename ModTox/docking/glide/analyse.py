@@ -34,31 +34,31 @@ def analyze(glide_files, active=False, inactive=False, best=False, csv=[], filte
 
 def sort_by_dock_score(glide_files, schr=cs.SCHR, output="data.txt"):
     glide_sort_bin = os.path.join(schr, "utilities/glide_sort")
-    command = "{} -r {} {}".format(glide_sort_bin , output, " ".join(glide_files))
+    command = "{} -r {} {} > /dev/null".format(glide_sort_bin , output, " ".join(glide_files))
     print(command)
-    subprocess.call(command.split())
+    os.system(command)
     return output
         
 def merge(glide_files, schr=cs.SCHR, output="results_merge.mae"):
     glide_merge_bin = os.path.join(schr, "utilities/glide_merge")
-    command = "{} {} -o {} ".format(glide_merge_bin , " ".join(glide_files), output)
+    command = "{} {} -o {} > /dev/null".format(glide_merge_bin , " ".join(glide_files), output)
     print(command)
-    subprocess.call(command.split())
+    os.system(command)
     return output
     
 def best_poses(glide_file,  schr=cs.SCHR, output="final_resuts.mae"):
     schr_bin =  os.path.join(schr, "run")
     glide_summary_bin = os.path.join(schr, "mmshare-v4.2/python/common/glide_blocksort.py")
-    command = "{} {} {} {} ".format(schr_bin, glide_summary_bin, glide_file,  output)
+    command = "{} {} {} {} > /dev/null".format(schr_bin, glide_summary_bin, glide_file,  output)
     print(command)
-    subprocess.call(command.split())
+    os.system(command)
     return output
 
 
 def csv_report(glide_file,  schr=cs.SCHR, properties = ["s_m_title", "r_i_docking_score"],  output="results_all_properties.csv"):
     csv_report_bin =  os.path.join(schr, "utilities/proplister")
     properties = [ "-p {}".format(prop) for prop in properties]
-    command = "{} -a -c {} {} > {} ".format(csv_report_bin, " ".join(properties), glide_file,  output)
+    command = "{} -a -c {} {} > {}".format(csv_report_bin, " ".join(properties), glide_file,  output)
     print(command)
     os.system(command)
     return output
