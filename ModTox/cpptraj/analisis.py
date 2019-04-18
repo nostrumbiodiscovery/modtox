@@ -20,9 +20,9 @@ class CpptajBuilder(object):
         if not os.path.exists(output_path):
             os.mkdir(output_path)
         if autoimage:
-        	traj2 = pt.autoimage(traj[:])
-	else:
-		traj2 = traj[:]
+            traj2 = pt.autoimage(traj[:])
+        else:
+                traj2 = traj[:]
         # Strip traj
         if ions:
             traj_nowat = pt.strip(traj2, ":Na+, Cl-")
@@ -55,10 +55,10 @@ class CpptajBuilder(object):
     def plot_line(self, values, output="rmsd.png", output_path="analisis"):
         # Check initial data
         assert isinstance(values, np.ndarray), "data rmsd must be a numpy array"
-	    # Check output path
+        # Check output path
         if not os.path.exists(output_path):
-	    	os.mkdir(output_path)
-            # Plot
+            os.mkdir(output_path)
+        # Plot
         frames = range(len(values))
         plt.plot(frames, values)
         plt.savefig(os.path.join(output_path, output))
@@ -67,9 +67,9 @@ class CpptajBuilder(object):
     def plot_bars(self, values, output="rmsd.png", output_path="analisis"):
         # Check initial data
         assert isinstance(values, np.ndarray), "data rmsd must be a numpy array"
-	    # Check output path
+        # Check output path
         if not os.path.exists(output_path):
-	    	os.mkdir(output_path)
+            os.mkdir(output_path)
         # Plot
         frames = range(len(values))
         plt.bar(frames, values)
@@ -79,9 +79,9 @@ class CpptajBuilder(object):
     def to_txt(self, values, output="rmsd.png", output_path="analisis"):
         # Check initial data
         assert isinstance(values, np.ndarray), "data rmsd must be a numpy array"
-	    # Check output path
+        # Check output path
         if not os.path.exists(output_path):
-	    	os.mkdir(output_path)
+            os.mkdir(output_path)
         try:
             np.savetxt(os.path.join(output_path, output), values)
         except TypeError:
@@ -123,7 +123,7 @@ class CpptajBuilder(object):
         return self.correlation
 
     def cluster(self, traj, mask='*', ref=0, 
-	options='sieve 10 normframe out {0}/cnumvtime.dat summary {0}/clusters.out info {0}/info.dat repout {0}/cluster repfmt pdb',
+    options='sieve 10 normframe out {0}/cnumvtime.dat summary {0}/clusters.out info {0}/info.dat repout {0}/cluster repfmt pdb',
         output_path="analisis"):
         # Check output path
         if not os.path.exists(output_path):
@@ -150,30 +150,30 @@ def parse_args(parser):
 def analise(traj, resname, top, RMSD, cluster, last, clust_type, rmsd_type):
     trajectory = CpptajBuilder(traj, top)
     if RMSD:
-    	trajectory.strip(trajectory.traj, autoimage=True)
+        trajectory.strip(trajectory.traj, autoimage=True)
         if rmsd_type == "CA": 
             mask = ":1-10000,@CA"
         elif rmsd_type == "BS":
-    	    output = trajectory.save_traj(trajectory.traj_converged, frame_indices=[trajectory.traj_converged.n_frames-1],
-		output_path="analisis", output="last_snap.pdb")
+            output = trajectory.save_traj(trajectory.traj_converged, frame_indices=[trajectory.traj_converged.n_frames-1],
+            output_path = "analisis", output="last_snap.pdb")
             mask = mk.retrieve_closest(output, resname) 
         elif rmsd_type == "all": 
             mask="*" 
-    	trajectory.RMSD(trajectory.traj, mask="mask")
-    	trajectory.plot_line(trajectory.rmsd_data)
+        trajectory.RMSD(trajectory.traj, mask="mask")
+        trajectory.plot_line(trajectory.rmsd_data)
     if cluster:
-    	trajectory.strip(trajectory.traj, autoimage=True)
-    	output = trajectory.save_traj(trajectory.traj_converged, frame_indices=[trajectory.traj_converged.n_frames-1],
-		output_path="analisis", output="last_snap.pdb")
+        trajectory.strip(trajectory.traj, autoimage=True)
+        output = trajectory.save_traj(trajectory.traj_converged, frame_indices=[trajectory.traj_converged.n_frames-1],
+        output_path="analisis", output="last_snap.pdb")
         if clust_type == "CA":
             mask = ":1-10000,@CA"
         elif clust_type == "BS":
             mask = mk.retrieve_closest(output, resname) 
         elif clust_type == "all":
             mask="*"
-    	trajectory.cluster(trajectory.traj_converged, mask=mask)
+        trajectory.cluster(trajectory.traj_converged, mask=mask)
     if last:
-    	trajectory.save_traj(trajectory.traj, frame_indices=[trajectory.traj.n_frames-1], output_path=".", output="last_snap.pdb")
+        trajectory.save_traj(trajectory.traj, frame_indices=[trajectory.traj.n_frames-1], output_path=".", output="last_snap.pdb")
     print("Trajectory {} sucessfuly analised".format(traj))
 
 

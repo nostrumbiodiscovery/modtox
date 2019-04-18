@@ -71,8 +71,8 @@ def main(traj, resname, active=None, inactive=None, top=None, glide_files="*dock
         for model in MODELS:
             try:
                 model_obj = md.GenericModel(active, inactive, clf, csv=model["csv"], test=test, pb=model["pb"], 
-                     fp=model["fingerprint"], descriptors=model["descriptors"], MACCS=model["MACCS"])
-	        model_obj.fit_transform(cv=cv, output_conf=model["conf_matrix"])
+                    fp=model["fingerprint"], descriptors=model["descriptors"], MACCS=model["MACCS"])
+                model_obj.fit_transform(cv=cv, output_conf=model["conf_matrix"])
                 model_obj.feature_importance(cl.XGBOOST, cv=features_cv, number_feat=features, output_features=model["output_feat"])
             except IOError:
                 print("Model with descriptors not build for failure to connect to client webserver")
