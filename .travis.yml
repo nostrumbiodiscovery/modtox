@@ -32,7 +32,8 @@ install:
  # Necessary dependencies
  - conda install -q tqdm numpy pytest matplotlib
  - conda install -c ambermd pytraj
- - python -m pip install prody
+ - conda install -c omnia mdtra
+ - python -m pip install prody biopython
 
  # Install the most recent rdkit package from the RDKit anaconda channel.
  - conda install -q -c rdkit rdkit
