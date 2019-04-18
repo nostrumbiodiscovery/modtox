@@ -12,12 +12,13 @@ import os
 from chembl_webresource_client.unichem import unichem_client as unichem
 from chembl_webresource_client.new_client import new_client
 import ModTox.Helpers.preprocess as pr
+from ModTox.data import databases as dbs
 
 
 URL = "https://www.ebi.ac.uk/chembl/api/data/molecule/{}.sdf"
 
 
-class DUDE():
+class DUDE(dbs.PullDB):
     
     def __init__(self, dude_folder):
         os.system("gunzip {}".format(os.path.join(dude_folder, "*.gz")))
@@ -25,6 +26,7 @@ class DUDE():
         self.decoys_ism = os.path.join(dude_folder, "decoys_final.ism")
         self.actives_sdf = os.path.join(dude_folder, "actives_final.sdf")
         self.decoys_sdf = os.path.join(dude_folder, "decoys_final.sdf")
+        dbs.PullDB.__init__(self, self.active_names(), source="chembl")
         
     def active_names(self):
         with open(self.actives_ism, "r") as f:
@@ -37,26 +39,14 @@ class DUDE():
     def activities(self):
         pass 
 
-    def to_sdf(self, chembl_names, output="active.sdf"):
-        molecules = []
-        for name in tqdm(chembl_names):
-            try:
-                #Build molecules from rdkit
-                request = requests.get(URL.format(name))
-                content = request._content.rstrip("\n")
-                # change chirality flag sdf
-                content = content.replace("  0  ", "  1  ", 1)
-                molecules.append(name + "\n".join(content.split("\n")[:-2]))
-            except IndexError:
-                print("Molecules {} not found".format(name))
+    def to_inchi_key(self, chembl_names):
+        for name in ids:
+            for struct in unichem.structure(name,1):
+                 yield str(struct["standardinchi"])
 
-        #Write file appending $$$$ between molecules
-        with open(output, "w") as f:
-            f.write("\n$$$$\n".join(molecules) + "\n$$$$")
-        return output, len(molecules)
 
     def filter_for_similarity(self, sdf_file, n_output_mols=100, output_sdf="inactive.sdf"):
-        mols = np.array([m for m in Chem.SDMolSupplier(sdf_file)])
+        mols = np.array([m for m in Chem.SDMolSupplier(sdf_file, removeHs=False)])
         fps = [FingerprintMols.FingerprintMol(m) for m in mols]
         ref = fps[0]
         similarity = np.array([DataStructs.FingerprintSimilarity(ref, fp) for fp in fps[1:]])
@@ -74,7 +64,7 @@ def parse_args(parser):
 def process_dude(dude_folder, output="cyp_actives.sdf"):
     dud_e = DUDE(dude_folder)
     active_names = dud_e.active_names()
-    active_output, n_actives = dud_e.to_sdf(active_names)
+    active_output, n_actives = dud_e.to_sdf()
     inactive_output = dud_e.filter_for_similarity(dud_e.decoys_sdf, n_actives) 
     output_proc = pr.ligprep(active_output)
     print("File {} created with chembl curated compounds".format(output))
