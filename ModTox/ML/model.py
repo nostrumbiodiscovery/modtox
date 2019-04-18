@@ -1,5 +1,6 @@
 import matplotlib.cm as cm
 import operator
+from sklearn.model_selection import GridSearchCV
 import collections
 from sklearn.feature_selection import RFE
 import argparse
@@ -112,7 +113,7 @@ class GenericModel():
         molecular_data = [ TITLE_MOL, ]
         
         numeric_transformer = Pipeline(steps=[
-            ('imputer', SimpleImputer()),
+            ('imputer', SimpleImputer(strategy="constant")),
             ('scaler', StandardScaler())
                 ])
         
@@ -146,7 +147,7 @@ class GenericModel():
             
         
 
-    def fit_transform(self, load=False, grid_search=False, output_model=None, save=False, cv=None, output_conf=None):
+    def fit_transform(self, load=False, grid_search=False, output_model=None, save=False, cv=None, output_conf="conf.png"):
         
     
         self.x_train_trans = self.feature_transform(self.features)
@@ -165,7 +166,18 @@ class GenericModel():
 
         cv = self.n_final_active if not cv else cv
 
-        prediction = cross_val_predict(self.clf, self.x_train_trans, self.labels, cv=cv)
+        if type(self.clf) is list and len(self.clf) > 0:
+            print("Stack model")
+            last_clf = self.clf[-1]
+            scaler = StandardScaler()
+            preds = np.array([ cross_val_predict(c, self.x_train_trans, self.labels, cv=cv) for c in self.clf[:-1 ]])
+            print(self.x_train_trans.shape, preds.T.shape)
+            X = np.hstack( [self.x_train_trans, preds.T] )
+            prediction = cross_val_predict(last_clf, scaler.fit_transform(X), self.labels, cv=cv)
+            
+        else:
+            print("Normal model")
+            prediction = cross_val_predict(self.clf, self.x_train_trans, self.labels, cv=cv)
     
         conf = confusion_matrix(self.labels, prediction)
 
@@ -188,6 +200,45 @@ class GenericModel():
         print("Saving Model")
         pickle.dump(model, open(output, 'wb'))
 
+    def test_importance(self, names, clf):
+        from sklearn.feature_selection import SelectKBest
+        from sklearn.feature_selection import chi2        
+        from sklearn.preprocessing import QuantileTransformer
+        test, label_test, train, label_train = [], [], [], []
+        indexes = []
+        for i, (m, label) in enumerate(zip(self.features.values, self.labels.values)):
+            m = m[0]
+            if m.GetProp("_Name") in names:
+                test.append(m)
+                label_test.append(label)
+                indexes.append(i)
+            else:
+                train.append(m)
+                label_train.append(label)
+
+        X_train = self.feature_transform(pd.DataFrame({"molecules": np.hstack([train, test])}))
+        X_train_pos = QuantileTransformer(output_distribution='uniform').fit_transform(X_train)
+        X_test = X_train_pos[-2:, :]
+        model = clf.fit(X_test, label_test)
+
+        bestfeatures = SelectKBest(score_func=chi2, k=10)
+        fit = bestfeatures.fit(X_train_pos, np.hstack([label_train, label_test]))
+        dfscores = pd.DataFrame({"Score":fit.scores_})
+        dfscores["header"] = self.retrieve_header()
+        print(dfscores.nlargest(10,'Score'))
+        print(model.predict(X_test))
+
+        bestfeatures = SelectKBest(score_func=chi2, k=10)
+        fit = bestfeatures.fit(X_test, label_test)
+        dfscores = pd.DataFrame({"Score":fit.scores_})
+        dfscores["header"] = self.retrieve_header()
+        print(dfscores.nlargest(10,'Score'))
+        print(model.predict(X_test))
+
+
+            
+        
+
     def retrieve_header(self, exclude=COLUMNS_TO_EXCLUDE):
         headers = []
         #Return training headers
@@ -207,7 +258,7 @@ class GenericModel():
         for header in headers_to_remove: headers.remove(header)
         return headers
         
-    def feature_importance(self, clf, cv=1, number_feat=5, classifier="svm", output_features="important_fatures.txt"):
+    def feature_importance(self, clf=None, cv=1, number_feat=5, output_features="important_fatures.txt"):
         print("Extracting most importance features")
         self.headers = self.retrieve_header()
         assert len(self.headers) == self.x_train_trans.shape[1], "Headers and features should be the same length \
@@ -251,6 +302,7 @@ def parse_args(parser):
                         help='KFold when calculating important features', default=1)
     parser.add_argument('--descriptors', nargs="+", help="descriptors to plot", default=[])
     parser.add_argument('--classifier', type=str, help="classifier to use", default="svm")
+    parser.add_argument('--test_importance', nargs="+", help="Name of Molecules to include on testing feature importance", default=[])
 
 
 if __name__ == "__main__":
@@ -258,14 +310,17 @@ if __name__ == "__main__":
     parse_args(parser)
     args = parser.parse_args()
     clf = svm.SVC(C=1, gamma=1, kernel="linear")
-    model = GenericModel(args.active, args.inactive, clf, csv=args.external_data, test=args.test)
+    model = GenericModel(args.active, args.inactive, clf, csv=args.external_data, test=args.test, pb=args.pb)
     if args.load:
         model_fitted = model.load(args.load)
     else:
-        X_train = model.feature_transform(model.features, pb=args.pb)
-        model_fitted =  clf.fit(X_train, model.labels)
+        X_train = model.fit_transform(model.features)
+        #model.feature_importance(output_features="lucia.txt")
     if args.save:
         model.save(args.save)
-    X_test = model.feature_transform(model.data_test, pb=args.pb)
-    prediction = model_fitted.predict(X_test)
-    np.savetxt("results.txt", prediction)
+    if args.test:
+        X_test = model.feature_transform(model.data_test)
+        prediction = model_fitted.predict(X_test)
+        np.savetxt("results.txt", prediction)
+    if args.test_importance:
+        model.test_importance(args.test_importance, clf)

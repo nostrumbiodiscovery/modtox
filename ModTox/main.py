@@ -23,7 +23,7 @@ MODELS = [{"csv":None, "pb":True, "fingerprint":True, "MACCS":False, "descriptor
          ]
 
 #MODELS = [          {"csv":"glide_features.csv", "pb":False, "fingerprint":False, "MACCS":False, "descriptors":False,
-#            "output_feat":"glide_important_features.txt", "conf_matrix":"glide_conf_matrix.png"}]
+#               "output_feat":"glide_important_features.txt", "conf_matrix":"glide_conf_matrix.png"}]
 
 def parse_args():
     
@@ -62,17 +62,18 @@ def main(traj, resname, active=None, inactive=None, top=None, glide_files="*dock
             clf = cl.XGBOOST
         elif classifier == "svm":
             clf = cl.SVM
+        elif classifier == "stack":
+            clf = [cl.SVM, cl.XGBOOST, cl.KN, cl.SVM, cl.TREE, cl.NB]
         # Analyze dockig files and build model features
         inp_files = glob.glob(glide_files)
         gl.analyze(inp_files, best=best, csv=csv, active=active, inactive=inactive)
         # Build Model
-        clf = cl.XGBOOST
         for model in MODELS:
             try:
                 model_obj = md.GenericModel(active, inactive, clf, csv=model["csv"], test=test, pb=model["pb"], 
                      fp=model["fingerprint"], descriptors=model["descriptors"], MACCS=model["MACCS"])
 	        model_obj.fit_transform(cv=cv, output_conf=model["conf_matrix"])
-                model_obj.feature_importance(clf, cv=features_cv, number_feat=features, output_features=model["output_feat"])
+                model_obj.feature_importance(cl.XGBOOST, cv=features_cv, number_feat=features, output_features=model["output_feat"])
             except IOError:
                 print("Model with descriptors not build for failure to connect to client webserver")
         print("Models sucesfully build. Confusion_matrix.png outputted")

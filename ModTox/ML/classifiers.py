@@ -1,5 +1,8 @@
 import xgboost as xgb
 from sklearn import svm
+from sklearn.neighbors import KNeighborsClassifier
+from sklearn.tree import DecisionTreeClassifier
+from sklearn.naive_bayes import GaussianNB
 
 
 XGBOOST = xgb.XGBClassifier(
@@ -16,4 +19,10 @@ scale_pos_weight=1,
 seed=27)
 
 
-SVM = svm.SVC(C=1, gamma=1, kernel="linear")
+SVM = svm.SVC(C=1, gamma=1, kernel="rbf")
+
+KN = KNeighborsClassifier(3)
+
+TREE = DecisionTreeClassifier(max_depth=5)
+
+NB = GaussianNB()
