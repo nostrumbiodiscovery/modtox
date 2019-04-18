@@ -30,7 +30,8 @@ before_install:
 
 install:
  # Necessary dependencies
- - conda install -q tqdm numpy pytest pytraj
+ - conda install -q tqdm numpy pytest
+ - conda install -c ambermd pytraj
 
  # Install the most recent rdkit package from the RDKit anaconda channel.
  - conda install -q -c rdkit rdkit
