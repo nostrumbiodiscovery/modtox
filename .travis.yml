@@ -31,8 +31,8 @@ before_install:
 install:
  # Necessary dependencies
  - conda install -q tqdm numpy pytest matplotlib
- - conda install -c prody_devel prody=1.8.2
  - conda install -c ambermd pytraj
+ - python -m pip install prody
 
  # Install the most recent rdkit package from the RDKit anaconda channel.
  - conda install -q -c rdkit rdkit
