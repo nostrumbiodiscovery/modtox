@@ -68,20 +68,20 @@ def to_dataframe(glide_results_file, output="results.csv", write=True, iteration
     found=False
     info = []
     with open(glide_results_file, "r") as f:
-    for line in f:
+        for line in f:
             if line.split():
-            if line.startswith("Rank"):
+                if line.startswith("Rank"):
                     columns = line.split()
                     n_columns = len(columns)
-                headers = columns[: n_columns-1]
-                found = True
-            if iteration:
-            headers = ["{}_receptor_{}".format(header, iteration) if header != "Title" else header for header in headers]
+                    headers = columns[: n_columns-1]
+                    found = True
+                    if iteration:
+                        headers = ["{}_receptor_{}".format(header, iteration) if header != "Title" else header for header in headers]
                 elif found and line.split()[0].isdigit():
                     ligand_info = line.split()
                     n_fields = len(ligand_info)
-             if n_fields == n_columns:
-                info.append(ligand_info[: n_fields-1])
+                    if n_fields == n_columns:
+                        info.append(ligand_info[: n_fields-1])
     
     df = pd.DataFrame(info, columns=headers)
     if write:
@@ -113,7 +113,7 @@ def add_activity_feature(csv, active, inactive, output="csv_activity.csv"):
 
     new_lines = []
     with open(csv, "r") as f:
-    for i, line in enumerate(f):
+        for i, line in enumerate(f):
             if i == 0:
                 new_lines.append(line.strip("\n") + ',"active"\n')
             else:
