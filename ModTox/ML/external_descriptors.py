@@ -33,12 +33,11 @@ class ExternalData():
             if title not in df["Title"].values:
                 line = pd.DataFrame.from_records([values], columns=headers, index=[i])
                 df = pd.concat([df.ix[:i-1], line, df.ix[i:]]).reset_index(drop=True)
-        # Drop colum with high number of NaN
-        df = df.replace("--",  np.nan)
-        df.dropna(thresh=df.shape[0]/2, axis=1)
         #Drop features
+        df = df.replace("--",  np.nan)
         features_to_drop = [feature for field in self.exclude for feature in headers if field in feature ]
         df.drop(features_to_drop, axis=1, inplace=True)
+        df.to_csv("model_features.txt")
         return df
 
     def retrieve_molecule_names(self):
