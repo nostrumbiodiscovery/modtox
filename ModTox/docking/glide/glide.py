@@ -18,14 +18,15 @@ class Glide_Docker(object):
         self.ligands_to_dock = ligands_to_dock
 
     def dock(self, input_file="input.in", schr=cs.SCHR, host="localhost:1", cpus=1, output="glide_output", precision="SP",
-		maxkeep=500, maxref=40, grid_mol=2):
-	# Security type check
-	extension_receptor = self.systems[0].split(".")[-1]
-	extension_ligand = self.ligands_to_dock[0].split(".")[-1]
-	assert type(self.systems) == list, "receptor must be of list type"
-	assert type(self.ligands_to_dock) == list, "ligand file must be of list type"
-	assert extension_receptor in ACCEPTED_FORMATS, "receptor must be a pdb, sdf or mae"
-	assert extension_receptor in ACCEPTED_FORMATS, "ligand must be a pdb, sdf or mae at the moment"
+        maxkeep=500, maxref=40, grid_mol=2):
+
+        # Security type check
+        extension_receptor = self.systems[0].split(".")[-1]
+        extension_ligand = self.ligands_to_dock[0].split(".")[-1]
+        assert type(self.systems) == list, "receptor must be of list type"
+        assert type(self.ligands_to_dock) == list, "ligand file must be of list type"
+        assert extension_receptor in ACCEPTED_FORMATS, "receptor must be a pdb, sdf or mae"
+        assert extension_receptor in ACCEPTED_FORMATS, "ligand must be a pdb, sdf or mae at the moment"
 
         #Formats
         self.systems_mae = fm.convert_to_mae(self.systems)
@@ -33,18 +34,18 @@ class Glide_Docker(object):
 
         # Set dock command
         self.docking_command = '{}run xglide.py {} -OVERWRITE -HOST {} -NJOBS {} -TMPLAUNCHDIR -ATTACHED'.format(
-		schr, input_file, host, cpus)
+        schr, input_file, host, cpus)
 
-	# Set variables for docking        
+        # Set variables for docking        
         self.grid_template = os.path.abspath(os.path.join(DIR, input_file))
-	complexes = [COMPLEX_LINE.format(system, grid_mol) for system in self.systems_mae]
-	ligands = [LIGAND_LINE.format(ligand) for ligand in self.ligands_to_dock_mae]
+        complexes = [COMPLEX_LINE.format(system, grid_mol) for system in self.systems_mae]
+        ligands = [LIGAND_LINE.format(ligand) for ligand in self.ligands_to_dock_mae]
 
         # Templetize grid
         with open(self.grid_template, "r") as f:
             template = Template("".join(f.readlines()))
             content = template.safe_substitute(COMPLEXES="\n".join(complexes), LIGANDS="\n".join(ligands),
-		 PRECISION=precision, MAXKEEP=maxkeep, MAXREF=maxref)
+         PRECISION=precision, MAXKEEP=maxkeep, MAXREF=maxref)
         with open(input_file, "w") as fout:
             fout.write(content)
 

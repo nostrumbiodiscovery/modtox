@@ -26,9 +26,9 @@ def analyze(glide_files, active=False, inactive=False, best=False, csv=[], filte
         return best_poses_csv
     else:
         for i, glide_file in enumerate(glide_files):
-        	results_merge = merge([glide_file], output="results_merge_{}.mae".format(i))
-        	results_mae = sort_by_dock_score([results_merge,], output="data_{}.txt".format(i))
-        	glide_results.append(to_dataframe(results_mae, output="results_{}.csv".format(i), iteration=i, filter=filter))
+            results_merge = merge([glide_file], output="results_merge_{}.mae".format(i))
+            results_mae = sort_by_dock_score([results_merge,], output="data_{}.txt".format(i))
+            glide_results.append(to_dataframe(results_mae, output="results_{}.csv".format(i), iteration=i, filter=filter))
         all_results = join_results(glide_results)
         return(all_results)            
 
@@ -68,20 +68,20 @@ def to_dataframe(glide_results_file, output="results.csv", write=True, iteration
     found=False
     info = []
     with open(glide_results_file, "r") as f:
-	for line in f:
+    for line in f:
             if line.split():
-	        if line.startswith("Rank"):
+            if line.startswith("Rank"):
                     columns = line.split()
                     n_columns = len(columns)
-	            headers = columns[: n_columns-1]
-	            found = True
-		    if iteration:
-			headers = ["{}_receptor_{}".format(header, iteration) if header != "Title" else header for header in headers]
+                headers = columns[: n_columns-1]
+                found = True
+            if iteration:
+            headers = ["{}_receptor_{}".format(header, iteration) if header != "Title" else header for header in headers]
                 elif found and line.split()[0].isdigit():
                     ligand_info = line.split()
                     n_fields = len(ligand_info)
- 		    if n_fields == n_columns:
-		        info.append(ligand_info[: n_fields-1])
+             if n_fields == n_columns:
+                info.append(ligand_info[: n_fields-1])
     
     df = pd.DataFrame(info, columns=headers)
     if write:
@@ -113,7 +113,7 @@ def add_activity_feature(csv, active, inactive, output="csv_activity.csv"):
 
     new_lines = []
     with open(csv, "r") as f:
-	for i, line in enumerate(f):
+    for i, line in enumerate(f):
             if i == 0:
                 new_lines.append(line.strip("\n") + ',"active"\n')
             else:
@@ -144,7 +144,7 @@ def summeryze_results(csv, tresh, n_active, n_inactive):
 
         lines = [ line.strip("\n") for line in f.readlines()[1:] ]
 
-	for i, line in enumerate(lines):
+    for i, line in enumerate(lines):
             try:
                 if i < tresh:
                     if int(line.split(",")[-1]) == 1:
@@ -175,10 +175,10 @@ def join_results(files, output="glide_features.csv"):
             elif i == 0:
                 df = pd.merge(files[i].drop_duplicates(subset=["Title"]), files[i+1].drop_duplicates(subset=["Title"]), on="Title", how="outer")
             else:
-	        df = pd.merge(df, files[i+1].drop_duplicates(subset=["Title"]), on="Title", how="outer")
-            df.to_csv(output)
+                df = pd.merge(df, files[i+1].drop_duplicates(subset=["Title"]), on="Title", how="outer")
+                df.to_csv(output)
         except IndexError:
-            df.to_csv(output)
+                df.to_csv(output)
     return output
 
 def conf(TP, FP, TN, FN, output="confusion_matrix.png"):

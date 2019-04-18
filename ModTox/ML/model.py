@@ -185,7 +185,7 @@ class GenericModel():
         conf[0][0] += (self.n_initial_inactive - self.n_final_inactive)
 
         print("{} KFOLD Training Crossvalidation".format(cv))
-	print(conf.T)
+        print(conf.T)
 
         md.conf(conf[1][1], conf[0][1], conf[0][0], conf[1][0], output=output_conf)
 
