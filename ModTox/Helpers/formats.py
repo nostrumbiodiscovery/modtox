@@ -26,11 +26,11 @@ def convert_to_mae(list_of_files):
     for ligand in list_of_files:
         extension = ligand.split(".")[-1]
         if extension == "pdb":
-    	    ligand_mae = pdb_to_mae(ligand)
-    	    ligands_to_dock_mae.append(ligand_mae)
+            ligand_mae = pdb_to_mae(ligand)
+            ligands_to_dock_mae.append(ligand_mae)
         elif extension == "sdf":
-    	    ligand_mae = sd_to_mae(ligand)
-    	    ligands_to_dock_mae.append(ligand_mae)
+            ligand_mae = sd_to_mae(ligand)
+            ligands_to_dock_mae.append(ligand_mae)
         else:
-    	    ligands_to_dock_mae.append(ligand)
+            ligands_to_dock_mae.append(ligand)
     return ligands_to_dock_mae

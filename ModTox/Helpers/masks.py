@@ -18,7 +18,7 @@ def retrieve_closest(pdb, resname, radius=5):
     atoms = pd.parsePDB(pdb)
     try:
         print("within {} of resname {} and protein".format(radius, resname))
-    	residues = atoms.select("within {} of resname {} and protein".format(radius, resname))
+        residues = atoms.select("within {} of resname {} and protein".format(radius, resname))
     except AttributeError:
         raise AttributeError("{} not found".format(pdb))
     try:

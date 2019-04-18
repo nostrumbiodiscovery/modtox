@@ -33,7 +33,7 @@ install:
  - conda install -q tqdm numpy pytest matplotlib
  - conda install -c ambermd pytraj
  - conda install -c omnia mdtraj
- - python -m pip install prody biopython
+ - python -m pip install prody biopython seaborn
 
  # Install the most recent rdkit package from the RDKit anaconda channel.
  - conda install -q -c rdkit rdkit
