@@ -33,7 +33,7 @@ install:
  - conda install -q tqdm numpy pytest matplotlib
  - conda install -c ambermd pytraj
  - conda install -c omnia mdtraj
- - python -m pip install prody biopython seaborn sklearn scipy mordred nltk xgboost requests chembl_webresource_client
+ - python -m pip install prody biopython seaborn sklearn scipy==1.1.0 mordred nltk xgboost requests chembl_webresource_client
 
  # Install the most recent rdkit package from the RDKit anaconda channel.
  - conda install -q -c rdkit rdkit
