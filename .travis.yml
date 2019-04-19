@@ -3,14 +3,13 @@ language: python
 python:
  # We don't actually use the Travis Python, but this keeps it organized.
  - "2.7"
- - "3.5"
+ - "3.6"
 
 # switch to new infrastructure
-sudo: required
+sudo: false
 
 before_install:
  # download and install miniconda
- - sudo apt-get install libgomp1
  - wget http://repo.continuum.io/miniconda/Miniconda3-4.1.11-Linux-x86_64.sh -O miniconda.sh;
  - bash miniconda.sh -b -p $HOME/conda
  - export PATH="$HOME/conda/bin:$PATH"
@@ -31,10 +30,8 @@ before_install:
 
 install:
  # Necessary dependencies
- - conda install -q tqdm numpy pytest matplotlib
- - conda install -c ambermd pytraj
- - conda install -c omnia mdtraj
- - python -m pip install prody biopython seaborn sklearn scipy==1.1.0 mordred nltk xgboost requests chembl_webresource_client
+ - python -m pip --upgrade pip
+ - python -m pip install -r requirements.txt
 
  # Install the most recent rdkit package from the RDKit anaconda channel.
  - conda install -q -c rdkit rdkit

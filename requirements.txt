@@ -1,10 +1,11 @@
 pytraj
+matplotlib
 mdtraj
 prody
 biopython
 seaborn
 sklearn
-scipy
+scipy==1.1.0
 mordred
 nltk
 xgboost
