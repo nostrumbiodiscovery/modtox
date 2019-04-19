@@ -1,2 +1,14 @@
 pytraj
 mdtraj
+prody
+biopython
+seaborn
+sklearn
+scipy
+mordred
+nltk
+xgboost
+requests
+chembl_webresource_client
+tqdm
+pytest
