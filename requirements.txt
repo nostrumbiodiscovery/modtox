@@ -1,6 +1,7 @@
+numpy
+cython
 pytraj
 matplotlib
-mdtraj
 prody
 biopython
 seaborn
