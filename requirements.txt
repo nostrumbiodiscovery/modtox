@@ -3,6 +3,7 @@ cython
 pytraj
 matplotlib
 prody
+pytraj
 biopython
 seaborn
 sklearn
