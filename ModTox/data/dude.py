@@ -5,7 +5,10 @@ from rdkit import DataStructs
 from tqdm import tqdm
 from rdkit.Chem import AllChem
 import requests
-from urllib import quote
+try:
+    from urllib import quote  # Python 2.X
+except ImportError:
+    from urllib.parse import quote  # Python 3+
 import argparse
 from argparse import RawTextHelpFormatter
 import os

@@ -6,7 +6,7 @@ import numpy as np
 class ExternalData():
 
     def __init__(self, csv, mol_names, exclude=[]):
-	self.csv = csv
+        self.csv = csv
         self.mol_names = mol_names       
         self.exclude = exclude
 
