@@ -3,7 +3,7 @@ language: python
 python:
  # We don't actually use the Travis Python, but this keeps it organized.
  - "2.7"
- - "3.5"
+ - "3.6"
 
 # switch to new infrastructure
 sudo: false
@@ -30,10 +30,11 @@ before_install:
 
 install:
  # Necessary dependencies
- - conda install -q tqdm numpy pytest matplotlib
- - conda install -c ambermd pytraj
- - conda install -c omnia mdtraj
- - python -m pip install prody biopython seaborn sklearn
+ - python -m pip install --upgrade pip
+ - python -m pip install -r requirements.txt
+
+ # Install the most recent mdtraj package
+ - conda install -c omnia mdtraj 
 
  # Install the most recent rdkit package from the RDKit anaconda channel.
  - conda install -q -c rdkit rdkit
