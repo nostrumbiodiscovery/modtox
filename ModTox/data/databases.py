@@ -43,7 +43,7 @@ class PullDB():
 
         for m in molecules_rdkit: w.write(m)
 
-        return output, len(molecules)
+        return output, len(molecules_rdkit)
 
 
 if __name__ == "__main__":
