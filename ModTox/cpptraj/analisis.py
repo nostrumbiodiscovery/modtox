@@ -39,7 +39,7 @@ class CpptajBuilder(object):
         # Write strip traj
         self.save_topology(traj_nowat)
         pt.save(output_strip_top, traj_nowat.top , overwrite=True)
-        pt.write_traj(output_strip_converged_traj, traj_nowat, overwrite=True, frame_indices=range(n_frames/2, n_frames-1))
+        pt.write_traj(output_strip_converged_traj, traj_nowat, overwrite=True, frame_indices=range(int(n_frames/2), n_frames-1))
         # Load new traj
         self.traj_converged = pt.load(output_strip_converged_traj, top=output_strip_top)
         print("Preprocessed done succesfully")

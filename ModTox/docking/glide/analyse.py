@@ -6,7 +6,6 @@ import pandas as pd
 from rdkit import Chem
 from argparse import RawTextHelpFormatter
 import os
-import subprocess
 import ModTox.constants.constants as cs
 from itertools import chain
 
@@ -30,7 +29,7 @@ def analyze(glide_files, active=False, inactive=False, best=False, csv=[], filte
             results_mae = sort_by_dock_score([results_merge,], output="data_{}.txt".format(i))
             glide_results.append(to_dataframe(results_mae, output="results_{}.csv".format(i), iteration=i, filter=filter))
         all_results = join_results(glide_results)
-        return(all_results)            
+        return all_results       
 
 def sort_by_dock_score(glide_files, schr=cs.SCHR, output="data.txt"):
     glide_sort_bin = os.path.join(schr, "utilities/glide_sort")
@@ -178,7 +177,8 @@ def join_results(files, output="glide_features.csv"):
                 df = pd.merge(df, files[i+1].drop_duplicates(subset=["Title"]), on="Title", how="outer")
                 df.to_csv(output)
         except IndexError:
-                df.to_csv(output)
+                pass
+        df.to_csv(output)
     return output
 
 def conf(TP, FP, TN, FN, output="confusion_matrix.png"):

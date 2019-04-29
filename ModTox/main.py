@@ -1,12 +1,12 @@
+import ModTox.ML.classifiers as cl
+import ModTox.cpptraj.analisis as an
 import glob
 import os
 import argparse
+import ModTox.ML.model as md
 from argparse import RawTextHelpFormatter
-import ModTox.cpptraj.analisis as an
 import ModTox.docking.glide.glide as dk
 import ModTox.docking.glide.analyse as gl
-import ModTox.ML.model as md
-import ModTox.ML.classifiers as cl
 import ModTox.data.dude as dd
 import ModTox.data.gpcrdb as gpcr
 
@@ -50,7 +50,6 @@ def main(traj, resname, active=None, inactive=None, top=None, glide_files="*dock
         if active.split(".")[-1] == "csv":
             active = gpcr.process_gpcrdb(active)
             inactive = inactive
-
         docking_obj = dk.Glide_Docker(glob.glob("analisis/*clust*.pdb"), [active, inactive])
         docking_obj.dock(precision=precision, maxkeep=maxkeep, maxref=maxref, grid_mol=grid_mol)
         print("Docking in process... Once is finished run the same command exchanging --dock by --analysis flag to build model")
