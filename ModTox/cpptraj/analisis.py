@@ -123,15 +123,15 @@ class CpptajBuilder(object):
         return self.correlation
 
     def cluster(self, traj, mask='*', ref=0, 
-    options='sieve 10 normframe out {0}/cnumvtime.dat summary {0}/clusters.out info {0}/info.dat repout {0}/cluster repfmt pdb',
-        output_path="analisis"):
+    options='sieve {1} normframe out {0}/cnumvtime.dat summary {0}/clusters.out info {0}/info.dat repout {0}/cluster repfmt pdb',
+        output_path="analisis", sieve=10):
         # Check output path
         if not os.path.exists(output_path):
             os.mkdir(output_path)
         # Cluster
         #output_cluster = os.path.join(output_path, "clusters.pdb")
         pt.align(traj)
-        self.clusters = pt.cluster.hieragglo(traj, mask=mask, options=options.format(output_path), dtype='ndarray')
+        self.clusters = pt.cluster.hieragglo(traj, mask=mask, options=options.format(output_path, sieve), dtype='ndarray')
         #self.clusters = pt.cluster.kmeans(traj, mask=mask, options=options.format(output_path), dtype='ndarray')
         #frames = [int(cluster) for cluster in self.clusters._cpp_out[1].split()[-10:]]
         #pt.write_traj(output_cluster, traj, overwrite=True, frame_indices=frames)
@@ -145,9 +145,10 @@ def parse_args(parser):
     parser.add_argument('--cluster', action="store_false", help='Perform clustering')
     parser.add_argument('--last', action="store_false", help='Extract last snapshot')
     parser.add_argument('--clust_type', type=str, help='Type of clustring [BS (default), CA, all]', default="BS")
+    parser.add_argument('--clust_sieve', type=int, help='Sieve for clustering', default=10)
     parser.add_argument('--rmsd_type', type=str, help='Type of RMSD [BS (default), CA, all]', default="BS")
 
-def analise(traj, resname, top, RMSD, cluster, last, clust_type, rmsd_type):
+def analise(traj, resname, top, RMSD, cluster, last, clust_type, rmsd_type, sieve):
     trajectory = CpptajBuilder(traj, top)
     if RMSD:
         trajectory.strip(trajectory.traj, autoimage=True)
@@ -171,7 +172,7 @@ def analise(traj, resname, top, RMSD, cluster, last, clust_type, rmsd_type):
             mask = mk.retrieve_closest(output, resname) 
         elif clust_type == "all":
             mask="*"
-        trajectory.cluster(trajectory.traj_converged, mask=mask)
+        trajectory.cluster(trajectory.traj_converged, mask=mask, sieve=sieve)
     if last:
         trajectory.save_traj(trajectory.traj, frame_indices=[trajectory.traj.n_frames-1], output_path=".", output="last_snap.pdb")
     print("Trajectory {} sucessfuly analised".format(traj))
@@ -181,4 +182,4 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Analyze molecular dynamics trajectory (RMSD & clustering)')
     parse_args(parser)
     args = parser.parse_args()
-    analise(args.traj, args.resname, args.top, args.RMSD, args.cluster, args.last, args.clust_type, args.rmsd_type)
+    analise(args.traj, args.resname, args.top, args.RMSD, args.cluster, args.last, args.clust_type, args.rmsd_type, args.sieve)
