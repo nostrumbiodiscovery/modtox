@@ -50,9 +50,10 @@ def main(traj, resname, active=None, inactive=None, top=None, glide_files="*dock
         if active.split(".")[-1] == "csv":
             active = gpcr.process_gpcrdb(active)
             inactive = inactive
-        docking_obj = dk.Glide_Docker(glob.glob("analisis/*clust*.pdb"), [active, inactive], test=debug)
-        docking_obj.dock(precision=precision, maxkeep=maxkeep, maxref=maxref, grid_mol=grid_mol)
-        print("Docking in process... Once is finished run the same command exchanging --dock by --analysis flag to build model")
+        if not debug:
+            docking_obj = dk.Glide_Docker(glob.glob("analisis/*clust*.pdb"), [active, inactive], test=debug)
+            docking_obj.dock(precision=precision, maxkeep=maxkeep, maxref=maxref, grid_mol=grid_mol)
+            print("Docking in process... Once is finished run the same command exchanging --dock by --analysis flag to build model")
     elif analysis:
         if dude:
             active = "active.sdf"
