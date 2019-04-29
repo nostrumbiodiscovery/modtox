@@ -19,6 +19,7 @@ from ModTox.ML.descriptors_2D_ligand import *
 from ModTox.ML.external_descriptors import *
 from ModTox.docking.glide import analyse as md
 import ModTox.ML.classifiers as cl
+import ModTox.ML.visualization as vs
 
 TITLE_MOL = "molecules"
 COLUMNS_TO_EXCLUDE = [ "Lig#", "Title", "Rank", "Conf#", "Pose#" ]
@@ -27,15 +28,16 @@ LABELS = "labels"
 
 class GenericModel():
 
-    def __init__(self, active, inactive, clf, csv=None, test=None, pb=False, fp=False, descriptors=False, MACCS=True):
+    def __init__(self, active, inactive, clf, csv=None, test=None, pb=False, fp=False, descriptors=False, MACCS=True, columns=None):
         self.active = active
         self.inactive = inactive
-        self.clf = clf
+        self.clf = cl.retrieve_classifier(clf)
         self.pb = pb
         self.fp = fp
         self.descriptors = descriptors
         self.MACCS = MACCS
         self.external_data = csv
+        self.columns = columns
         self.test = test
         self.data = self._load_training_set()
         self.features = self.data.iloc[:, :-1]
@@ -147,10 +149,18 @@ class GenericModel():
             
         
 
-    def fit_transform(self, load=False, grid_search=False, output_model=None, save=False, cv=None, output_conf="conf.png"):
+    def fit_transform(self, load=False, grid_search=False, output_model=None, save=False, cv=None, output_conf="conf.png", print_most_important=False):
         
     
         self.x_train_trans = self.feature_transform(self.features)
+
+        self.headers = self.retrieve_header()
+        
+        #Filter columns
+        if self.columns:
+            user_indexes = np.array([self.headers.index(column) for column in self.columns], dtype=int)
+            self.x_train_trans = self.x_train_trans[:, user_indexes]        
+            self.headers = np.array(self.headers)[user_indexes].tolist()
         
     
         np.random.seed(7)
@@ -174,13 +184,31 @@ class GenericModel():
             print(self.x_train_trans.shape, preds.T.shape)
             X = np.hstack( [self.x_train_trans, preds.T] )
             prediction = cross_val_predict(last_clf, scaler.fit_transform(X), self.labels, cv=cv)
+            self.results = [ pred == true for pred, true in zip(prediction, self.labels)]
             
         else:
             print("Normal model")
             prediction = cross_val_predict(self.clf, self.x_train_trans, self.labels, cv=cv)
-    
-        conf = confusion_matrix(self.labels, prediction)
+            self.results = [ pred == true for pred, true in zip(prediction, self.labels)]
 
+        # Plot Features
+        vs.UMAP_plot(self.x_train_trans, self.labels, output="predictio_landscape.png")
+        vs.UMAP_plot(self.x_train_trans, self.labels, output="sample_landscape.png")
+        #self.plot_features([["Score", "Metal"],]) 
+
+
+        #Report Errors
+        errors = [ self.mol_names[i] for i, v in enumerate(self.results) if not v ]
+        print(errors)
+
+        # Retrieve list with feature importace
+        important_features = self.feature_importance(clf=None, cv=1, number_feat=100, output_features="glide_features.txt")
+        if print_most_important:
+            print("\nMost Important Features\n")
+            print(" ".join(important_features))
+    
+        # Plot results
+        conf = confusion_matrix(self.labels, prediction)
         conf[1][0] += (self.n_initial_active - self.n_final_active)
         conf[0][0] += (self.n_initial_inactive - self.n_final_inactive)
 
@@ -191,6 +219,21 @@ class GenericModel():
 
         if output_model:
             pickle.dump(model, open(output, 'wb'))
+
+    def plot_features(self, plot_variables):
+        """
+        plot variables :: list of 2 fields [ ["Score", "Gscore"], ["Logp", "Logd"]]
+        It will plot the two variables coloured by label
+        """
+        for field in plot_variables:
+            name1 = field[0]
+            name2 = field[1]
+            idx1 = self.headers.index(name1)
+            idx2 = self.headers.index(name2)
+            values1 = self.x_train_trans[:, idx1]
+            values2 = self.x_train_trans[:, idx2]
+            vs.plot(values1, values2, self.labels, title="{}_{}_true_labels".format(name1, name2), output="{}_{}_true_labels.png".format(name1, name2))
+            vs.plot(values1, values2, self.results, true_false=True, title="{}_{}_errors".format(name1, name2), output="{}_{}_errors.png".format(name1, name2))
 
     def load_model(self, model_file):
         print("Loading model")
@@ -260,7 +303,6 @@ class GenericModel():
         
     def feature_importance(self, clf=None, cv=1, number_feat=5, output_features="important_fatures.txt"):
         print("Extracting most importance features")
-        self.headers = self.retrieve_header()
         assert len(self.headers) == self.x_train_trans.shape[1], "Headers and features should be the same length \
             {} {}".format(len(self.headers), self.x_train_trans.shape[1])
         clf = cl.XGBOOST
@@ -269,6 +311,8 @@ class GenericModel():
         important_features_sorted = sorted(important_features.items(), key=operator.itemgetter(1), reverse=True)
         important_features_name = [[self.headers[int(feature[0].strip("f"))], feature[1]] for feature in important_features_sorted]
         np.savetxt(output_features, important_features_name, fmt='%s')
+        features_name = [ feat[0] for feat in important_features_name ]
+        return features_name
 
     def plot_descriptor(self, descriptor):
         print("Plotting descriptor {}".format(descriptor))
@@ -288,6 +332,7 @@ def parse_args(parser):
                         help='sdf file with test compounds', default=None)
     parser.add_argument('--external_data', type=str,
                         help='csv with external data to add to the model', default="glide_features.csv")
+    parser.add_argument('--columns_to_keep', nargs="+", help="Name of columns to be kept from your external data", default=[])
     parser.add_argument('--load', type=str,
                         help='load model from file', default=None)
     parser.add_argument('--save', type=str,
@@ -303,18 +348,18 @@ def parse_args(parser):
     parser.add_argument('--descriptors', nargs="+", help="descriptors to plot", default=[])
     parser.add_argument('--classifier', type=str, help="classifier to use", default="svm")
     parser.add_argument('--test_importance', nargs="+", help="Name of Molecules to include on testing feature importance", default=[])
+    parser.add_argument('--print_most_important', action="store_true", help="Print most important features name to screen to use them as command lina arguments with --columns_to_keep")
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Build 2D QSAR model')
     parse_args(parser)
     args = parser.parse_args()
-    clf = svm.SVC(C=1, gamma=1, kernel="linear")
-    model = GenericModel(args.active, args.inactive, clf, csv=args.external_data, test=args.test, pb=args.pb)
+    model = GenericModel(args.active, args.inactive, args.classifier, csv=args.external_data, test=args.test, pb=args.pb, columns=args.columns_to_keep)
     if args.load:
         model_fitted = model.load(args.load)
     else:
-        X_train = model.fit_transform(model.features)
+        X_train = model.fit_transform(model.features, print_most_important=args.print_most_important)
         #model.feature_importance(output_features="lucia.txt")
     if args.save:
         model.save(args.save)
