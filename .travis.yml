@@ -50,6 +50,6 @@ before_script:
 
 script:
  # Run tests
- - python -m pytest tests/
+ - python -m pytest tests/ -k 'test_docking or test_dude'
 
 
