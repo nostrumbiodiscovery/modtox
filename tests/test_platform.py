@@ -16,14 +16,14 @@ RESNAME="198"
                          (TRAJ, RESNAME, TOP, ACTIVE, INACTIVE),
                          ])
 def test_docking(traj, resname, top, active, inactive):
-     mn.main([traj,], resname, active, inactive, top=top, dock=True, sieve=1, test=True)
+     mn.main([traj,], resname, active, inactive, top=top, dock=True, sieve=1, debug=True)
 
 
 @pytest.mark.parametrize("traj, resname, top, dude", [
                          (TRAJ, RESNAME, TOP, DUDE),
                          ])
 def test_dude(traj, resname, top, dude):
-     mn.main([traj,], resname, dude=dude, top=top, dock=True, test=True)
+     mn.main([traj,], resname, dude=dude, top=top, dock=True, debug=True)
 
 @pytest.mark.parametrize("traj, resname, top, active, inactive", [
                          (TRAJ, RESNAME, TOP, ACTIVE, INACTIVE),
