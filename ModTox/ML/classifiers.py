@@ -26,3 +26,14 @@ KN = KNeighborsClassifier(3)
 TREE = DecisionTreeClassifier(max_depth=5)
 
 NB = GaussianNB()
+
+def retrieve_classifier(classifier):
+    if classifier == "xgboost":
+        clf = XGBOOST
+    elif classifier == "svm":
+        clf = SVM
+    elif classifier == "stack":
+        clf = [SVM, XGBOOST, KN, SVM, TREE, NB]
+    else:
+        clf = classifier
+    return clf
