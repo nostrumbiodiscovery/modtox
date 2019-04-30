@@ -1,3 +1,5 @@
+import matplotlib
+matplotlib.use('Agg')
 import ModTox.ML.classifiers as cl
 import ModTox.cpptraj.analisis as an
 import glob
