@@ -64,12 +64,15 @@ def parse_args(parser):
     parser.add_argument("--dude",  type=str, help='DUD-E dataset folder')
     parser.add_argument("--output", type=str, help='sdf output', default="output.sdf")
 
-def process_dude(dude_folder, output="cyp_actives.sdf"):
+def process_dude(dude_folder, output="cyp_actives.sdf", test=False):
     dud_e = DUDE(dude_folder)
     active_names = dud_e.active_names()
     active_output, n_actives = dud_e.to_sdf()
     inactive_output = dud_e.filter_for_similarity(dud_e.decoys_sdf, n_actives) 
-    output_proc = pr.ligprep(active_output)
+    if not test:
+        output_proc = pr.ligprep(active_output)
+    else:
+        output_proc = active_output
     print("File {} created with chembl curated compounds".format(output))
     return output_proc, inactive_output
 
