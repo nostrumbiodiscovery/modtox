@@ -1,0 +1,26 @@
+Installation
+====================
+
+From Conda (recommended)
+--------------------------
+
+::
+
+ conda install -c NostrumBioDiscovery ModTox
+
+From Source Code
+---------------------
+
+::
+
+ git clone https://github.com/danielSoler93/ModTox.git
+ 
+ cd ModTox
+
+ python setup.py install
+
+
+From PyPi
+-----------
+
+Non implemented yet
