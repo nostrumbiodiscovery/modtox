@@ -17,12 +17,14 @@ build:
 
 requirements:
   host:
-    - python
+    - python 2.7
 
   run:
     # Base dependencies
-    - python
+    - python 2.7
     - tqdm
+    - prody
+    - umap-learn
     - rdkit
     - scikit-learn
     - urllib3
@@ -35,11 +37,15 @@ requirements:
     - requests
     - chembl_webresource_client
     - pytest
+    - greenlet==0.4.12
+    - gevent==1.2.2
 
 test:
-  imports:
+ imports:
     - modtox
-  source_files:
+ commands:
+    - python -m pytest tests/ -k 'test_docking'
+ source_files:
     - tests
-  requires:
+ requires:
     - pytest
