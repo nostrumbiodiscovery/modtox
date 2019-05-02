@@ -1,0 +1,266 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>modtox &mdash; analogs finder 1.0.0 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="genindex.html" />
+    <link rel="search" title="Search" href="search.html" />
+    <link rel="next" title="Installation" href="installation/index.html" /> 
+
+  
+  <script src="_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="#" class="icon icon-home"> analogs finder
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                1.0.0
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="installation/index.html">Installation</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="tutorial/index.html">Getting Started</a></li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="changelog/index.html">ChangeLog</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="#">analogs finder</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="#">Docs</a> &raquo;</li>
+        
+      <li>modtox</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="_sources/index.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="modtox">
+<h1>modtox<a class="headerlink" href="#modtox" title="Permalink to this headline">¶</a></h1>
+<p>We have concentrated our efforts on the High Risk-Off Target (HROT) set published by the Altman group at Stanford (Clin Transl Sci. 2016 Dec;9(6):311-320). These are 83 proteins that are predicted to bind low-dose drugs more frequently than high-dose drugs, i.e. proteins that are related to drugs which are administered at very low doses, because high doses lead to adverse events. Assessing whether small molecules interact with HROTs is useful in all phases of drug discovery. We are in the process of building a user-friendly platform to discriminate in a high-throughput manner whether compounds are toxic (binding to HROTs) or not.
+The first step of the workflow consists in extracting 10 representative clusters from each molecular dynamics. Next, a curated dataset of active and decoy compounds are docked into these clusters. The docking scores are then used to train different machine learning models, so as to obtain a consistent and robust classifier that can predict whether a given compound hits an HROT target.
+We have so far tested this approach on three systems: The androgen receptor (394 actives/404 decoys), CYP3A4 (168 actives/168 decoys), and the beta-2 adrenergic receptor (230 actives/230 decoys).</p>
+<p>Github : <a class="reference external" href="https://github.com/danielSoler93/modtox">https://github.com/danielSoler93/modtox</a></p>
+<div class="figure align-center">
+<a class="reference internal image-reference" href="images/modtox.png"><img alt="images/modtox.png" src="images/modtox.png" /></a>
+</div>
+</div>
+<div class="section" id="documentation">
+<h1>Documentation<a class="headerlink" href="#documentation" title="Permalink to this headline">¶</a></h1>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="installation/index.html">Installation</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="installation/index.html#from-conda-recommended">From Conda (recommended)</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation/index.html#from-source-code">From Source Code</a></li>
+<li class="toctree-l2"><a class="reference internal" href="installation/index.html#from-pypi">From PyPi</a></li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="tutorial/index.html">Getting Started</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="tutorial/api_tutorial/index.html">From python API</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="tutorial/api_tutorial/index.html#analyse-md">Analyse MD</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tutorial/api_tutorial/index.html#perform-ensemble-docking-from-dude">Perform ensemble docking from dude</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tutorial/api_tutorial/index.html#perform-ensemble-dockint-from-active-decoys-sdf-file">Perform ensemble dockint from active&amp;decoys sdf file</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tutorial/api_tutorial/index.html#build-model">Build model</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tutorial/api_tutorial/index.html#predict-on-model">Predict on model</a></li>
+</ul>
+</li>
+<li class="toctree-l2"><a class="reference internal" href="tutorial/command_line_tutorial/index.html">From Command Line</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="tutorial/command_line_tutorial/index.html#analyse-moleculer-dynamics">Analyse moleculer dynamics</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tutorial/command_line_tutorial/index.html#ensemble-docking-on-molecular-dynamics-from-dude">Ensemble docking on molecular dynamics from dude</a></li>
+<li class="toctree-l3"><a class="reference internal" href="tutorial/command_line_tutorial/index.html#perform-ensemble-docking-from-active-inactive-sdf-file">Perform ensemble docking from Active &amp; Inactive sdf file</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+<div class="toctree-wrapper compound">
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="changelog/index.html">ChangeLog</a><ul>
+<li class="toctree-l2"><a class="reference internal" href="changelog/index.html#not-yet-there">1.0.0 - not yet there</a></li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="installation/index.html" class="btn btn-neutral float-right" title="Installation" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2019, Daniel Soler Viladrich
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="./" src="_static/documentation_options.js"></script>
+        <script type="text/javascript" src="_static/jquery.js"></script>
+        <script type="text/javascript" src="_static/underscore.js"></script>
+        <script type="text/javascript" src="_static/doctools.js"></script>
+        <script type="text/javascript" src="_static/language_data.js"></script>
+    
+
+  
+
+  <script type="text/javascript" src="_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
