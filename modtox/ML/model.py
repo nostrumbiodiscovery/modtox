@@ -15,11 +15,11 @@ from sklearn.model_selection import cross_val_predict, cross_val_score
 from sklearn.pipeline import Pipeline, FeatureUnion
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import StandardScaler
-from ModTox.ML.descriptors_2D_ligand import *
-from ModTox.ML.external_descriptors import *
-from ModTox.docking.glide import analyse as md
-import ModTox.ML.classifiers as cl
-import ModTox.ML.visualization as vs
+from modtox.ML.descriptors_2D_ligand import *
+from modtox.ML.external_descriptors import *
+from modtox.docking.glide import analyse as md
+import modtox.ML.classifiers as cl
+import modtox.ML.visualization as vs
 
 TITLE_MOL = "molecules"
 COLUMNS_TO_EXCLUDE = [ "Lig#", "Title", "Rank", "Conf#", "Pose#" ]

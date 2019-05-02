@@ -38,7 +38,7 @@ class rDocker(object):
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Specify Receptor and ligand to be docked\n  \
-    i.e python -m ModTox.docking.dock receptor ligand_to_dock --grid ligand_for_grid', formatter_class=RawTextHelpFormatter)
+    i.e python -m modtox.docking.dock receptor ligand_to_dock --grid ligand_for_grid', formatter_class=RawTextHelpFormatter)
     parser.add_argument('receptor', type=str, help='Receptor to build the grid for docking on')
     parser.add_argument('ligands_to_dock', type=str, help='sdf file for ligands to be docked')
     parser.add_argument('--grid', type=str, help='sdf file with a single ligand to build from')

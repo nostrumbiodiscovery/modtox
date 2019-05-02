@@ -2,7 +2,7 @@ import pandas as pd
 import argparse
 import numpy as np
 import scipy as sc
-import ModTox.cpptraj.analisis as an
+import modtox.cpptraj.analisis as an
 
 
 class Descriptor(an.CpptajBuilder):

@@ -6,7 +6,7 @@ import pandas as pd
 from rdkit import Chem
 from argparse import RawTextHelpFormatter
 import os
-import ModTox.constants.constants as cs
+import modtox.constants.constants as cs
 from itertools import chain
 
 
@@ -199,7 +199,7 @@ def parse_args(parser):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Analyze glide docking\n  \
-    i.e python -m ModTox.docking.glide.analyze glide_file1 glide_file2", formatter_class=RawTextHelpFormatter)
+    i.e python -m modtox.docking.glide.analyze glide_file1 glide_file2", formatter_class=RawTextHelpFormatter)
     parse_args(parser)
     args = parser.parse_args()
     analyze(args.glide_files,  best=args.best, csv=args.csv, active=args.active, inactive=args.inactive, filter=args.filter)

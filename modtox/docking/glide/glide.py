@@ -3,8 +3,8 @@ import argparse
 import os
 from argparse import RawTextHelpFormatter
 import subprocess
-import ModTox.Helpers.formats as fm
-import ModTox.constants.constants as cs
+import modtox.Helpers.formats as fm
+import modtox.constants.constants as cs
 
 DIR = os.path.dirname(__file__)
 COMPLEX_LINE = "COMPLEX   {},{}"
@@ -68,7 +68,7 @@ def parse_args(parser):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Specify Receptor and ligand to be docked\n  \
-    i.e python -m ModTox.docking.dock receptor ligand_to_dock --grid ligand_for_grid', formatter_class=RawTextHelpFormatter)
+    i.e python -m modtox.docking.dock receptor ligand_to_dock --grid ligand_for_grid', formatter_class=RawTextHelpFormatter)
     parse_args(parser)
     args = parser.parse_args()
     docking_obj = Glide_Docker(args.receptor, args.ligands_to_dock) 

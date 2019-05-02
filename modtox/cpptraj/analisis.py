@@ -5,7 +5,7 @@ from matplotlib import pyplot as plt
 import argparse
 import glob
 import numpy as np
-import ModTox.Helpers.masks as mk
+import modtox.Helpers.masks as mk
 
 
 class CpptajBuilder(object):

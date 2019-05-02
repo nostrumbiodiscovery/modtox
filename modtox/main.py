@@ -1,16 +1,16 @@
 import matplotlib
 matplotlib.use('Agg')
-import ModTox.ML.classifiers as cl
-import ModTox.cpptraj.analisis as an
+import modtox.ML.classifiers as cl
+import modtox.cpptraj.analisis as an
 import glob
 import os
 import argparse
-import ModTox.ML.model as md
+import modtox.ML.model as md
 from argparse import RawTextHelpFormatter
-import ModTox.docking.glide.glide as dk
-import ModTox.docking.glide.analyse as gl
-import ModTox.data.dude as dd
-import ModTox.data.gpcrdb as gpcr
+import modtox.docking.glide.glide as dk
+import modtox.docking.glide.analyse as gl
+import modtox.data.dude as dd
+import modtox.data.gpcrdb as gpcr
 
 MODELS = [{"csv":None, "pb":True, "fingerprint":True, "MACCS":False, "descriptors":False,
             "output_feat":"fingerprint_important_features.txt", "conf_matrix":"fingerprint_conf_matrix.png"},
@@ -30,7 +30,7 @@ MODELS = [          {"csv":"glide_features.csv", "pb":False, "fingerprint":False
 def parse_args():
     
     parser = argparse.ArgumentParser(description='Specify trajectories and topology to be analised.\n  \
-    i.e python -m ModTox.main traj.xtc --top topology.pdb', formatter_class=RawTextHelpFormatter,  conflict_handler='resolve')
+    i.e python -m modtox.main traj.xtc --top topology.pdb', formatter_class=RawTextHelpFormatter,  conflict_handler='resolve')
     an.parse_args(parser)
     dd.parse_args(parser)
     gl.parse_args(parser)

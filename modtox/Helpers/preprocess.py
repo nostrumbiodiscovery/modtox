@@ -1,4 +1,4 @@
-import ModTox.constants.constants as cs
+import modtox.constants.constants as cs
 from string import Template
 import subprocess
 import os

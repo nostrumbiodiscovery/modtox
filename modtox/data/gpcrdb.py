@@ -1,5 +1,5 @@
 import pandas as pd
-import ModTox.data.dude as dd
+import modtox.data.dude as dd
 
 
 class GPCRDB(dd.DUDE):

@@ -14,8 +14,8 @@ from argparse import RawTextHelpFormatter
 import os
 from chembl_webresource_client.unichem import unichem_client as unichem
 from chembl_webresource_client.new_client import new_client
-import ModTox.Helpers.preprocess as pr
-from ModTox.data import databases as dbs
+import modtox.Helpers.preprocess as pr
+from modtox.data import databases as dbs
 
 
 URL = "https://www.ebi.ac.uk/chembl/api/data/molecule/{}.sdf"

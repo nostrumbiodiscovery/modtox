@@ -1,6 +1,6 @@
 import os
 import subprocess
-import ModTox.constants.constants as cs
+import modtox.constants.constants as cs
 
 
 def  pdb_to_mae(pdb, schr=cs.SCHR, output=None):
