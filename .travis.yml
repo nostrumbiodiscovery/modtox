@@ -55,8 +55,8 @@ script:
 
 before_deploy:
  - conda install -f  setuptools
- - conda build conda_recipe -c local
  - python -m pip install --upgrade setuptools
+ - conda build conda_recipe -c local
 
 deploy:
   # Deploy to Anaconda.org
