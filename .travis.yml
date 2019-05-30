@@ -55,7 +55,7 @@ script:
 
 before_deploy:
  - conda install -f  setuptools
- - apt install --reinstall python3-pkg-resources python3-setuptools
+ - sudo apt install --reinstall python3-pkg-resources python3-setuptools
  - conda build conda_recipe -c local
 
 deploy:
