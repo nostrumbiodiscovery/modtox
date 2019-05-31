@@ -1,7 +1,7 @@
 import pytest
 import os
 import glob
-import ModTox.main as mn
+import modtox.main as mn
 
 DATA_PATH=os.path.join(os.path.dirname(__file__), "data")
 TRAJ=os.path.join(DATA_PATH, "general/traj.pdb")

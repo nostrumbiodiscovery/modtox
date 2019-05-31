@@ -1,0 +1,51 @@
+package:
+  name: modtox
+  version: "1.0.0"
+
+about:
+  home: https://github.com/danielSoler93/modtox
+  license: Apache
+  license_file: LICENSE
+  summary: Structural based Machine learning technics to asses toxicological effects
+
+source:
+  path: ../
+
+build:
+  script: python -m pip install . --no-deps -vv
+  number: 0
+
+requirements:
+  host:
+    - python 2.7
+
+  run:
+    # Base dependencies
+    - python 2.7
+    - tqdm
+    - prody
+    - umap-learn
+    - rdkit
+    - scikit-learn
+    - urllib3
+    - pytraj 
+    - biopython
+    - seaborn
+    - mordred
+    - nltk
+    - xgboost
+    - requests
+    - chembl_webresource_client
+    - pytest
+    - greenlet==0.4.12
+    - gevent==1.2.2
+
+test:
+ imports:
+    - modtox
+ commands:
+    - python -m pytest tests/ -k 'test_docking'
+ source_files:
+    - tests
+ requires:
+    - pytest

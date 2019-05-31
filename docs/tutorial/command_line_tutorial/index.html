@@ -1,0 +1,264 @@
+
+
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>From Command Line &mdash; analogs finder 1.0.0 documentation</title>
+  
+
+  
+  
+  
+  
+
+  
+
+  
+  
+    
+
+  
+
+  <link rel="stylesheet" href="../../_static/css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../_static/pygments.css" type="text/css" />
+    <link rel="index" title="Index" href="../../genindex.html" />
+    <link rel="search" title="Search" href="../../search.html" />
+    <link rel="next" title="ChangeLog" href="../../changelog/index.html" />
+    <link rel="prev" title="From python API" href="../api_tutorial/index.html" /> 
+
+  
+  <script src="../../_static/js/modernizr.min.js"></script>
+
+</head>
+
+<body class="wy-body-for-nav">
+
+   
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side">
+      <div class="wy-side-scroll">
+        <div class="wy-side-nav-search">
+          
+
+          
+            <a href="../../index.html" class="icon icon-home"> analogs finder
+          
+
+          
+          </a>
+
+          
+            
+            
+              <div class="version">
+                1.0.0
+              </div>
+            
+          
+
+          
+<div role="search">
+  <form id="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+    <input type="hidden" name="check_keywords" value="yes" />
+    <input type="hidden" name="area" value="default" />
+  </form>
+</div>
+
+          
+        </div>
+
+        <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+          
+            
+            
+              
+            
+            
+              <ul>
+<li class="toctree-l1"><a class="reference internal" href="../../installation/index.html">Installation</a></li>
+</ul>
+<ul class="current">
+<li class="toctree-l1 current"><a class="reference internal" href="../index.html">Getting Started</a><ul class="current">
+<li class="toctree-l2"><a class="reference internal" href="../api_tutorial/index.html">From python API</a></li>
+<li class="toctree-l2 current"><a class="current reference internal" href="#">From Command Line</a><ul>
+<li class="toctree-l3"><a class="reference internal" href="#analyse-moleculer-dynamics">Analyse moleculer dynamics</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#ensemble-docking-on-molecular-dynamics-from-dude">Ensemble docking on molecular dynamics from dude</a></li>
+<li class="toctree-l3"><a class="reference internal" href="#perform-ensemble-docking-from-active-inactive-sdf-file">Perform ensemble docking from Active &amp; Inactive sdf file</a></li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../../changelog/index.html">ChangeLog</a></li>
+</ul>
+
+            
+          
+        </div>
+      </div>
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" aria-label="top navigation">
+        
+          <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+          <a href="../../index.html">analogs finder</a>
+        
+      </nav>
+
+
+      <div class="wy-nav-content">
+        
+        <div class="rst-content">
+        
+          
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<div role="navigation" aria-label="breadcrumbs navigation">
+
+  <ul class="wy-breadcrumbs">
+    
+      <li><a href="../../index.html">Docs</a> &raquo;</li>
+        
+          <li><a href="../index.html">Getting Started</a> &raquo;</li>
+        
+      <li>From Command Line</li>
+    
+    
+      <li class="wy-breadcrumbs-aside">
+        
+            
+            <a href="../../_sources/tutorial/command_line_tutorial/index.rst.txt" rel="nofollow"> View page source</a>
+          
+        
+      </li>
+    
+  </ul>
+
+  
+  <hr/>
+</div>
+          <div role="main" class="document" itemscope="itemscope" itemtype="http://schema.org/Article">
+           <div itemprop="articleBody">
+            
+  <div class="section" id="from-command-line">
+<h1>From Command Line<a class="headerlink" href="#from-command-line" title="Permalink to this headline">¶</a></h1>
+<div class="section" id="analyse-moleculer-dynamics">
+<h2>Analyse moleculer dynamics<a class="headerlink" href="#analyse-moleculer-dynamics" title="Permalink to this headline">¶</a></h2>
+<blockquote>
+<div><blockquote>
+<div>Plot RMSD of trajectory, clusterize, extract last snapshot from MD trajectory</div></blockquote>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="o">-</span><span class="n">m</span> <span class="n">modtox</span><span class="o">.</span><span class="n">cpptraj</span><span class="o">.</span><span class="n">main</span> <span class="n">traj</span><span class="o">*.</span><span class="p">(</span><span class="n">xtc</span><span class="p">,</span> <span class="n">dcd</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">pdb</span><span class="o">...</span><span class="p">)</span> <span class="n">resname</span> <span class="o">--</span><span class="n">top</span> <span class="n">topology</span><span class="o">.</span><span class="n">top</span> <span class="o">--</span><span class="n">clust_type</span> <span class="p">[</span><span class="nb">all</span> <span class="p">(</span><span class="n">allAtoms</span><span class="p">)</span> <span class="p">,</span> <span class="n">BS</span> <span class="p">(</span><span class="n">BindinSite</span><span class="p">)]</span> <span class="o">--</span><span class="n">rmsd</span> <span class="o">--</span><span class="n">last</span>
+
+
+<span class="n">python</span> <span class="o">-</span><span class="n">m</span> <span class="n">modtox</span><span class="o">.</span><span class="n">cpptraj</span><span class="o">.</span><span class="n">analisis</span> <span class="mi">1</span><span class="n">nxk_0</span><span class="o">*.</span><span class="n">xtc</span> <span class="mi">198</span> <span class="o">--</span><span class="n">top</span> <span class="n">init</span><span class="o">.</span><span class="n">top</span> <span class="o">--</span><span class="n">RMSD</span> <span class="o">--</span><span class="n">clust_type</span> <span class="n">BS</span> <span class="o">--</span><span class="n">last</span>
+</pre></div>
+</div>
+</div></blockquote>
+</div>
+<div class="section" id="ensemble-docking-on-molecular-dynamics-from-dude">
+<h2>Ensemble docking on molecular dynamics from dude<a class="headerlink" href="#ensemble-docking-on-molecular-dynamics-from-dude" title="Permalink to this headline">¶</a></h2>
+<blockquote>
+<div>Perform clustering of the MD based on the binding site, followed by ensemble cross docking of a dude dataset</div></blockquote>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="o">-</span><span class="n">m</span> <span class="n">modtox</span><span class="o">.</span><span class="n">main</span> <span class="n">taj_file</span> <span class="n">resname</span> <span class="o">--</span><span class="n">dude</span> <span class="n">dude_folder</span> <span class="o">--</span><span class="n">top</span> <span class="n">topology_file</span> <span class="o">--</span><span class="n">grid_mol</span> <span class="n">number_of_the_molecule_to_be_used_as_grid</span> <span class="p">(</span><span class="n">counted</span> <span class="n">per</span> <span class="n">TERS</span> <span class="n">i</span><span class="o">.</span><span class="n">e</span><span class="o">.</span> <span class="n">chainA</span><span class="o">/</span><span class="n">TER</span><span class="o">/</span><span class="n">chainB</span><span class="o">/</span><span class="n">TER</span><span class="o">/</span><span class="n">Ligand</span> <span class="o">--&gt;</span> <span class="mi">3</span> <span class="p">)</span> <span class="o">--</span><span class="n">dock</span>
+
+<span class="n">python</span> <span class="o">-</span><span class="n">m</span> <span class="n">modtox</span><span class="o">.</span><span class="n">main</span> <span class="mi">3</span><span class="n">d4s_holo</span><span class="o">.*.</span><span class="n">xtc</span> <span class="n">TIM</span> <span class="o">--</span><span class="n">dude</span> <span class="n">adrb2</span> <span class="o">--</span><span class="n">top</span> <span class="o">/</span><span class="n">data</span><span class="o">/</span><span class="n">modtox</span><span class="o">/</span><span class="n">ldiaz_modtox_storage</span><span class="o">/</span><span class="n">HROT_3d4s</span><span class="o">/</span><span class="n">holo</span><span class="o">/</span><span class="mi">3</span><span class="n">d4s_holo</span><span class="o">.</span><span class="n">top</span> <span class="o">--</span><span class="n">grid_mol</span> <span class="mi">3</span> <span class="o">--</span><span class="n">dock</span>
+</pre></div>
+</div>
+</div>
+<div class="section" id="perform-ensemble-docking-from-active-inactive-sdf-file">
+<h2>Perform ensemble docking from Active &amp; Inactive sdf file<a class="headerlink" href="#perform-ensemble-docking-from-active-inactive-sdf-file" title="Permalink to this headline">¶</a></h2>
+<blockquote>
+<div>Perform clustering of the MD based on the binding site, followed by ensemble cross docking of the active and inactive sdfs</div></blockquote>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="o">-</span><span class="n">m</span> <span class="n">modtox</span><span class="o">.</span><span class="n">main</span> <span class="n">taj_file</span> <span class="n">resname</span> <span class="o">--</span><span class="n">actives</span> <span class="n">active</span><span class="o">.</span><span class="n">sdf</span> <span class="o">--</span><span class="n">inactives</span> <span class="n">inactive</span><span class="o">.</span><span class="n">sdf</span> <span class="o">--</span><span class="n">top</span> <span class="n">topology_file</span> <span class="o">--</span><span class="n">grid_mol</span> <span class="n">number_of_the_molecule_to_be_used_as_grid</span> <span class="p">(</span><span class="n">counted</span> <span class="n">per</span> <span class="n">TERS</span> <span class="n">i</span><span class="o">.</span><span class="n">e</span><span class="o">.</span> <span class="n">chainA</span><span class="o">/</span><span class="n">TER</span><span class="o">/</span><span class="n">chainB</span><span class="o">/</span><span class="n">TER</span><span class="o">/</span><span class="n">Ligand</span> <span class="o">--&gt;</span> <span class="mi">3</span> <span class="p">)</span> <span class="o">--</span><span class="n">dock</span>
+
+<span class="n">python</span> <span class="o">-</span><span class="n">m</span> <span class="n">modtox</span><span class="o">.</span><span class="n">main</span> <span class="n">taj_file</span> <span class="n">resname</span> <span class="o">--</span><span class="n">actives</span> <span class="n">active</span><span class="o">.</span><span class="n">sdf</span> <span class="o">--</span><span class="n">inactives</span> <span class="n">inactive</span><span class="o">.</span><span class="n">sdf</span> <span class="o">--</span><span class="n">top</span> <span class="n">topology_file</span> <span class="o">--</span><span class="n">grid_mol</span> <span class="mi">3</span> <span class="o">--</span><span class="n">dock</span>
+</pre></div>
+</div>
+</div>
+</div>
+
+
+           </div>
+           
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+        <a href="../../changelog/index.html" class="btn btn-neutral float-right" title="ChangeLog" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
+      
+      
+        <a href="../api_tutorial/index.html" class="btn btn-neutral" title="From python API" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <p>
+        &copy; Copyright 2019, Daniel Soler Viladrich
+
+    </p>
+  </div>
+  Built with <a href="http://sphinx-doc.org/">Sphinx</a> using a <a href="https://github.com/rtfd/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>. 
+
+</footer>
+
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+  
+
+
+  
+
+    
+    
+      <script type="text/javascript" id="documentation_options" data-url_root="../../" src="../../_static/documentation_options.js"></script>
+        <script type="text/javascript" src="../../_static/jquery.js"></script>
+        <script type="text/javascript" src="../../_static/underscore.js"></script>
+        <script type="text/javascript" src="../../_static/doctools.js"></script>
+        <script type="text/javascript" src="../../_static/language_data.js"></script>
+    
+
+  
+
+  <script type="text/javascript" src="../../_static/js/theme.js"></script>
+
+  <script type="text/javascript">
+      jQuery(function () {
+          SphinxRtdTheme.Navigation.enable(true);
+      });
+  </script> 
+
+</body>
+</html>
