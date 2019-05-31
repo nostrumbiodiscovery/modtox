@@ -33,7 +33,7 @@ def retrieve_classifier(classifier):
     elif classifier == "svm":
         clf = SVM
     elif classifier == "stack":
-        clf = [SVM, XGBOOST, KN, SVM, TREE, NB]
+        clf = [SVM, XGBOOST, KN, TREE, NB, NB]
     else:
         clf = classifier
     return clf

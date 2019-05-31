@@ -18,12 +18,14 @@ from sklearn.preprocessing import StandardScaler
 from ModTox.ML.descriptors_2D_ligand import *
 from ModTox.ML.external_descriptors import *
 from ModTox.docking.glide import analyse as md
+import seaborn as sns
 import ModTox.ML.classifiers as cl
 import ModTox.ML.visualization as vs
 
 TITLE_MOL = "molecules"
-COLUMNS_TO_EXCLUDE = [ "Lig#", "Title", "Rank", "Conf#", "Pose#" ]
+COLUMNS_TO_EXCLUDE = [ "Lig#", "Title", "Rank", "Conf#", "Pose#"]
 LABELS = "labels"
+CLF = ["SVM", "XGBOOST", "KN", "TREE", "NB", "NB_final"]
 
 
 class GenericModel():
@@ -111,7 +113,7 @@ class GenericModel():
     
         return self.data
 
-    def feature_transform(self, X, exclude=COLUMNS_TO_EXCLUDE):
+    def __fit_transform__(self, X, exclude=COLUMNS_TO_EXCLUDE):
         molecular_data = [ TITLE_MOL, ]
         
         numeric_transformer = Pipeline(steps=[
@@ -149,10 +151,10 @@ class GenericModel():
             
         
 
-    def fit_transform(self, load=False, grid_search=False, output_model=None, save=False, cv=None, output_conf="conf.png", print_most_important=False):
+    def build_model(self, load=False, grid_search=False, output_model=None, save=False, cv=None, output_conf="conf.png", print_most_important=False):
         
     
-        self.x_train_trans = self.feature_transform(self.features)
+        self.x_train_trans = self.__fit_transform__(self.features)
 
         self.headers = self.retrieve_header()
         
@@ -164,27 +166,23 @@ class GenericModel():
         
     
         np.random.seed(7)
-
-
-
-        if grid_search:
-            param_grid = {"C":[1,10,100,1000], "gamma" : [1,0.1,0.001,0.0001], "kernel": ["linear", "rbf"]}
-            grid = GridSearchCV(SVC(), param_grid, refit=True, verbose=0)
-            grid.fit(self.x_train_trans, self.labels)
-            print("Best Parameters")
-            print(grid.best_params_)
-
         cv = self.n_final_active if not cv else cv
-
         if type(self.clf) is list and len(self.clf) > 0:
             print("Stack model")
             last_clf = self.clf[-1]
             scaler = StandardScaler()
+            #Predict with 5 classfiers
             preds = np.array([ cross_val_predict(c, self.x_train_trans, self.labels, cv=cv) for c in self.clf[:-1 ]])
             print(self.x_train_trans.shape, preds.T.shape)
             X = np.hstack( [self.x_train_trans, preds.T] )
+            #Stack all classfiers in a final one
             prediction = cross_val_predict(last_clf, scaler.fit_transform(X), self.labels, cv=cv)
-            self.results = [ pred == true for pred, true in zip(prediction, self.labels)]
+            #Obtain results
+            clf_result = np.vstack([preds, prediction])
+            self.clf_results = [] # All classfiers
+            for results in clf_result:
+                self.clf_results.append([pred == true for pred, true  in zip(results, self.labels)])
+            self.results = [ pred == true for pred, true in zip(prediction, self.labels)] #last classifier
             
         else:
             print("Normal model")
@@ -194,20 +192,28 @@ class GenericModel():
         # Plot Features
         vs.UMAP_plot(self.x_train_trans, self.labels, output="predictio_landscape.png")
         vs.UMAP_plot(self.x_train_trans, self.labels, output="sample_landscape.png")
+        # Plot result each clf
+        for result, clf_title  in zip(self.clf_results, CLF):
+            vs.UMAP_plot(self.x_train_trans, result, output="{}.png".format(clf_title), title=clf_title)
+        # Plot correlation matrice
+        correlations = self.correlation_heatmap()
+        #Plot features
         #self.plot_features([["Score", "Metal"],]) 
 
 
         #Report Errors
+        print("\nMistaken Samples\n")
         errors = [ self.mol_names[i] for i, v in enumerate(self.results) if not v ]
         print(errors)
 
         # Retrieve list with feature importace
+        print("\nImportant Features\n")
         important_features = self.feature_importance(clf=None, cv=1, number_feat=100, output_features="glide_features.txt")
         if print_most_important:
             print("\nMost Important Features\n")
             print(" ".join(important_features))
     
-        # Plot results
+        # Confusion Matrix
         conf = confusion_matrix(self.labels, prediction)
         conf[1][0] += (self.n_initial_active - self.n_final_active)
         conf[0][0] += (self.n_initial_inactive - self.n_final_inactive)
@@ -259,7 +265,7 @@ class GenericModel():
                 train.append(m)
                 label_train.append(label)
 
-        X_train = self.feature_transform(pd.DataFrame({"molecules": np.hstack([train, test])}))
+        X_train = self.__fit_transform__(pd.DataFrame({"molecules": np.hstack([train, test])}))
         X_train_pos = QuantileTransformer(output_distribution='uniform').fit_transform(X_train)
         X_test = X_train_pos[-2:, :]
         model = clf.fit(X_test, label_test)
@@ -298,7 +304,8 @@ class GenericModel():
             headers.extend(list(pd.DataFrame.from_csv(self.external_data)))
         # Remove specified headers
         headers_to_remove = [feature for field in exclude for feature in headers if field in feature ]
-        for header in headers_to_remove: headers.remove(header)
+        for header in list(set(headers_to_remove)): 
+            headers.remove(header)
         return headers
         
     def feature_importance(self, clf=None, cv=1, number_feat=5, output_features="important_fatures.txt"):
@@ -322,6 +329,54 @@ class GenericModel():
         fig, ax = plt.subplots()
         ax.hist(data)
         fig.savefig("{}_hist.png".format(descriptor))
+
+    def correlation_heatmap(self, output="correlation_map.png"):
+        corr = pd.DataFrame(self.x_train_trans).corr()
+        fig = plt.figure()
+        ax = fig.add_subplot(111)
+        cax = ax.matshow(corr,cmap='coolwarm', vmin=-1, vmax=1)
+        fig.colorbar(cax)
+        ticks = np.arange(0,len(self.headers),1)
+        ax.set_xticks(ticks)
+        plt.xticks(rotation=90)
+        ax.set_yticks(ticks)
+        ax.set_xticklabels(self.headers)
+        ax.set_yticklabels(self.headers)
+        fig.savefig(output)
+        return corr
+
+    def correlated_columns(self):
+        corr_matrix = pd.DataFrame(self.x_train_trans).corr().abs()
+        upper = corr_matrix.where(np.triu(np.ones(corr_matrix.shape), k=1).astype(np.bool))
+        to_drop = [self.headers[column] for column in upper.columns if any(upper[column] > 0.95)]
+        print(to_drop)
+
+    def __predict__(self):
+        print("Fitting...")
+        #Initial Variables
+        cv = self.n_final_active
+        scaler = StandardScaler()
+        #Preprocess data
+        self.x_train_trans = self.__fit_transform__(self.features)
+        print(self.x_train_trans)
+        print("Size train", self.x_train_trans.shape)
+        self.x_test_trans = self.__fit_transform__(self.data_test) 
+        print(self.x_test_trans)
+        print("Size test", self.x_test_trans.shape)
+        # Fit pre-models
+        self.models_fitted = [ c.fit(self.x_train_trans, self.labels) for c in self.clf[:-1 ]]
+        #Predict pre-model
+        preds_test = np.array([ model.predict(self.x_test_trans) for model in self.models_fitted ])
+        # Fit last model
+        preds_train = np.array([ cross_val_predict(c, self.x_train_trans, self.labels, cv=cv) for c in self.clf[:-1 ]])
+        X = np.hstack( [self.x_train_trans, preds_train.T] )
+        self.last_model = self.clf[-1].fit(scaler.fit_transform(X), self.labels)
+        #Predict last model
+        print(preds_test)
+        X = np.hstack( [self.x_test_trans, preds_test.T] )
+        prediction = self.last_model.predict(scaler.fit_transform(X))
+        return prediction
+
 
 def parse_args(parser):
     parser.add_argument('--active', type=str,
@@ -349,6 +404,7 @@ def parse_args(parser):
     parser.add_argument('--classifier', type=str, help="classifier to use", default="svm")
     parser.add_argument('--test_importance', nargs="+", help="Name of Molecules to include on testing feature importance", default=[])
     parser.add_argument('--print_most_important', action="store_true", help="Print most important features name to screen to use them as command lina arguments with --columns_to_keep")
+    parser.add_argument('--build_model', action="store_true", help='Compute crossvalidation over active and inactives')
 
 
 if __name__ == "__main__":
@@ -357,15 +413,14 @@ if __name__ == "__main__":
     args = parser.parse_args()
     model = GenericModel(args.active, args.inactive, args.classifier, csv=args.external_data, test=args.test, pb=args.pb, columns=args.columns_to_keep)
     if args.load:
-        model_fitted = model.load(args.load)
-    else:
-        X_train = model.fit_transform(model.features, print_most_important=args.print_most_important)
+        model = model.load(args.load)
+    if args.build_model:
+        X_train = model.build_model(model.features, print_most_important=args.print_most_important)
         #model.feature_importance(output_features="lucia.txt")
     if args.save:
         model.save(args.save)
     if args.test:
-        X_test = model.feature_transform(model.data_test)
-        prediction = model_fitted.predict(X_test)
+        prediction = model.__predict__() 
         np.savetxt("results.txt", prediction)
     if args.test_importance:
         model.test_importance(args.test_importance, clf)
