@@ -182,4 +182,4 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Analyze molecular dynamics trajectory (RMSD & clustering)')
     parse_args(parser)
     args = parser.parse_args()
-    analise(args.traj, args.resname, args.top, args.RMSD, args.cluster, args.last, args.clust_type, args.rmsd_type, args.sieve)
+    analise(args.traj, args.resname, args.top, args.RMSD, args.cluster, args.last, args.clust_type, args.rmsd_type, args.clust_sieve)
