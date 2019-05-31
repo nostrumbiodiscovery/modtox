@@ -30,6 +30,7 @@ before_install:
 
  # Upgrade pip
  - python -m pip install --upgrade pip
+ - python -m pip install --upgrade setuptools
 
 install:
  # Necessary dependencies
@@ -54,8 +55,6 @@ script:
  - python -m pytest tests/ -k 'test_docking or test_dude'
 
 before_deploy:
- - conda install -f  setuptools
- - sudo apt install --reinstall python3-pkg-resources python3-setuptools
  - conda build conda_recipe -c local
 
 deploy:
