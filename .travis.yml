@@ -57,11 +57,11 @@ script:
 before_deploy:
  - conda build conda_recipe -c local
 
-deploy:
-  # Deploy to Anaconda.org
-    provider: script
-    script: anaconda -t $CONDA_UPLOAD_TOKEN  upload  --skip -u NostrumBioDiscovery $HOME/conda/conda-bld/**/modtox*.tar.bz2
-    skip_cleanup: true
-    on:
-tags: true
+#deploy:
+#  # Deploy to Anaconda.org
+#    provider: script
+#    script: anaconda -t $CONDA_UPLOAD_TOKEN  upload  --skip -u NostrumBioDiscovery $HOME/conda/conda-bld/**/modtox*.tar.bz2
+#    skip_cleanup: true
+#    on:
+#tags: true
 
