@@ -44,6 +44,7 @@ def parse_args():
 def main(traj, resname, active=None, inactive=None, top=None, glide_files="*dock*.maegz", best=False, csv=False, RMSD=True, cluster=True, last=True, clust_type="BS", rmsd_type="BS", receptor="*pv*.maegz", grid=None, precision="SP", maxkeep=500, maxref=400, dock=False, analysis=True, test=None, save=None, load=None, external_data=None, pb=False, cv=2, features=5, features_cv=1, descriptors=[], classifier="svm", dude=None, grid_mol=2, sieve=10, debug=False):
     if dock:
         # Analyze trajectory&extract clusters
+        print("Extracting clusters from MD")
         if not os.path.exists("analisis"):
             an.analise(traj, resname, top, RMSD, cluster, last, clust_type, rmsd_type, sieve)
         # Cross dock all ligand to the extracted clusters
@@ -52,6 +53,7 @@ def main(traj, resname, active=None, inactive=None, top=None, glide_files="*dock
         if active.split(".")[-1] == "csv":
             active = gpcr.process_gpcrdb(active)
             inactive = inactive
+        print("Docking active and inactive dataset")
         if not debug:
             docking_obj = dk.Glide_Docker(glob.glob("analisis/*clust*.pdb"), [active, inactive], test=debug)
             docking_obj.dock(precision=precision, maxkeep=maxkeep, maxref=maxref, grid_mol=grid_mol)
@@ -68,8 +70,8 @@ def main(traj, resname, active=None, inactive=None, top=None, glide_files="*dock
             try:
                 model_obj = md.GenericModel(active, inactive, classifier, csv=model["csv"], test=test, pb=model["pb"], 
                     fp=model["fingerprint"], descriptors=model["descriptors"], MACCS=model["MACCS"])
-                model_obj.fit_transform(cv=cv, output_conf=model["conf_matrix"])
-                model_obj.feature_importance(cl.XGBOOST, cv=features_cv, number_feat=features, output_features=model["output_feat"])
+                model_obj.build_model(cv=cv, output_conf=model["conf_matrix"])
+                #model_obj.feature_importance(cl.XGBOOST, cv=features_cv, number_feat=features, output_features=model["output_feat"])
             except IOError:
                 print("Model with descriptors not build for failure to connect to client webserver")
         print("Models sucesfully build. Confusion_matrix.png outputted")

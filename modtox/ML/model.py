@@ -7,6 +7,7 @@ import argparse
 import pandas as pd
 import pickle
 from sklearn.metrics import confusion_matrix
+import sklearn.metrics as metrics
 from sklearn import svm
 import sys
 import pandas as pd
@@ -176,6 +177,7 @@ class GenericModel():
             X = np.hstack( [self.x_train_trans, preds.T] )
             #Stack all classfiers in a final one
             prediction = cross_val_predict(last_clf, scaler.fit_transform(X), self.labels, cv=cv)
+            prediction_prob = cross_val_predict(last_clf, scaler.fit_transform(X), self.labels, cv=cv, method='predict_proba')
             #Obtain results
             clf_result = np.vstack([preds, prediction])
             self.clf_results = [] # All classfiers
@@ -222,6 +224,11 @@ class GenericModel():
 
         md.conf(conf[1][1], conf[0][1], conf[0][0], conf[1][0], output=output_conf)
 
+        # ROC CURVE
+        import pdb; pdb.set_trace()
+        
+        self.plot_roc_curve_rate(self.labels, prediction_prob, prediction)
+
         if output_model:
             pickle.dump(model, open(output, 'wb'))
 
@@ -239,6 +246,36 @@ class GenericModel():
             values2 = self.x_train_trans[:, idx2]
             vs.plot(values1, values2, self.labels, title="{}_{}_true_labels".format(name1, name2), output="{}_{}_true_labels.png".format(name1, name2))
             vs.plot(values1, values2, self.results, true_false=True, title="{}_{}_errors".format(name1, name2), output="{}_{}_errors.png".format(name1, name2))
+
+
+    def plot_roc_curve(self, y_test, preds, n_classes=2):
+        """
+        Plot area under the curve
+        """
+        import scikitplot as skplt
+        new_preds = []
+        new_trues = []
+        for p, t in zip(preds, y_test):
+            if p == 0:
+                new_preds.append([1, 0])
+            else:
+                new_preds.append([0, 1])
+        skplt.metrics.plot_roc_curve(y_test.values, np.array(new_preds))
+        plt.savefig("roc_curve.png")
+
+    def plot_roc_curve_rate(self, y_test, preds, pred, n_classes=2):
+        fpr, tpr, threshold = metrics.roc_curve(y_test, preds[:,1])
+        roc_auc = metrics.auc(y_test, pred)
+        fig, ax = plt.subplots()
+        ax.plot(fpr, tpr, 'b', label = 'AUC = %0.2f' % roc_auc)
+        ax.legend(loc = 'lower right')
+        ax.plot([0, 1], [0, 1],'r--')
+        ax.set_xlim([0, 1])
+        ax.set_ylim([0, 1])
+        ax.set_ylabel('True Positive Rate')
+        ax.set_xlabel('False Positive Rate')
+        fig.savefig("roc_curve.png")
+
 
     def load_model(self, model_file):
         print("Loading model")
