@@ -6,6 +6,10 @@ From Conda (recommended)
 
 ::
 
+ conda create -n modtox_conda python=3.6
+
+ conda activate modtox_conda
+
  conda install -c NostrumBioDiscovery modtox
 
 From Source Code
@@ -19,8 +23,18 @@ From Source Code
 
  python setup.py install
 
+ conda install rdkit
+
 
 From PyPi
 -----------
 
-Non implemented yet
+::
+
+  conda create -n modtox_pip python=3.6
+
+  source activate modtox_pip  
+
+  pip install modtox
+
+  conda install rdkit
