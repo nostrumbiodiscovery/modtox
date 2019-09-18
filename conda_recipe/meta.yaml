@@ -1,9 +1,10 @@
+# conda build -c rdkit -c josan_bcn -c nostrumbiodiscovery -c ambermd -c conda-forge conda_recipe/ python=3.6
 package:
   name: modtox
   version: "1.0.0"
 
 about:
-  home: https://github.com/danielSoler93/modtox
+  home: https://github.com/NostrumBioDiscovery/modtox
   license: Apache
   license_file: LICENSE
   summary: Structural based Machine learning technics to asses toxicological effects
@@ -17,11 +18,11 @@ build:
 
 requirements:
   host:
-    - python 2.7
+    - python 3.6
 
   run:
     # Base dependencies
-    - python 2.7
+    - python 3.6
     - tqdm
     - prody
     - umap-learn
@@ -44,7 +45,7 @@ test:
  imports:
     - modtox
  commands:
-    - python -m pytest tests/ -k 'test_docking'
+    - python -m pytest tests/ -k 'test_docking or test_dude'
  source_files:
     - tests
  requires:
