@@ -5,6 +5,7 @@ from argparse import RawTextHelpFormatter
 import subprocess
 import modtox.Helpers.formats as fm
 import modtox.constants.constants as cs
+import modtox. Helpers. helpers as hp
 
 DIR = os.path.dirname(__file__)
 COMPLEX_LINE = "COMPLEX   {},{}"
@@ -33,13 +34,18 @@ class Glide_Docker(object):
         self.systems_mae = fm.convert_to_mae(self.systems)
         self.ligands_to_dock_mae = fm.convert_to_mae(self.ligands_to_dock)
 
+        #Set molecule number to schrodinger to 
+        #correctly center the grid
+        system = self.systems[0]
+        self.grid_mol = hp._retrieve_molecule_number(system) if not grid_mol else grid_mol
+
         # Set dock command
         self.docking_command = '{}run xglide.py {} -OVERWRITE -HOST {} -NJOBS {} -TMPLAUNCHDIR -ATTACHED'.format(
         schr, input_file, host, cpus)
 
         # Set variables for docking        
         self.grid_template = os.path.abspath(os.path.join(DIR, input_file))
-        complexes = [COMPLEX_LINE.format(system, grid_mol) for system in self.systems_mae]
+        complexes = [COMPLEX_LINE.format(system, self.grid_mol) for system in self.systems_mae]
         ligands = [LIGAND_LINE.format(ligand) for ligand in self.ligands_to_dock_mae]
 
         # Templetize grid
