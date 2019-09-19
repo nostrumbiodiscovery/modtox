@@ -27,9 +27,7 @@
   <link rel="stylesheet" href="../_static/css/theme.css" type="text/css" />
   <link rel="stylesheet" href="../_static/pygments.css" type="text/css" />
     <link rel="index" title="Index" href="../genindex.html" />
-    <link rel="search" title="Search" href="../search.html" />
-    <link rel="next" title="Getting Started" href="../tutorial/index.html" />
-    <link rel="prev" title="modtox" href="../index.html" /> 
+    <link rel="search" title="Search" href="../search.html" /> 
 
   
   <script src="../_static/js/modernizr.min.js"></script>
@@ -82,21 +80,16 @@
               
             
             
-              <ul class="current">
-<li class="toctree-l1 current"><a class="current reference internal" href="#">Installation</a><ul>
-<li class="toctree-l2"><a class="reference internal" href="#from-conda-recommended">From Conda (recommended)</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#from-source-code">From Source Code</a></li>
-<li class="toctree-l2"><a class="reference internal" href="#from-pypi">From PyPi</a></li>
+              <!-- Local TOC -->
+              <div class="local-toc"><ul>
+<li><a class="reference internal" href="#">Installation</a><ul>
+<li><a class="reference internal" href="#from-conda-recommended">From Conda (recommended)</a></li>
+<li><a class="reference internal" href="#from-source-code">From Source Code</a></li>
+<li><a class="reference internal" href="#from-pypi">From PyPi</a></li>
 </ul>
 </li>
 </ul>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="../tutorial/index.html">Getting Started</a></li>
-</ul>
-<ul>
-<li class="toctree-l1"><a class="reference internal" href="../changelog/index.html">ChangeLog</a></li>
-</ul>
-
+</div>
             
           
         </div>
@@ -163,7 +156,11 @@
 <h1>Installation<a class="headerlink" href="#installation" title="Permalink to this headline">¶</a></h1>
 <div class="section" id="from-conda-recommended">
 <h2>From Conda (recommended)<a class="headerlink" href="#from-conda-recommended" title="Permalink to this headline">¶</a></h2>
-<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">conda</span> <span class="n">install</span> <span class="o">-</span><span class="n">c</span> <span class="n">NostrumBioDiscovery</span> <span class="n">modtox</span>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">conda</span> <span class="n">create</span> <span class="o">-</span><span class="n">c</span> <span class="n">rdkit</span> <span class="o">-</span><span class="n">c</span> <span class="n">josan_bcn</span> <span class="o">-</span><span class="n">c</span> <span class="n">nostrumbiodiscovery</span> <span class="o">-</span><span class="n">c</span> <span class="n">ambermd</span> <span class="o">-</span><span class="n">c</span> <span class="n">conda</span><span class="o">-</span><span class="n">forge</span>  <span class="o">-</span><span class="n">n</span> <span class="n">modtox_conda</span> <span class="n">python</span><span class="o">=</span><span class="mf">3.6</span> <span class="n">modtox</span> <span class="o">--</span><span class="n">yes</span>
+
+<span class="n">source</span> <span class="n">activate</span> <span class="n">modtox_conda</span>
+
+<span class="n">python</span> <span class="o">-</span><span class="n">m</span> <span class="n">modtox</span><span class="o">.</span><span class="n">main</span> <span class="o">-</span><span class="n">h</span>
 </pre></div>
 </div>
 </div>
@@ -174,12 +171,22 @@
 <span class="n">cd</span> <span class="n">modtox</span>
 
 <span class="n">python</span> <span class="n">setup</span><span class="o">.</span><span class="n">py</span> <span class="n">install</span>
+
+<span class="n">conda</span> <span class="n">install</span> <span class="o">-</span><span class="n">c</span> <span class="n">rdkit</span> <span class="n">rdkit</span>
 </pre></div>
 </div>
 </div>
 <div class="section" id="from-pypi">
 <h2>From PyPi<a class="headerlink" href="#from-pypi" title="Permalink to this headline">¶</a></h2>
-<p>Non implemented yet</p>
+<div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">conda</span> <span class="n">create</span> <span class="o">-</span><span class="n">n</span> <span class="n">modtox_pip</span> <span class="n">python</span><span class="o">=</span><span class="mf">3.6</span>
+
+<span class="n">source</span> <span class="n">activate</span> <span class="n">modtox_pip</span>
+
+<span class="n">pip</span> <span class="n">install</span> <span class="n">modtox</span>
+
+<span class="n">conda</span> <span class="n">install</span> <span class="o">-</span><span class="n">c</span> <span class="n">rdkit</span> <span class="n">rdkit</span>
+</pre></div>
+</div>
 </div>
 </div>
 
@@ -188,15 +195,6 @@
            
           </div>
           <footer>
-  
-    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
-      
-        <a href="../tutorial/index.html" class="btn btn-neutral float-right" title="Getting Started" accesskey="n" rel="next">Next <span class="fa fa-arrow-circle-right"></span></a>
-      
-      
-        <a href="../index.html" class="btn btn-neutral" title="modtox" accesskey="p" rel="prev"><span class="fa fa-arrow-circle-left"></span> Previous</a>
-      
-    </div>
   
 
   <hr/>
