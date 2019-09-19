@@ -11,7 +11,7 @@ The first step of the workflow consists in extracting 10 representative clusters
 We have so far tested this approach on three systems: The androgen receptor (394 actives/404 decoys), CYP3A4 (168 actives/168 decoys), and the beta-2 adrenergic receptor (230 actives/230 decoys).
 
 
-Github : https://github.com/danielSoler93/modtox
+Github : https://github.com/NostrumBioDiscovery/modtox
 
 
 .. figure:: images/modtox.png
