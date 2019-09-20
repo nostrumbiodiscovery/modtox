@@ -8,7 +8,7 @@
   
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   
-  <title>From Command Line &mdash; analogs finder 1.0.0 documentation</title>
+  <title>From Command Line &mdash; modtox 1.0.0 documentation</title>
   
 
   
@@ -48,7 +48,7 @@
           
 
           
-            <a href="../../index.html" class="icon icon-home"> analogs finder
+            <a href="../../index.html" class="icon icon-home"> modtox
           
 
           
@@ -87,11 +87,14 @@
 </ul>
 <ul class="current">
 <li class="toctree-l1 current"><a class="reference internal" href="../index.html">Getting Started</a><ul class="current">
-<li class="toctree-l2"><a class="reference internal" href="../api_tutorial/index.html">From python API</a></li>
-<li class="toctree-l2 current"><a class="current reference internal" href="#">From Command Line</a><ul>
-<li class="toctree-l3"><a class="reference internal" href="#analyse-moleculer-dynamics">Analyse moleculer dynamics</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#ensemble-docking-on-molecular-dynamics-from-dude">Ensemble docking on molecular dynamics from dude</a></li>
-<li class="toctree-l3"><a class="reference internal" href="#perform-ensemble-docking-from-active-inactive-sdf-file">Perform ensemble docking from Active &amp; Inactive sdf file</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../index.html#api-tutorial">Api tutorial</a></li>
+<li class="toctree-l2 current"><a class="reference internal" href="../index.html#command-line-tutorial">Command line tutorial</a><ul class="current">
+<li class="toctree-l3 current"><a class="current reference internal" href="#">From Command Line</a><ul>
+<li class="toctree-l4"><a class="reference internal" href="#analyse-moleculer-dynamics">Analyse moleculer dynamics</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#ensemble-docking-on-molecular-dynamics-from-dude">Ensemble docking on molecular dynamics from dude</a></li>
+<li class="toctree-l4"><a class="reference internal" href="#perform-ensemble-docking-from-active-inactive-sdf-file">Perform ensemble docking from Active &amp; Inactive sdf file</a></li>
+</ul>
+</li>
 </ul>
 </li>
 </ul>
@@ -113,7 +116,7 @@
       <nav class="wy-nav-top" aria-label="top navigation">
         
           <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
-          <a href="../../index.html">analogs finder</a>
+          <a href="../../index.html">modtox</a>
         
       </nav>
 
@@ -175,7 +178,7 @@
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="o">-</span><span class="n">m</span> <span class="n">modtox</span><span class="o">.</span><span class="n">cpptraj</span><span class="o">.</span><span class="n">main</span> <span class="n">traj</span><span class="o">*.</span><span class="p">(</span><span class="n">xtc</span><span class="p">,</span> <span class="n">dcd</span><span class="p">,</span> <span class="n">x</span><span class="p">,</span> <span class="n">pdb</span><span class="o">...</span><span class="p">)</span> <span class="n">resname</span> <span class="o">--</span><span class="n">top</span> <span class="n">topology</span><span class="o">.</span><span class="n">top</span> <span class="o">--</span><span class="n">clust_type</span> <span class="p">[</span><span class="nb">all</span> <span class="p">(</span><span class="n">allAtoms</span><span class="p">)</span> <span class="p">,</span> <span class="n">BS</span> <span class="p">(</span><span class="n">BindinSite</span><span class="p">)]</span> <span class="o">--</span><span class="n">rmsd</span> <span class="o">--</span><span class="n">last</span>
 
 
-<span class="n">python</span> <span class="o">-</span><span class="n">m</span> <span class="n">modtox</span><span class="o">.</span><span class="n">cpptraj</span><span class="o">.</span><span class="n">analisis</span> <span class="mi">1</span><span class="n">nxk_0</span><span class="o">*.</span><span class="n">xtc</span> <span class="mi">198</span> <span class="o">--</span><span class="n">top</span> <span class="n">init</span><span class="o">.</span><span class="n">top</span> <span class="o">--</span><span class="n">RMSD</span> <span class="o">--</span><span class="n">clust_type</span> <span class="n">BS</span> <span class="o">--</span><span class="n">last</span>
+<span class="n">python</span> <span class="o">-</span><span class="n">m</span> <span class="n">modtox</span><span class="o">.</span><span class="n">cpptraj</span><span class="o">.</span><span class="n">analisis</span> <span class="n">modtox</span><span class="o">/</span><span class="n">tests</span><span class="o">/</span><span class="n">data</span><span class="o">/</span><span class="n">general</span><span class="o">/</span><span class="n">traj</span><span class="o">.</span><span class="n">pdb</span> <span class="mi">198</span> <span class="o">--</span><span class="n">top</span> <span class="n">modtox</span><span class="o">/</span><span class="n">tests</span><span class="o">/</span><span class="n">data</span><span class="o">/</span><span class="n">general</span><span class="o">/</span><span class="n">init</span><span class="o">.</span><span class="n">top</span> <span class="o">--</span><span class="n">clust_type</span> <span class="n">BS</span>
 </pre></div>
 </div>
 </div></blockquote>
@@ -186,7 +189,7 @@
 <div>Perform clustering of the MD based on the binding site, followed by ensemble cross docking of a dude dataset</div></blockquote>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="o">-</span><span class="n">m</span> <span class="n">modtox</span><span class="o">.</span><span class="n">main</span> <span class="n">taj_file</span> <span class="n">resname</span> <span class="o">--</span><span class="n">dude</span> <span class="n">dude_folder</span> <span class="o">--</span><span class="n">top</span> <span class="n">topology_file</span> <span class="o">--</span><span class="n">grid_mol</span> <span class="n">number_of_the_molecule_to_be_used_as_grid</span> <span class="p">(</span><span class="n">counted</span> <span class="n">per</span> <span class="n">TERS</span> <span class="n">i</span><span class="o">.</span><span class="n">e</span><span class="o">.</span> <span class="n">chainA</span><span class="o">/</span><span class="n">TER</span><span class="o">/</span><span class="n">chainB</span><span class="o">/</span><span class="n">TER</span><span class="o">/</span><span class="n">Ligand</span> <span class="o">--&gt;</span> <span class="mi">3</span> <span class="p">)</span> <span class="o">--</span><span class="n">dock</span>
 
-<span class="n">python</span> <span class="o">-</span><span class="n">m</span> <span class="n">modtox</span><span class="o">.</span><span class="n">main</span> <span class="mi">3</span><span class="n">d4s_holo</span><span class="o">.*.</span><span class="n">xtc</span> <span class="n">TIM</span> <span class="o">--</span><span class="n">dude</span> <span class="n">adrb2</span> <span class="o">--</span><span class="n">top</span> <span class="o">/</span><span class="n">data</span><span class="o">/</span><span class="n">modtox</span><span class="o">/</span><span class="n">ldiaz_modtox_storage</span><span class="o">/</span><span class="n">HROT_3d4s</span><span class="o">/</span><span class="n">holo</span><span class="o">/</span><span class="mi">3</span><span class="n">d4s_holo</span><span class="o">.</span><span class="n">top</span> <span class="o">--</span><span class="n">grid_mol</span> <span class="mi">3</span> <span class="o">--</span><span class="n">dock</span>
+<span class="n">python</span> <span class="o">-</span><span class="n">m</span> <span class="n">modtox</span><span class="o">.</span><span class="n">main</span> <span class="n">modtox</span><span class="o">/</span><span class="n">tests</span><span class="o">/</span><span class="n">data</span><span class="o">/</span><span class="n">general</span><span class="o">/</span><span class="n">traj</span><span class="o">.</span><span class="n">pdb</span> <span class="mi">198</span> <span class="o">--</span><span class="n">dude</span> <span class="n">modtox</span><span class="o">/</span><span class="n">tests</span><span class="o">/</span><span class="n">data</span><span class="o">/</span><span class="n">dude</span> <span class="o">--</span><span class="n">top</span> <span class="n">modtox</span><span class="o">/</span><span class="n">tests</span><span class="o">/</span><span class="n">data</span><span class="o">/</span><span class="n">general</span><span class="o">/</span><span class="n">init</span><span class="o">.</span><span class="n">top</span> <span class="o">--</span><span class="n">grid_mol</span> <span class="mi">2</span> <span class="o">--</span><span class="n">dock</span> <span class="o">--</span><span class="n">clust_sieve</span> <span class="mi">1</span>
 </pre></div>
 </div>
 </div>
@@ -196,7 +199,8 @@
 <div>Perform clustering of the MD based on the binding site, followed by ensemble cross docking of the active and inactive sdfs</div></blockquote>
 <div class="highlight-default notranslate"><div class="highlight"><pre><span></span><span class="n">python</span> <span class="o">-</span><span class="n">m</span> <span class="n">modtox</span><span class="o">.</span><span class="n">main</span> <span class="n">taj_file</span> <span class="n">resname</span> <span class="o">--</span><span class="n">actives</span> <span class="n">active</span><span class="o">.</span><span class="n">sdf</span> <span class="o">--</span><span class="n">inactives</span> <span class="n">inactive</span><span class="o">.</span><span class="n">sdf</span> <span class="o">--</span><span class="n">top</span> <span class="n">topology_file</span> <span class="o">--</span><span class="n">grid_mol</span> <span class="n">number_of_the_molecule_to_be_used_as_grid</span> <span class="p">(</span><span class="n">counted</span> <span class="n">per</span> <span class="n">TERS</span> <span class="n">i</span><span class="o">.</span><span class="n">e</span><span class="o">.</span> <span class="n">chainA</span><span class="o">/</span><span class="n">TER</span><span class="o">/</span><span class="n">chainB</span><span class="o">/</span><span class="n">TER</span><span class="o">/</span><span class="n">Ligand</span> <span class="o">--&gt;</span> <span class="mi">3</span> <span class="p">)</span> <span class="o">--</span><span class="n">dock</span>
 
-<span class="n">python</span> <span class="o">-</span><span class="n">m</span> <span class="n">modtox</span><span class="o">.</span><span class="n">main</span> <span class="n">taj_file</span> <span class="n">resname</span> <span class="o">--</span><span class="n">actives</span> <span class="n">active</span><span class="o">.</span><span class="n">sdf</span> <span class="o">--</span><span class="n">inactives</span> <span class="n">inactive</span><span class="o">.</span><span class="n">sdf</span> <span class="o">--</span><span class="n">top</span> <span class="n">topology_file</span> <span class="o">--</span><span class="n">grid_mol</span> <span class="mi">3</span> <span class="o">--</span><span class="n">dock</span>
+
+<span class="n">python</span> <span class="o">-</span><span class="n">m</span> <span class="n">modtox</span><span class="o">.</span><span class="n">main</span> <span class="n">modtox</span><span class="o">/</span><span class="n">tests</span><span class="o">/</span><span class="n">data</span><span class="o">/</span><span class="n">general</span><span class="o">/</span><span class="n">traj</span><span class="o">.</span><span class="n">pdb</span> <span class="mi">198</span> <span class="o">--</span><span class="n">active</span> <span class="n">active</span><span class="o">.</span><span class="n">sdf</span> <span class="o">--</span><span class="n">inactive</span> <span class="n">decoys</span><span class="o">.</span><span class="n">sdf</span> <span class="o">--</span><span class="n">top</span> <span class="n">modtox</span><span class="o">/</span><span class="n">tests</span><span class="o">/</span><span class="n">data</span><span class="o">/</span><span class="n">general</span><span class="o">/</span><span class="n">init</span><span class="o">.</span><span class="n">top</span> <span class="o">--</span><span class="n">grid_mol</span> <span class="mi">3</span> <span class="o">--</span><span class="n">dock</span> <span class="o">--</span><span class="n">clust_sieve</span> <span class="mi">1</span>
 </pre></div>
 </div>
 </div>
