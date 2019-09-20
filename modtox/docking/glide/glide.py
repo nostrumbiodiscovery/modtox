@@ -37,7 +37,7 @@ class Glide_Docker(object):
         #Set molecule number to schrodinger to 
         #correctly center the grid
         system = self.systems[0]
-        self.grid_mol = hp._retrieve_molecule_number(system) if not grid_mol else grid_mol
+        self.grid_mol = hp._retrieve_molecule_number(system, self.ligands_to_dock) if not grid_mol else grid_mol
 
         # Set dock command
         self.docking_command = '{}run xglide.py {} -OVERWRITE -HOST {} -NJOBS {} -TMPLAUNCHDIR -ATTACHED'.format(
