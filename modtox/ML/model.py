@@ -188,14 +188,21 @@ class GenericModel(object):
         else:
             print("Normal model")
             prediction = cross_val_predict(self.clf, self.x_train_trans, self.labels, cv=cv)
+            prediction_prob = cross_val_predict(self.clf, self.x_train_trans, self.labels, cv=cv, method='predict_proba')
+            #Obtain results
             self.results = [ pred == true for pred, true in zip(prediction, self.labels)]
 
         # Plot Features
         vs.UMAP_plot(self.x_train_trans, self.labels, output="predictio_landscape.png")
         vs.UMAP_plot(self.x_train_trans, self.labels, output="sample_landscape.png")
+
         # Plot result each clf
-        for result, clf_title  in zip(self.clf_results, CLF):
-            vs.UMAP_plot(self.x_train_trans, result, output="{}.png".format(clf_title), title=clf_title)
+        if type(self.clf) is list and len(self.clf) > 0: 
+            for result, clf_title  in zip(self.clf_results, CLF):
+                vs.UMAP_plot(self.x_train_trans, result, output="{}.png".format(clf_title), title=clf_title)
+        else:
+            vs.UMAP_plot(self.x_train_trans, self.results, output="{}.png".format("result"), title="result")
+
         # Plot correlation matrice
         correlations = self.correlation_heatmap()
         #Plot features
