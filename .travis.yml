@@ -51,7 +51,7 @@ before_script:
 
 script:
  # Run tests
- - python -m pytest --cov=./ tests/test_methods.py tests/test_helpers.py tests/ -k 'test_docking or test_dude'
+ - python -m pytest --cov=./ tests/ -k 'test_docking or test_dude'
 
 before_deploy:
  - conda build conda_recipe -c local
