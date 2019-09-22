@@ -225,8 +225,6 @@ class GenericModel():
         md.conf(conf[1][1], conf[0][1], conf[0][0], conf[1][0], output=output_conf)
 
         # ROC CURVE
-        import pdb; pdb.set_trace()
-        
         self.plot_roc_curve_rate(self.labels, prediction_prob, prediction)
 
         if output_model:
