@@ -64,7 +64,7 @@ def main(traj, resname, active=None, inactive=None, top=None, glide_files="*dock
             inactive = "inactive.sdf"
         # Analyze dockig files and build model features
         inp_files = glob.glob(glide_files)
-        gl.analyze(inp_files, best=best, csv=csv, active=active, inactive=inactive)
+        gl.analyze(inp_files, best=best, csv=csv, active=active, inactive=inactive, debug=debug)
         # Build Model
         for model in MODELS:
             try:

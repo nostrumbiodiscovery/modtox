@@ -28,7 +28,7 @@ LABELS = "labels"
 CLF = ["SVM", "XGBOOST", "KN", "TREE", "NB", "NB_final"]
 
 
-class GenericModel():
+class GenericModel(object):
 
     def __init__(self, active, inactive, clf, csv=None, test=None, pb=False, fp=False, descriptors=False, MACCS=True, columns=None):
         self.active = active
@@ -335,7 +335,7 @@ class GenericModel():
                 headers_pb = np.hstack([headers_pb, np.loadtxt("MAC_descriptors.txt", dtype=np.str)])
             headers.extend(headers_pb.tolist())
         if self.external_data:
-            headers.extend(list(pd.DataFrame.from_csv(self.external_data)))
+            headers.extend(list(pd.read_csv(self.external_data)))
         # Remove specified headers
         headers_to_remove = [feature for field in exclude for feature in headers if field in feature ]
         for header in list(set(headers_to_remove)): 

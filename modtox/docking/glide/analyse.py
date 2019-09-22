@@ -10,7 +10,7 @@ import modtox.constants.constants as cs
 from itertools import chain
 
 
-def analyze(glide_files, active=False, inactive=False, best=False, csv=[], filter=None):
+def analyze(glide_files, active=False, inactive=False, best=False, csv=[], filter=None, debug=False):
     glide_results = []
     if best:
         results_merge = merge(glide_files,  output="results_merge.mae")
@@ -25,24 +25,26 @@ def analyze(glide_files, active=False, inactive=False, best=False, csv=[], filte
         return best_poses_csv
     else:
         for i, glide_file in enumerate(glide_files):
-            results_merge = merge([glide_file], output="results_merge_{}.mae".format(i))
-            results_mae = sort_by_dock_score([results_merge,], output="data_{}.txt".format(i))
+            results_merge = merge([glide_file], output="results_merge_{}.mae".format(i), debug=debug)
+            results_mae = sort_by_dock_score([results_merge,], output="data_{}.txt".format(i), debug=debug)
             glide_results.append(to_dataframe(results_mae, output="results_{}.csv".format(i), iteration=i, filter=filter))
         all_results = join_results(glide_results)
         return all_results       
 
-def sort_by_dock_score(glide_files, schr=cs.SCHR, output="data.txt"):
+def sort_by_dock_score(glide_files, schr=cs.SCHR, output="data.txt", debug=False):
     glide_sort_bin = os.path.join(schr, "utilities/glide_sort")
     command = "{} -r {} {} > /dev/null".format(glide_sort_bin , output, " ".join(glide_files))
     print(command)
-    os.system(command)
+    if not debug:
+        os.system(command)
     return output
         
-def merge(glide_files, schr=cs.SCHR, output="results_merge.mae"):
+def merge(glide_files, schr=cs.SCHR, output="results_merge.mae", debug=False):
     glide_merge_bin = os.path.join(schr, "utilities/glide_merge")
     command = "{} {} -o {} > /dev/null".format(glide_merge_bin , " ".join(glide_files), output)
     print(command)
-    os.system(command)
+    if not debug:
+        os.system(command)
     return output
     
 def best_poses(glide_file,  schr=cs.SCHR, output="final_resuts.mae"):
