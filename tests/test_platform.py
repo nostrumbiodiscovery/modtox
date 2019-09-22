@@ -31,14 +31,16 @@ def test_dude(traj, resname, top, dude):
                          (TRAJ, RESNAME, TOP, ACTIVE_ANALYSIS, INACTIVE_ANALYSIS),
                          ])
 def test_model_stack(traj, resname, top, active, inactive):
-     os.chdir("tests/data/analysis")
+     initial_dir = os.getcwd()
+     os.chdir(os.path.join(DATA_PATH, "analysis"))
      mn.main(traj, resname, active, inactive, top=top, analysis=True, glide_files=GLIDE_FILES, debug=True, cv=2, classifier="stack")
-     os.chdir("../../../")
+     os.chdir(initial_dir)
 
 @pytest.mark.parametrize("traj, resname, top, active, inactive", [
                          (TRAJ, RESNAME, TOP, ACTIVE_ANALYSIS, INACTIVE_ANALYSIS),
                          ])
 def test_model_normal(traj, resname, top, active, inactive):
-     os.chdir("tests/data/analysis")
+     initial_dir = os.getcwd()
+     os.chdir(os.path.join(DATA_PATH, "analysis"))
      mn.main(traj, resname, active, inactive, top=top, analysis=True, glide_files=GLIDE_FILES, debug=True, cv=2)
-     os.chdir("../../../")
+     os.chdir(initial_dir)
