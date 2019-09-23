@@ -19,7 +19,7 @@ scale_pos_weight=1,
 seed=27)
 
 
-SVM = svm.SVC(C=1, gamma=1, kernel="rbf")
+SVM = svm.SVC(C=1, gamma=1, kernel="rbf", probability=True)
 
 KN = KNeighborsClassifier(3)
 

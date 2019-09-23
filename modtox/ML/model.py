@@ -28,7 +28,7 @@ LABELS = "labels"
 CLF = ["SVM", "XGBOOST", "KN", "TREE", "NB", "NB_final"]
 
 
-class GenericModel():
+class GenericModel(object):
 
     def __init__(self, active, inactive, clf, csv=None, test=None, pb=False, fp=False, descriptors=False, MACCS=True, columns=None):
         self.active = active
@@ -188,14 +188,21 @@ class GenericModel():
         else:
             print("Normal model")
             prediction = cross_val_predict(self.clf, self.x_train_trans, self.labels, cv=cv)
+            prediction_prob = cross_val_predict(self.clf, self.x_train_trans, self.labels, cv=cv, method='predict_proba')
+            #Obtain results
             self.results = [ pred == true for pred, true in zip(prediction, self.labels)]
 
         # Plot Features
         vs.UMAP_plot(self.x_train_trans, self.labels, output="predictio_landscape.png")
         vs.UMAP_plot(self.x_train_trans, self.labels, output="sample_landscape.png")
+
         # Plot result each clf
-        for result, clf_title  in zip(self.clf_results, CLF):
-            vs.UMAP_plot(self.x_train_trans, result, output="{}.png".format(clf_title), title=clf_title)
+        if type(self.clf) is list and len(self.clf) > 0: 
+            for result, clf_title  in zip(self.clf_results, CLF):
+                vs.UMAP_plot(self.x_train_trans, result, output="{}.png".format(clf_title), title=clf_title)
+        else:
+            vs.UMAP_plot(self.x_train_trans, self.results, output="{}.png".format("result"), title="result")
+
         # Plot correlation matrice
         correlations = self.correlation_heatmap()
         #Plot features
@@ -335,7 +342,7 @@ class GenericModel():
                 headers_pb = np.hstack([headers_pb, np.loadtxt("MAC_descriptors.txt", dtype=np.str)])
             headers.extend(headers_pb.tolist())
         if self.external_data:
-            headers.extend(list(pd.DataFrame.from_csv(self.external_data)))
+            headers.extend(list(pd.read_csv(self.external_data)))
         # Remove specified headers
         headers_to_remove = [feature for field in exclude for feature in headers if field in feature ]
         for header in list(set(headers_to_remove)): 

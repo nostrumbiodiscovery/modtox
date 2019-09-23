@@ -18,7 +18,7 @@ class ExternalData():
 
     def transform(self, molecules):
         print("\tIncorporating external data")
-        df = pd.DataFrame.from_csv(self.csv)
+        df = pd.read_csv(self.csv)
         n_drop = 0
         #If not present on your dataset discard
         self.mol_names = [m[0].GetProp("_Name") for m in molecules.values]
@@ -41,7 +41,7 @@ class ExternalData():
         return df
 
     def retrieve_molecule_names(self):
-        df = pd.DataFrame.from_csv(self.csv) 
+        df = pd.read_csv(self.csv) 
         thresh = int(df.shape[1]*0.8)
         df_dropna = df.dropna(thresh=thresh)
         return df_dropna["Title"].values 

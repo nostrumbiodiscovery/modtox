@@ -11,6 +11,8 @@ INACTIVE=os.path.join(DATA_PATH, "active_decoys/decoys.sdf")
 DUDE=os.path.join(DATA_PATH, "dude")
 GLIDE_FILES=os.path.join(DATA_PATH, "analysis/input__*dock_lib.maegz")
 RESNAME="198"
+ACTIVE_ANALYSIS=os.path.join(DATA_PATH, "analysis/active.sdf")
+INACTIVE_ANALYSIS=os.path.join(DATA_PATH, "analysis/decoys.sdf")
 
 @pytest.mark.parametrize("traj, resname, top, active, inactive", [
                          (TRAJ, RESNAME, TOP, ACTIVE, INACTIVE),
@@ -26,7 +28,19 @@ def test_dude(traj, resname, top, dude):
      mn.main([traj,], resname, dude=dude, top=top, dock=True, debug=True)
 
 @pytest.mark.parametrize("traj, resname, top, active, inactive", [
-                         (TRAJ, RESNAME, TOP, ACTIVE, INACTIVE),
+                         (TRAJ, RESNAME, TOP, ACTIVE_ANALYSIS, INACTIVE_ANALYSIS),
                          ])
-def test_model(traj, resname, top, active, inactive):
-     mn.main(traj, resname, active, inactive, top=top, analysis=True, glide_files=GLIDE_FILES)
+def test_model_stack(traj, resname, top, active, inactive):
+     initial_dir = os.getcwd()
+     os.chdir(os.path.join(DATA_PATH, "analysis"))
+     mn.main(traj, resname, active, inactive, top=top, analysis=True, glide_files=GLIDE_FILES, debug=True, cv=2, classifier="stack")
+     os.chdir(initial_dir)
+
+@pytest.mark.parametrize("traj, resname, top, active, inactive", [
+                         (TRAJ, RESNAME, TOP, ACTIVE_ANALYSIS, INACTIVE_ANALYSIS),
+                         ])
+def test_model_normal(traj, resname, top, active, inactive):
+     initial_dir = os.getcwd()
+     os.chdir(os.path.join(DATA_PATH, "analysis"))
+     mn.main(traj, resname, active, inactive, top=top, analysis=True, glide_files=GLIDE_FILES, debug=True, cv=2)
+     os.chdir(initial_dir)
