@@ -11,6 +11,8 @@ apo and holo simulations of the HROT dataset
 .. image:: https://img.shields.io/pypi/v/modtox.svg?color=brightgreen
        :target: https://pypi.org/project/modtox/
        :alt: PyPI version
+.. image:: https://codecov.io/gh/NostrumBioDiscovery/modtox/branch/master/graph/badge.svg
+       :target: https://pypi.org/project/modtox/
 
 Installation
 =================
