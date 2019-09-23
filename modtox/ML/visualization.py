@@ -1,6 +1,8 @@
 import umap
+from sklearn.manifold import TSNE
 import numpy as np
 import matplotlib.pyplot as plt
+from sklearn.decomposition import PCA
 import seaborn as sns
 import pandas as pd
 
@@ -9,6 +11,23 @@ import pandas as pd
 def UMAP_plot(X, Y, title="UMAP projection", fontsize=24, output="UMAPproj.png"):
     reducer = umap.UMAP(n_neighbors=5, min_dist=0.2)
     embedding = reducer.fit_transform(X)
+    fig, ax = plt.subplots()
+    ax.scatter(embedding[:, 0], embedding[:, 1], c=[sns.color_palette()[y] for y in np.array(Y)])
+    fig.gca().set_aspect('equal', 'datalim')
+    ax.set_title(title)
+    fig.savefig(output)
+
+def pca_plot(X, Y, title="PCA projection", output="PCAproj.png"):
+    pca = PCA(n_components=2)
+    embedding = pca.fit_transform(X)
+    fig, ax = plt.subplots()
+    ax.scatter(embedding[:, 0], embedding[:, 1], c=[sns.color_palette()[y] for y in np.array(Y)])
+    fig.gca().set_aspect('equal', 'datalim')
+    ax.set_title(title)
+    fig.savefig(output)
+
+def tsne_plot(X, Y, title="PCA projection", output="PCAproj.png"):
+    embedding = TSNE(n_components=2).fit_transform(X)
     fig, ax = plt.subplots()
     ax.scatter(embedding[:, 0], embedding[:, 1], c=[sns.color_palette()[y] for y in np.array(Y)])
     fig.gca().set_aspect('equal', 'datalim')

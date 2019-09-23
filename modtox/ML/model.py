@@ -1,6 +1,7 @@
 import matplotlib.cm as cm
 import operator
 from sklearn.model_selection import GridSearchCV
+from sklearn.metrics import precision_recall_curve
 import collections
 from sklearn.feature_selection import RFE
 import argparse
@@ -193,15 +194,24 @@ class GenericModel(object):
             self.results = [ pred == true for pred, true in zip(prediction, self.labels)]
 
         # Plot Features
-        vs.UMAP_plot(self.x_train_trans, self.labels, output="predictio_landscape.png")
-        vs.UMAP_plot(self.x_train_trans, self.labels, output="sample_landscape.png")
+        vs.UMAP_plot(self.x_train_trans, self.labels, output="predictio_landscape_umap.png")
+        vs.UMAP_plot(self.x_train_trans, self.labels, output="sample_landscape_umap.png")
+        vs.pca_plot(self.x_train_trans, self.labels, output="sample_landscape_pca.png")
+        vs.pca_plot(self.x_train_trans, self.labels, output="sample_landscape_pca.png")
+        vs.tsne_plot(self.x_train_trans, self.labels, output="sample_landscape_tsne.png")
+        vs.tsne_plot(self.x_train_trans, self.labels, output="sample_landscape_tsne.png")
 
         # Plot result each clf
         if type(self.clf) is list and len(self.clf) > 0: 
             for result, clf_title  in zip(self.clf_results, CLF):
-                vs.UMAP_plot(self.x_train_trans, result, output="{}.png".format(clf_title), title=clf_title)
+                vs.UMAP_plot(self.x_train_trans, result, output="{}_umap.png".format(clf_title), title=clf_title)
+                vs.pca_plot(self.x_train_trans, result, output="{}_pca.png".format(clf_title), title=clf_title)
+                vs.tsne_plot(self.x_train_trans, result, output="{}_tsne.png".format(clf_title), title=clf_title)
+                 
         else:
-            vs.UMAP_plot(self.x_train_trans, self.results, output="{}.png".format("result"), title="result")
+            vs.UMAP_plot(self.x_train_trans, self.results, output="{}_umap.png".format("result"), title="result")
+            vs.pca_plot(self.x_train_trans, self.results, output="{}_pca.png".format("result"), title="result")
+            vs.tsne_plot(self.x_train_trans, self.results, output="{}_tsne.png".format("result"), title="result")
 
         # Plot correlation matrice
         correlations = self.correlation_heatmap()
@@ -233,6 +243,7 @@ class GenericModel(object):
 
         # ROC CURVE
         self.plot_roc_curve_rate(self.labels, prediction_prob, prediction)
+        self.plot_pr_curve_rate(self.labels, prediction_prob, prediction)
 
         if output_model:
             pickle.dump(model, open(output, 'wb'))
@@ -269,6 +280,7 @@ class GenericModel(object):
         plt.savefig("roc_curve.png")
 
     def plot_roc_curve_rate(self, y_test, preds, pred, n_classes=2):
+        #Plot roc curve
         fpr, tpr, threshold = metrics.roc_curve(y_test, preds[:,1])
         roc_auc = metrics.auc(y_test, pred)
         fig, ax = plt.subplots()
@@ -280,6 +292,18 @@ class GenericModel(object):
         ax.set_ylabel('True Positive Rate')
         ax.set_xlabel('False Positive Rate')
         fig.savefig("roc_curve.png")
+
+    def plot_pr_curve_rate(self, y_test, preds, pred, n_classes=2):
+        #plot PR curve
+        precision, recall, thresholds = precision_recall_curve(y_test, preds[:,1])
+        fig, ax = plt.subplots()
+        ax.plot(recall, precision, alpha=0.2, color='b', label='PR curve')
+        ax.legend(loc = 'lower right')
+        ax.set_xlim([0, 1])
+        ax.set_ylim([0, 1])
+        ax.set_ylabel('Precision')
+        ax.set_xlabel('Recall')
+        fig.savefig("PR_curve.png")
 
 
     def load_model(self, model_file):
