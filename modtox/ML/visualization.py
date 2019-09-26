@@ -27,13 +27,36 @@ def UMAP_plot(X, Y, title="UMAP projection", fontsize=24, output="UMAPproj.png")
         pos = embedding[i, :2]
 	Y = list(map(lambda x: int(x), Y)) # trues --> 1, falses ---> 0
         ellipse_plot(pos, embedding[i, 2],embedding[i, 3], embedding[i, 4], ax, dmin=0.2, dmax=1.0, alpha=0.03, color = colors[np.array(Y)[i]])
-#    ax.scatter(embedding[:, 0], embedding[:, 1], c = [sns.color_palette()[y] for y in np.array(Y)])
     ax.scatter(embedding[:, 0], embedding[:, 1], c = Y, cmap = 'Spectral')
     fig.gca().set_aspect('equal', 'datalim')
     ax.set_title(title)
     fig.savefig(output)
 
+def variance_plot(X, output = "Variances_values.txt"):
+    pca_tot = PCA()
+    trans_X = pca_tot.fit_transform(X)
+    variance_contributions = pca_tot.explained_variance_ratio_
+    variance_explained = 0; j = 0; variance_vect = []
+    with open(output, 'w') as r:
+        while variance_explained < 0.99:
+            variance_explained +=  variance_contributions[j]
+            variance_vect.append(variance_explained)
+            r.write('{} component ---> Variance ratio: {} '.format(j+1, variance_explained))
+            j+=1
+
+    res = [x for x, val in enumerate(variance_vect) if val > 0.9] #list of indixes upper-90
+    fig, ax = plt.subplots()
+    ax.plot(range(j),variance_vect)
+    ax.axvline(x = res[0], ls = '--', c = 'r')
+    ax.set_title('Variance vs Dimension')
+    ax.set_xlabel('Dimensions')
+    ax.set_ylabel('Variance ratio')
+    fig.savefig('Variance.png')
+
+
 def pca_plot(X, Y, title="PCA projection", output="PCAproj.png"):
+   
+    variance_plot(X) 
     pca = PCA(n_components=2)
     embedding = pca.fit_transform(X)
     variance_ratio = pca.explained_variance_ratio_

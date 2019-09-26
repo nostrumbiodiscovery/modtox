@@ -7,7 +7,7 @@ from sklearn.feature_selection import RFE
 import argparse
 import pandas as pd
 import pickle
-from sklearn.metrics import confusion_matrix
+from sklearn.metrics import confusion_matrix, average_precision_score
 import sklearn.metrics as metrics
 from sklearn import svm
 import sys
@@ -22,6 +22,8 @@ from modtox.ML.external_descriptors import *
 from modtox.docking.glide import analyse as md
 import modtox.ML.classifiers as cl
 import modtox.ML.visualization as vs
+
+
 
 TITLE_MOL = "molecules"
 COLUMNS_TO_EXCLUDE = [ "Lig#", "Title", "Rank", "Conf#", "Pose#"]
@@ -281,8 +283,8 @@ class GenericModel(object):
 
     def plot_roc_curve_rate(self, y_test, preds, pred, n_classes=2):
         #Plot roc curve
-        fpr, tpr, threshold = metrics.roc_curve(y_test, preds[:,1])
-        roc_auc = metrics.auc(y_test, pred)
+        fpr, tpr, threshold = metrics.roc_curve(y_test, preds[:,1]) #preds contains a tuple of probabilities for each 
+        roc_auc = metrics.roc_auc_score(y_test, np.around(preds[:,1]))
         fig, ax = plt.subplots()
         ax.plot(fpr, tpr, 'b', label = 'AUC = %0.2f' % roc_auc)
         ax.legend(loc = 'lower right')
@@ -296,8 +298,9 @@ class GenericModel(object):
     def plot_pr_curve_rate(self, y_test, preds, pred, n_classes=2):
         #plot PR curve
         precision, recall, thresholds = precision_recall_curve(y_test, preds[:,1])
+        ap = average_precision_score(y_test, np.around(preds[:,1]), average = 'micro')
         fig, ax = plt.subplots()
-        ax.plot(recall, precision, alpha=0.2, color='b', label='PR curve')
+        ax.plot(recall, precision, alpha=0.2, color='b', label='AP = %0.2f' %ap)
         ax.legend(loc = 'lower right')
         ax.set_xlim([0, 1])
         ax.set_ylim([0, 1])
