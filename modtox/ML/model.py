@@ -66,6 +66,9 @@ class GenericModel(object):
             :ytrain: Pandas Dataframe with labels for training
             :ytest: Pandas DataFrame with labels for testing
         """
+        assert self.active, "--active flag must be given for analysis"        
+        assert self.inactive, "--inactive flag must be given for analysis"        
+
         actives = [ mol for mol in Chem.SDMolSupplier(self.active) if mol ]
         inactives = [ mol for mol in Chem.SDMolSupplier(self.inactive) if mol ]
             
@@ -194,11 +197,8 @@ class GenericModel(object):
             self.results = [ pred == true for pred, true in zip(prediction, self.labels)]
 
         # Plot Features
-        vs.UMAP_plot(self.x_train_trans, self.labels, output="predictio_landscape_umap.png")
-        vs.UMAP_plot(self.x_train_trans, self.labels, output="sample_landscape_umap.png")
+        vs.UMAP_plot(self.x_train_trans, self.labels, output="prediction_landscape_umap.png")
         vs.pca_plot(self.x_train_trans, self.labels, output="sample_landscape_pca.png")
-        vs.pca_plot(self.x_train_trans, self.labels, output="sample_landscape_pca.png")
-        vs.tsne_plot(self.x_train_trans, self.labels, output="sample_landscape_tsne.png")
         vs.tsne_plot(self.x_train_trans, self.labels, output="sample_landscape_tsne.png")
 
         # Plot result each clf
@@ -221,10 +221,10 @@ class GenericModel(object):
 
         #Report Errors
         print("\nMistaken Samples\n")
-        errors = [ self.mol_names[i] for i, v in enumerate(self.results) if not v ]
+        errors = [ self.mol_names[i] for i, v in enumerate(self.results) if not v]
         print(errors)
 
-        # Retrieve list with feature importace
+        # Retrieve list with feature importance
         print("\nImportant Features\n")
         important_features = self.feature_importance(clf=None, cv=1, number_feat=100, output_features="glide_features.txt")
         if print_most_important:
