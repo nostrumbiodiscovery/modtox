@@ -25,7 +25,7 @@ def UMAP_plot(X, Y, title="UMAP projection", fontsize=24, output="UMAPproj.png")
     fig, ax = plt.subplots()
     for i in range(embedding.shape[0]):
         pos = embedding[i, :2]
-	Y = list(map(lambda x: int(x), Y)) # trues --> 1, falses ---> 0
+        Y = list(map(lambda x: int(x), Y)) # trues --> 1, falses ---> 0
         ellipse_plot(pos, embedding[i, 2],embedding[i, 3], embedding[i, 4], ax, dmin=0.2, dmax=1.0, alpha=0.03, color = colors[np.array(Y)[i]])
     ax.scatter(embedding[:, 0], embedding[:, 1], c = Y, cmap = 'Spectral')
     fig.gca().set_aspect('equal', 'datalim')

@@ -173,7 +173,7 @@ class GenericModel(object):
     
         np.random.seed(7)
         cv = self.n_final_active if not cv else cv
-        if type(self.clf) is list and len(self.clf) > 0:
+        if self.is_stack_model():
             print("Stack model")
             last_clf = self.clf[-1]
             scaler = StandardScaler()
@@ -184,6 +184,7 @@ class GenericModel(object):
             #Stack all classfiers in a final one
             prediction = cross_val_predict(last_clf, scaler.fit_transform(X), self.labels, cv=cv)
             prediction_prob = cross_val_predict(last_clf, scaler.fit_transform(X), self.labels, cv=cv, method='predict_proba')
+            uncertanties = self.calculate_uncertanties(preds) 
             #Obtain results
             clf_result = np.vstack([preds, prediction])
             self.clf_results = [] # All classfiers
@@ -204,7 +205,7 @@ class GenericModel(object):
         vs.tsne_plot(self.x_train_trans, self.labels, output="sample_landscape_tsne.png")
 
         # Plot result each clf
-        if type(self.clf) is list and len(self.clf) > 0: 
+        if self.is_stack_model(): 
             for result, clf_title  in zip(self.clf_results, CLF):
                 vs.UMAP_plot(self.x_train_trans, result, output="{}_umap.png".format(clf_title), title=clf_title)
                 vs.pca_plot(self.x_train_trans, result, output="{}_pca.png".format(clf_title), title=clf_title)
@@ -223,7 +224,9 @@ class GenericModel(object):
 
         #Report Errors
         print("\nMistaken Samples\n")
-        errors = [ self.mol_names[i] for i, v in enumerate(self.results) if not v]
+        errors = [ self.mol_names[i] for i, v in enumerate(self.results) if not v ]
+        if self.is_stack_model(): 
+            uncertanties_errors = [ uncertanties[i] for i, v in enumerate(self.results) if not v ]
         print(errors)
 
         # Retrieve list with feature importance
@@ -249,6 +252,9 @@ class GenericModel(object):
 
         if output_model:
             pickle.dump(model, open(output, 'wb'))
+
+    def is_stack_model(self):
+        return type(self.clf) is list and len(self.clf) > 0
 
     def plot_features(self, plot_variables):
         """
@@ -308,6 +314,16 @@ class GenericModel(object):
         ax.set_xlabel('Recall')
         fig.savefig("PR_curve.png")
 
+    def calculate_uncertanties(self, predictions):
+        n_samples = len(predictions[0])
+        n_class_predicting_active = [0] * n_samples  
+        for pred in predictions:
+            for i, sample in enumerate(pred):
+                if sample == 1:
+                    n_class_predicting_active[i] += 1
+        n_classifiers = len(predictions)
+        uncertanties = [u/n_classifiers for u in n_class_predicting_active]
+        return uncertanties
 
     def load_model(self, model_file):
         print("Loading model")
