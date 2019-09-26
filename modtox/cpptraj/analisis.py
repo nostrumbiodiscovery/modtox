@@ -174,7 +174,6 @@ def analise(traj, resname, top, RMSD, cluster, last, clust_type, rmsd_type, siev
             mask="*"
         trajectory.cluster(trajectory.traj_converged, mask=mask, sieve=sieve)
     if last:
-        import pdb; pdb.set_trace()
         trajectory.save_traj(trajectory.traj, frame_indices=[trajectory.traj.n_frames-1], output_path=output_dir, output="last_snap.pdb")
     print("Trajectory {} sucessfuly analised".format(traj))
 
