@@ -148,7 +148,7 @@ def parse_args(parser):
     parser.add_argument('--clust_sieve', type=int, help='Sieve for clustering', default=10)
     parser.add_argument('--rmsd_type', type=str, help='Type of RMSD [BS (default), CA, all]', default="BS")
 
-def analise(traj, resname, top, RMSD, cluster, last, clust_type, rmsd_type, sieve):
+def analise(traj, resname, top, RMSD, cluster, last, clust_type, rmsd_type, sieve, output_dir="."):
     trajectory = CpptajBuilder(traj, top)
     if RMSD:
         trajectory.strip(trajectory.traj, autoimage=True)
@@ -174,7 +174,8 @@ def analise(traj, resname, top, RMSD, cluster, last, clust_type, rmsd_type, siev
             mask="*"
         trajectory.cluster(trajectory.traj_converged, mask=mask, sieve=sieve)
     if last:
-        trajectory.save_traj(trajectory.traj, frame_indices=[trajectory.traj.n_frames-1], output_path=".", output="last_snap.pdb")
+        import pdb; pdb.set_trace()
+        trajectory.save_traj(trajectory.traj, frame_indices=[trajectory.traj.n_frames-1], output_path=output_dir, output="last_snap.pdb")
     print("Trajectory {} sucessfuly analised".format(traj))
 
 

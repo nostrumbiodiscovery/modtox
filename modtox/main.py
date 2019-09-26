@@ -10,6 +10,7 @@ from argparse import RawTextHelpFormatter
 import modtox.docking.glide.glide as dk
 import modtox.docking.glide.analyse as gl
 import modtox.data.dude as dd
+import modtox.Helpers.helpers as hp
 import modtox.data.gpcrdb as gpcr
 
 MODELS = [{"csv":None, "pb":True, "fingerprint":True, "MACCS":False, "descriptors":False,
@@ -38,26 +39,31 @@ def parse_args():
     md.parse_args(parser)
     parser.add_argument('--dock',  action="store_true", help='Topology of your trajectory')
     parser.add_argument('--analysis', action="store_true", help='Calculate RMSD plot')
+    parser.add_argument('--debug', action="store_true", help='Run debug simulation')
+    parser.add_argument('--output_dir', help='Folder to store modtox files', default="modtox_results")
     args = parser.parse_args()
-    return args.traj, args.resname, args.active, args.inactive, args.top, args.glide_files, args.best, args.csv, args.RMSD, args.cluster, args.last, args.clust_type, args.rmsd_type, args.receptor, args.ligands_to_dock, args.grid, args.precision, args.maxkeep, args.maxref, args.dock, args.analysis, args.test, args.save, args.load, args.external_data, args.pb, args.cv, args.features, args.features_cv, args.descriptors, args.classifier, args.dude, args.grid_mol, args.clust_sieve
+    return args.traj, args.resname, args.active, args.inactive, args.top, args.glide_files, args.best, args.csv, args.RMSD, args.cluster, args.last, args.clust_type, args.rmsd_type, args.receptor, args.ligands_to_dock, args.grid, args.precision, args.maxkeep, args.maxref, args.dock, args.analysis, args.test, args.save, args.load, args.external_data, args.pb, args.cv, args.features, args.features_cv, args.descriptors, args.classifier, args.dude, args.grid_mol, args.clust_sieve, args.debug, args.output_dir
 
-def main(traj, resname, active=None, inactive=None, top=None, glide_files="*dock*.maegz", best=False, csv=False, RMSD=True, cluster=True, last=True, clust_type="BS", rmsd_type="BS", receptor="*pv*.maegz", grid=None, precision="SP", maxkeep=500, maxref=400, dock=False, analysis=True, test=None, save=None, load=None, external_data=None, pb=False, cv=2, features=5, features_cv=1, descriptors=[], classifier="svm", dude=None, grid_mol=2, sieve=10, debug=False):
+def main(traj, resname, active=None, inactive=None, top=None, glide_files="*dock*.maegz", best=False, csv=False, RMSD=True, cluster=True, last=True, clust_type="BS", rmsd_type="BS", receptor="*pv*.maegz", grid=None, precision="SP", maxkeep=500, maxref=400, dock=False, analysis=True, test=None, save=None, load=None, external_data=None, pb=False, cv=2, features=5, features_cv=1, descriptors=[], classifier="svm", dude=None, grid_mol=2, sieve=10, debug=False, output_dir = "modtox_results"):
+    if not os.path.exists(output_dir):
+        os.mkdir(output_dir)
     if dock:
-        # Analyze trajectory&extract clusters
-        print("Extracting clusters from MD")
-        if not os.path.exists("analisis"):
-            an.analise(traj, resname, top, RMSD, cluster, last, clust_type, rmsd_type, sieve)
-        # Cross dock all ligand to the extracted clusters
-        if dude:
-            active, inactive = dd.process_dude(dude, test=debug)
-        if active.split(".")[-1] == "csv":
-            active = gpcr.process_gpcrdb(active)
-            inactive = inactive
-        print("Docking active and inactive dataset")
-        if not debug:
-            docking_obj = dk.Glide_Docker(glob.glob("analisis/*clust*.pdb"), [active, inactive], test=debug)
-            docking_obj.dock(precision=precision, maxkeep=maxkeep, maxref=maxref, grid_mol=grid_mol)
-            print("Docking in process... Once is finished run the same command exchanging --dock by --analysis flag to build model")
+        with hp.cd(output_dir):
+            # Analyze trajectory&extract clusters
+            print("Extracting clusters from MD")
+            if not os.path.exists("analisis"):
+                an.analise(traj, resname, top, RMSD, cluster, last, clust_type, rmsd_type, sieve)
+            # Cross dock all ligand to the extracted clusters
+            if dude:
+                active, inactive = dd.process_dude(dude, test=debug)
+            if active.split(".")[-1] == "csv":
+                active = gpcr.process_gpcrdb(active)
+                inactive = inactive
+            print("Docking active and inactive dataset")
+            if not debug:
+                docking_obj = dk.Glide_Docker(glob.glob("analisis/*clust*.pdb"), [active, inactive], test=debug)
+                docking_obj.dock(precision=precision, maxkeep=maxkeep, maxref=maxref, grid_mol=grid_mol)
+                print("Docking in process... Once is finished run the same command exchanging --dock by --analysis flag to build model")
     elif analysis:
         if dude:
             active = "active.sdf"
@@ -82,7 +88,7 @@ if __name__ == "__main__":
     trajs, resname, active, inactive, top, glide_files, best, csv, RMSD, cluster, last, clust_type, rmsd_type, \
        receptor, ligands_to_dock, grid, precision, maxkeep, maxref, dock, analysis, test, \
        save, load, external_data, pb, cv, features, features_cv, descriptors, \
-       classifier, dude, grid_mol, sieve = parse_args()
+       classifier, dude, grid_mol, sieve, debug, output_dir = parse_args()
     main(trajs, resname, active, inactive, top, glide_files, best, csv, RMSD, cluster, last, clust_type, rmsd_type, 
         receptor, grid, precision, maxkeep, maxref, dock, analysis, test, save, load, external_data, pb, cv, features, features_cv, descriptors,
-        classifier, dude, grid_mol, sieve)
+        classifier, dude, grid_mol, sieve, debug, output_dir)

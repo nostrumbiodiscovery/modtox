@@ -5,7 +5,7 @@ import os
 import time
 
 
-DIR = os.path.dirname(__file__)
+DIR = os.path.dirname(os.path.abspath(__file__))
 
 def ligprep(sdf, template="ligprep.in", input_file="ligprep.in", schr=cs.SCHR, output="ligands_proc.mae"):
     template = os.path.join(DIR, template)
@@ -13,6 +13,7 @@ def ligprep(sdf, template="ligprep.in", input_file="ligprep.in", schr=cs.SCHR, o
     command = "{} -inp {}".format(ligprep_bin, input_file)
 
     # Templetize grid
+    print(template)
     with open(template, "r") as f:
         template = Template("".join(f.readlines()))
         content = template.safe_substitute(LIGANDS=sdf, OUTPUT=output)
