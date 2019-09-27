@@ -22,6 +22,7 @@ from modtox.ML.external_descriptors import *
 from modtox.docking.glide import analyse as md
 import modtox.ML.classifiers as cl
 import modtox.ML.visualization as vs
+import modtox.Helpers.helpers as hp
 
 
 
@@ -160,17 +161,15 @@ class GenericModel(object):
     def build_model(self, load=False, grid_search=False, output_model=None, save=False, cv=None, output_conf="conf.png", print_most_important=False):
         
     
+        ##Preprocess data##
         self.x_train_trans = self.__fit_transform__(self.features)
-
         self.headers = self.retrieve_header()
-        
-        #Filter columns
         if self.columns:
             user_indexes = np.array([self.headers.index(column) for column in self.columns], dtype=int)
             self.x_train_trans = self.x_train_trans[:, user_indexes]        
             self.headers = np.array(self.headers)[user_indexes].tolist()
         
-    
+        ##Classification##
         np.random.seed(7)
         cv = self.n_final_active if not cv else cv
         if self.is_stack_model():
@@ -199,59 +198,82 @@ class GenericModel(object):
             #Obtain results
             self.results = [ pred == true for pred, true in zip(prediction, self.labels)]
 
-        # Plot Features
-        vs.UMAP_plot(self.x_train_trans, self.labels, output="prediction_landscape_umap.png")
-        vs.pca_plot(self.x_train_trans, self.labels, output="sample_landscape_pca.png")
-        vs.tsne_plot(self.x_train_trans, self.labels, output="sample_landscape_tsne.png")
+        ##Dimensionallity reduction##
+        dim_reduct_folders = ["dimensionallity_reduction", "dimensionallity_reduction/umap",
+           "dimensionallity_reduction/tsne", "dimensionallity_reduction/pca"]
+        for folder in dim_reduct_folders:
+            if not os.path.exists(folder):
+                os.mkdir(folder)
+        with hp.cd(dim_reduct_folders[0]):
+            # Plot Sample landscape
+            vs.UMAP_plot(self.x_train_trans, self.labels, output="umap/prediction_landscape_umap.png")
+            vs.pca_plot(self.x_train_trans, self.labels, output="pca/sample_landscape_pca.png")
+            vs.tsne_plot(self.x_train_trans, self.labels, output="tsne/sample_landscape_tsne.png")
 
-        # Plot result each clf
-        if self.is_stack_model(): 
-            for result, clf_title  in zip(self.clf_results, CLF):
-                vs.UMAP_plot(self.x_train_trans, result, output="{}_umap.png".format(clf_title), title=clf_title)
-                vs.pca_plot(self.x_train_trans, result, output="{}_pca.png".format(clf_title), title=clf_title)
-                vs.tsne_plot(self.x_train_trans, result, output="{}_tsne.png".format(clf_title), title=clf_title)
-                 
-        else:
-            vs.UMAP_plot(self.x_train_trans, self.results, output="{}_umap.png".format("result"), title="result")
-            vs.pca_plot(self.x_train_trans, self.results, output="{}_pca.png".format("result"), title="result")
-            vs.tsne_plot(self.x_train_trans, self.results, output="{}_tsne.png".format("result"), title="result")
+            # Plot result each clf
+            if self.is_stack_model(): 
+                for i, (result, clf_title)  in enumerate(zip(self.clf_results, CLF)):
+                    vs.UMAP_plot(self.x_train_trans, result, output="umap/{}{}_umap.png".format(clf_title, i), title=clf_title)
+                    vs.pca_plot(self.x_train_trans, result, output="pca/{}{}_pca.png".format(clf_title, i), title=clf_title)
+                    vs.tsne_plot(self.x_train_trans, result, output="tsne/{}{}_tsne.png".format(clf_title, i), title=clf_title)
+            else:
+                vs.UMAP_plot(self.x_train_trans, self.results, output="umap/{}_umap.png".format("result"), title="result")
+                vs.pca_plot(self.x_train_trans, self.results, output="pca/{}_pca.png".format("result"), title="result")
+                vs.tsne_plot(self.x_train_trans, self.results, output="tsne/{}_tsne.png".format("result"), title="result")
 
-        # Plot correlation matrice
-        correlations = self.correlation_heatmap()
-        #Plot features
-        #self.plot_features([["Score", "Metal"],]) 
+        ##Feature importance##
+        feature_folders = ["features"]
+        for folder in feature_folders:
+            if not os.path.exists(folder):
+                os.mkdir(folder)
+        with hp.cd(feature_folders[0]):
+            #correlation matrice
+            correlations = self.correlation_heatmap()
 
+            #Plot features
+            #self.plot_features([["Score", "Metal"],]) 
 
-        #Report Errors
-        print("\nMistaken Samples\n")
-        errors = [ self.mol_names[i] for i, v in enumerate(self.results) if not v ]
-        if self.is_stack_model(): 
-            uncertanties_errors = [ uncertanties[i] for i, v in enumerate(self.results) if not v ]
-        print(errors)
-
-        # Retrieve list with feature importance
-        print("\nImportant Features\n")
-        important_features = self.feature_importance(clf=None, cv=1, number_feat=100, output_features="glide_features.txt")
-        if print_most_important:
-            print("\nMost Important Features\n")
-            print(" ".join(important_features))
+            # Retrieve list with feature importance
+            print("\nImportant Features\n")
+            important_features = self.feature_importance(clf=None, cv=1, number_feat=100, output_features="glide_features.txt")
+            if print_most_important:
+                print("\nMost Important Features\n")
+                print(" ".join(important_features))
     
-        # Confusion Matrix
-        conf = confusion_matrix(self.labels, prediction)
-        conf[1][0] += (self.n_initial_active - self.n_final_active)
-        conf[0][0] += (self.n_initial_inactive - self.n_final_inactive)
 
-        print("{} KFOLD Training Crossvalidation".format(cv))
-        print(conf.T)
+        ##Metrics##
+        metric_folders = ["metrics"]
+        for folder in metric_folders:
+            if not os.path.exists(folder):
+                os.mkdir(folder)
+        with hp.cd(metric_folders[0]):
+            # Confusion Matrix
+            conf = confusion_matrix(self.labels, prediction)
+            conf[1][0] += (self.n_initial_active - self.n_final_active)
+            conf[0][0] += (self.n_initial_inactive - self.n_final_inactive)
+            print("{} KFOLD Training Crossvalidation".format(cv))
+            print(conf.T)
+            md.conf(conf[1][1], conf[0][1], conf[0][0], conf[1][0], output=output_conf)
 
-        md.conf(conf[1][1], conf[0][1], conf[0][0], conf[1][0], output=output_conf)
+            # ROC/PR CURVE
+            self.plot_roc_curve_rate(self.labels, prediction_prob, prediction)
+            self.plot_pr_curve_rate(self.labels, prediction_prob, prediction)
 
-        # ROC CURVE
-        self.plot_roc_curve_rate(self.labels, prediction_prob, prediction)
-        self.plot_pr_curve_rate(self.labels, prediction_prob, prediction)
 
-        if output_model:
-            pickle.dump(model, open(output, 'wb'))
+        ##Model assesment##
+        model_folders = ["model"]
+        for folder in model_folders:
+            if not os.path.exists(folder):
+                os.mkdir(folder)
+        with hp.cd(model_folders[0]):
+            #Report Errors
+            print("\nMistaken Samples\n")
+            errors = [ self.mol_names[i] for i, v in enumerate(self.results) if not v ]
+            if self.is_stack_model(): 
+                uncertanties_errors = [ uncertanties[i] for i, v in enumerate(self.results) if not v ]
+            #np.savetxt("mistaken_samples.txt", errors)
+            #np.savetxt("uncertanties.txt", uncertanties_errors)
+            print(errors)
 
     def is_stack_model(self):
         return type(self.clf) is list and len(self.clf) > 0

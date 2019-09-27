@@ -41,7 +41,7 @@ def variance_plot(X, output = "Variances_values.txt"):
         while variance_explained < 0.99:
             variance_explained +=  variance_contributions[j]
             variance_vect.append(variance_explained)
-            r.write('{} component ---> Variance ratio: {} '.format(j+1, variance_explained))
+            r.write('{} component ---> Variance ratio: {} \n'.format(j+1, variance_explained))
             j+=1
 
     res = [x for x, val in enumerate(variance_vect) if val > 0.9] #list of indixes upper-90
