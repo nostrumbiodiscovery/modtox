@@ -21,7 +21,7 @@ install:
   - "%PYTHON%\\python.exe -m pip install --upgrade pip setuptools"
   - "%PYTHON%\\python.exe -m pip install wheel"
   - "%PYTHON%\\python.exe -m pip install pytest"
-  - export CPPTRAJHOME=C:\\
+  - CPPTRAJHOME=''
   - "%PYTHON%\\python.exe -m pip install modtox"
 
 
