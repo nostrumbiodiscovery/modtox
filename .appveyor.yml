@@ -4,6 +4,7 @@ build: off
 branches:
   only:
     - master
+    - appveyor
 
 environment:
   matrix:
