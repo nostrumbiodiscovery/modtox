@@ -20,7 +20,7 @@ install:
   - "%PYTHON%\\python.exe -m pip install --upgrade pip setuptools"
   - "%PYTHON%\\python.exe -m pip install wheel"
   - "%PYTHON%\\python.exe -m pip install pytest"
-  - "%PYTHON%\\python.exe -m pip install mdtraj prody biopython seaborn sklearn scipy==1.1.0 mordred nltk xgboost requests chembl_webresource_client matplotlib umap-learn"
+  - "%PYTHON%\\python.exe -m pip install modtox"
 
 
 test_script:
