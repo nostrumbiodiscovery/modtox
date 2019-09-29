@@ -19,8 +19,8 @@ install:
   - set PATH=%PYTHON%;%PYTHON%\\Scripts;%PATH%
   - where python
   - python -m conda install -c rdkit -c josan_bcn -c nostrumbiodiscovery -c ambermd -c conda-forge mdtraj biopython seaborn scipy==1.1.0 mordred nltk requests matplotlib  -y
-  - python -m conda install -c mndrake xgboost
-  - python -m pip install xgboost sklearn prody umap-learn pytest
+  - python -m conda install -c rdonnelly py-xgboost
+  - python -m pip install sklearn prody umap-learn pytest
 
 
 test_script:
