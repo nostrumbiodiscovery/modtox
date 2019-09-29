@@ -8,21 +8,17 @@ branches:
 
 environment:
   matrix:
-#    - PYTHON: "C:\\Python27"     # comment out due to tensorflow version
-#    - PYTHON: "C:\\Python27-x64" # comment out due to tensorflow version
-    - PYTHON: "C:\\Python35-x64"
-#    - PYTHON: "C:\\Python36-x32"
-    - PYTHON: "C:\\Python36-x64"
+    - PYTHON: "C:\\Miniconda3"
+      CONDA_PY: "35"
+      CONDA_NPY: "1.10"
 
 init:
   - "ECHO %PYTHON% %PYTHON_VERSION% %PYTHON_ARCH%"
 
 install:
-  - "%PYTHON%\\python.exe -m pip install --upgrade pip setuptools"
-  - "%PYTHON%\\python.exe -m pip install wheel"
-  - "%PYTHON%\\python.exe -m pip install pytest"
-  - set CPPTRAJHOME=''
-  - "%PYTHON%\\python.exe -m pip install modtox"
+  - set PATH=%PYTHON%;%PYTHON%\\Scripts;%PATH%
+  - where python
+  - python -m conda install modtox -y
 
 
 test_script:
