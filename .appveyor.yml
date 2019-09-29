@@ -18,7 +18,7 @@ init:
 install:
   - set PATH=%PYTHON%;%PYTHON%\\Scripts;%PATH%
   - where python
-  - python -m conda install -c rdkit -c josan_bcn -c nostrumbiodiscovery -c ambermd -c conda-forge modtox -y
+  - python -m conda install -c rdkit -c josan_bcn -c nostrumbiodiscovery -c ambermd -c conda-forge mdtraj umap-learn pytraj prody biopython seaborn sklearn scipy==1.1.0 mordred nltk xgboost requests chembl_webresource_client matplotlib  -y
 
 
 test_script:
