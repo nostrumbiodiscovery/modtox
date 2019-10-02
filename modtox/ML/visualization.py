@@ -6,6 +6,7 @@ import pandas as pd
 from scipy.linalg import svd
 from matplotlib.patches import Ellipse
 from sklearn.decomposition import PCA
+from sklearn.preprocessing import normalize
 from sklearn.manifold import TSNE
 from matplotlib.offsetbox import AnchoredText
 
@@ -36,17 +37,20 @@ def variance_plot(X, output = "Variances_values.txt"):
     pca_tot = PCA()
     trans_X = pca_tot.fit_transform(X)
     variance_contributions = pca_tot.explained_variance_ratio_
-    variance_explained = 0; j = 0; variance_vect = []
+    singular_values = normalize(pca_tot.singular_values_.reshape(1, -1), norm='l2').ravel()
+    variance_explained = 0; j = 0; variance_vect = []; singular_values_chosen = []
     with open(output, 'w') as r:
         while variance_explained < 0.99:
             variance_explained +=  variance_contributions[j]
             variance_vect.append(variance_explained)
+            singular_values_chosen.append(singular_values[j])
             r.write('{} component ---> Variance ratio: {} \n'.format(j+1, variance_explained))
             j+=1
 
     res = [x for x, val in enumerate(variance_vect) if val > 0.9] #list of indixes upper-90
     fig, ax = plt.subplots()
-    ax.plot(range(j),variance_vect)
+    ax.plot(range(j), variance_vect, c="y")
+    ax.bar(range(j), singular_values_chosen)
     ax.axvline(x = res[0], ls = '--', c = 'r')
     ax.set_title('Variance vs Dimension')
     ax.set_xlabel('Dimensions')
