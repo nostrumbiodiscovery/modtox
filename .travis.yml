@@ -37,7 +37,7 @@ install:
  - conda install -c conda-forge umap-learn
  - conda install -c ambermd pytraj
  - conda install -c omnia mdtraj
- - python -m pip install prody biopython seaborn sklearn scipy==1.1.0 mordred nltk xgboost requests chembl_webresource_client matplotlibi pubchempy
+ - python -m pip install prody biopython seaborn sklearn scipy==1.1.0 mordred nltk xgboost requests chembl_webresource_client matplotlib pubchempy
  - if [[ $TRAVIS_PYTHON_VERSION == 2.7 ]]; then pip install --force-reinstall gevent==1.2.2 greenlet==0.4.12; fi;
 
  # Install the most recent rdkit package from the RDKit anaconda channel.
