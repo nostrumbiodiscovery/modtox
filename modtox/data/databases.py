@@ -14,7 +14,7 @@ class PullDB():
         self.source = source
         if source == "zinc":
             self.inchi_keys = self.ids
-        elif source == "chembl":
+        if source == "chembl":
             self.inchi_keys = self._from_chembl(self.ids)
         self.n_compounds = len(ids)
         self.__zinc_url__ = " http://zinc15.docking.org/substances/{}.sdf"

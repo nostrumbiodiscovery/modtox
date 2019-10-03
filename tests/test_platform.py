@@ -9,6 +9,7 @@ TOP=os.path.join(DATA_PATH, "general/init.top")
 ACTIVE=os.path.join(DATA_PATH, "active_decoys/active.sdf")
 INACTIVE=os.path.join(DATA_PATH, "active_decoys/decoys.sdf")
 DUDE=os.path.join(DATA_PATH, "dude")
+PUBCHEM = os.path.join(DATA_PATH, "pubchem")
 GLIDE_FILES=os.path.join(DATA_PATH, "analysis/input__*dock_lib.maegz")
 RESNAME="198"
 ACTIVE_ANALYSIS=os.path.join(DATA_PATH, "analysis/active.sdf")
@@ -26,6 +27,12 @@ def test_docking(traj, resname, top, active, inactive):
                          ])
 def test_dude(traj, resname, top, dude):
      mn.main([traj,], resname, dude=dude, top=top, dock=True, debug=True)
+
+@pytest.mark.parametrize("traj, resname, top, pubchem", [
+                         (TRAJ, RESNAME, TOP, PUBCHEM),
+                         ])
+def test_pubchem(traj, resname, top, pubchem):
+     mn.main([traj,], resname, pubchem=pubchem, top=top, dock=True, debug=True)
 
 @pytest.mark.parametrize("traj, resname, top, active, inactive", [
                          (TRAJ, RESNAME, TOP, ACTIVE_ANALYSIS, INACTIVE_ANALYSIS),
