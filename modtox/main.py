@@ -95,7 +95,7 @@ if __name__ == "__main__":
     trajs, resname, active, inactive, top, glide_files, best, csv, RMSD, cluster, last, clust_type, rmsd_type, \
        receptor, ligands_to_dock, grid, precision, maxkeep, maxref, dock, build_model, predict, test, \
        save, load, external_data, pb, cv, features, features_cv, descriptors, \
-       classifier, dude, pubchem, stored_files, grid_mol, sieve, debug, output_dir = parse_args()
+       classifier, dude, pubchem, stored_files,csv_filename, substrate, grid_mol, sieve, debug, output_dir = parse_args()
     main(trajs, resname, active, inactive, top, glide_files, best, csv, RMSD, cluster, last, clust_type, rmsd_type, 
         receptor, grid, precision, maxkeep, maxref, dock, build_model, predict, test, save, load, external_data, pb, cv, features, features_cv, 
         descriptors,classifier, dude, pubchem, stored_files, csv_filename, substrate, grid_mol, sieve, debug, output_dir)

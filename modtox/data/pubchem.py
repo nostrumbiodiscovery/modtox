@@ -32,7 +32,6 @@ class PubChem():
            try: data = self.reading_from_file()
            except: 
                print('Need to provide a valid input file or to read the PubChem file')
-           
        self.active_names = [mol for mol, activity in data.items() if activity == 'Active']
        self.inactive_names = [mol for mol, activity in data.items() if activity == 'Inactive']
 
@@ -74,12 +73,13 @@ class PubChem():
         iks = self.to_inchi(which_names)
         #checking duplicates
         uniq = set(iks)
-        if len(iks) > uniq: #cheking repeated inchikeys
+        if len(iks) > len(uniq): #cheking repeated inchikeys
             indices = { value : [ i for i, v in enumerate(iks) if v == value ] for value in uniq }
             filt_inchi = [iks[x[0]] for x in indices.values()] #filtered inchikeys
             filt_ids = [which_names[x[0]] for x in indices.values()] #filtering ids: we only get the first
             return filt_inchi, filt_ids
-        else: 
+        else:
+            print('Duplicates not detected') 
             return iks, which_names
 
 
@@ -97,7 +97,6 @@ class PubChem():
                     i += 1
         with open(self.outputfile, 'wb') as op:
             pickle.dump(activities, op)
-
         return activities
 
     def reading_from_file(self): 
