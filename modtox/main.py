@@ -74,6 +74,9 @@ def main(traj, resname, active=None, inactive=None, top=None, glide_files="*dock
         if dude:
             active = "active.sdf"
             inactive = "inactive.sdf"
+        if pubchem:
+            active = "actives.sdf"
+            inactive = "inactives.sdf"
         # Analyze dockig files and build model features
         inp_files = glob.glob(glide_files)
         gl.analyze(inp_files, best=best, csv=csv, active=active, inactive=inactive, debug=debug)
