@@ -10,6 +10,8 @@ ACTIVE=os.path.join(DATA_PATH, "active_decoys/active.sdf")
 INACTIVE=os.path.join(DATA_PATH, "active_decoys/decoys.sdf")
 DUDE=os.path.join(DATA_PATH, "dude")
 PUBCHEM = os.path.join(DATA_PATH, "pubchem")
+CSV_FILENAME = "AID_1851_datatable_all.csv"
+SUBSTRATE = "p450-cyp2c9"
 GLIDE_FILES=os.path.join(DATA_PATH, "analysis/input__*dock_lib.maegz")
 RESNAME="198"
 ACTIVE_ANALYSIS=os.path.join(DATA_PATH, "analysis/active.sdf")
@@ -28,11 +30,11 @@ def test_docking(traj, resname, top, active, inactive):
 def test_dude(traj, resname, top, dude):
      mn.main([traj,], resname, dude=dude, top=top, dock=True, debug=True)
 
-@pytest.mark.parametrize("traj, resname, top, pubchem", [
-                         (TRAJ, RESNAME, TOP, PUBCHEM),
+@pytest.mark.parametrize("traj, resname, top, pubchem, csv_filename, substrate", [
+                         (TRAJ, RESNAME, TOP, PUBCHEM, CSV_FILENAME, SUBSTRATE),
                          ])
-def test_pubchem(traj, resname, top, pubchem):
-     mn.main([traj,], resname, pubchem=pubchem, top=top, dock=True, debug=True)
+def test_pubchem(traj, resname, top, pubchem, csv_filename, substrate):
+     mn.main([traj,], resname, pubchem=pubchem, csv_filename = csv_filename, substrate = substrate,top=top, dock=True, debug=True)
 
 @pytest.mark.parametrize("traj, resname, top, active, inactive", [
                          (TRAJ, RESNAME, TOP, ACTIVE_ANALYSIS, INACTIVE_ANALYSIS),
@@ -40,7 +42,7 @@ def test_pubchem(traj, resname, top, pubchem):
 def test_model_stack(traj, resname, top, active, inactive):
      initial_dir = os.getcwd()
      os.chdir(os.path.join(DATA_PATH, "analysis"))
-     mn.main(traj, resname, active, inactive, top=top, analysis=True, glide_files=GLIDE_FILES, debug=True, cv=2, classifier="stack")
+     mn.main(traj, resname, active, inactive, top=top, build_model=True, glide_files=GLIDE_FILES, debug=True, cv=2, classifier="stack")
      os.chdir(initial_dir)
 
 @pytest.mark.parametrize("traj, resname, top, active, inactive", [
@@ -49,5 +51,5 @@ def test_model_stack(traj, resname, top, active, inactive):
 def test_model_normal(traj, resname, top, active, inactive):
      initial_dir = os.getcwd()
      os.chdir(os.path.join(DATA_PATH, "analysis"))
-     mn.main(traj, resname, active, inactive, top=top, analysis=True, glide_files=GLIDE_FILES, debug=True, cv=2)
+     mn.main(traj, resname, active, inactive, top=top, build_model=True, glide_files=GLIDE_FILES, debug=True, cv=2)
      os.chdir(initial_dir)
