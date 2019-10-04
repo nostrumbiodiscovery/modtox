@@ -82,13 +82,13 @@ class PubChem():
             return iks, which_names
 
 
-    def reading_from_pubchem(self, total_molec = 100, trash_lines = 8):
-        with open(os.path.join(self.folder, self.filename), 'rb') as csvfile:
+    def reading_from_pubchem(self, total_molec = 100, trash_lines = 8, column_title='p450-cyp2c9 Activity Outcome'):
+        with open(os.path.join(self.folder, self.filename), 'r') as csvfile:
             spamreader = csv.reader(csvfile, delimiter=',')
             idx = None; activities = {}; i = 0
             for row in spamreader:
                 if i < total_molec + trash_lines:
-                    try: idx = row.index('p450-cyp2c9 Activity Outcome')        
+                    try: idx = row.index(column_title)        
                     except: pass
                     if idx != None and i > trash_lines: 
                         #name = pcp.Compound.from_cid(int(row[1])) 
