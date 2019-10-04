@@ -33,8 +33,8 @@ class PubChem():
            except: 
                print('Need to provide a valid input file or to read the PubChem file')
            
-       self.active_names = [j for i,j in enumerate(data.keys()) if data.values()[i] == 'Active']
-       self.inactive_names = [j for i,j in enumerate(data.keys()) if data.values()[i] == 'Inactive']
+       self.active_names = [mol for mol, activity in data.items() if activity == 'Active']
+       self.inactive_names = [mol for mol, activity in data.items() if activity == 'Inactive']
 
     def to_sdf(self, actype):
 
@@ -94,7 +94,6 @@ class PubChem():
                     if idx != None and i > trash_lines: 
                         name = row[1]
                         activities[name] = row[idx]
-                      #print('{}/{}'.format(i-trash_lines, total_molec))
                     i += 1
         with open(self.outputfile, 'wb') as op:
             pickle.dump(activities, op)
