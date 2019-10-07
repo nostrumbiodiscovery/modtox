@@ -42,7 +42,7 @@ def test_pubchem(traj, resname, top, pubchem, csv_filename, substrate):
 def test_model_stack(traj, resname, top, active, inactive):
      initial_dir = os.getcwd()
      os.chdir(os.path.join(DATA_PATH, "analysis"))
-     mn.main(traj, resname, active, inactive, top=top, build_model=True, glide_files=GLIDE_FILES, debug=True, cv=2, classifier="stack")
+     mn.main(traj, resname, active, inactive, top=top, assemble_model=True, glide_files=GLIDE_FILES, debug=True, cv=2, classifier="stack")
      os.chdir(initial_dir)
 
 @pytest.mark.parametrize("traj, resname, top, active, inactive", [
@@ -51,5 +51,5 @@ def test_model_stack(traj, resname, top, active, inactive):
 def test_model_normal(traj, resname, top, active, inactive):
      initial_dir = os.getcwd()
      os.chdir(os.path.join(DATA_PATH, "analysis"))
-     mn.main(traj, resname, active, inactive, top=top, build_model=True, glide_files=GLIDE_FILES, debug=True, cv=2)
+     mn.main(traj, resname, active, inactive, top=top, assemble_model=True, glide_files=GLIDE_FILES, debug=True, cv=2)
      os.chdir(initial_dir)
