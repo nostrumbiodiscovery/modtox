@@ -34,7 +34,7 @@ CLF = ["SVM", "XGBOOST", "KN", "TREE", "NB", "NB_final"]
 
 class GenericModel(object):
 
-    def __init__(self, active, inactive, clf, csv=None, test=None, pb=False, fp=False, descriptors=False, MACCS=True, columns=None, save_model = None):
+    def __init__(self, active, inactive, clf, save_model, csv=None, test=None, pb=False, fp=False, descriptors=False, MACCS=True, columns=None):
         self.active = active
         self.inactive = inactive
         self.clf = cl.retrieve_classifier(clf)
@@ -527,7 +527,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Build 2D QSAR model')
     parse_args(parser)
     args = parser.parse_args()
-    model = GenericModel(args.active, args.inactive, args.classifier, csv=args.external_data, test=args.test, pb=args.pb, columns=args.columns_to_keepargs.save_model)
+    model = GenericModel(args.active, args.inactive, args.classifier, args.save_model, csv=args.external_data, test=args.test, pb=args.pb, columns=args.columns_to_keep)
     if args.load:
         model = model.load(args.load)
     if args.build_model:
