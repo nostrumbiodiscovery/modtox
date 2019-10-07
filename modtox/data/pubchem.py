@@ -12,12 +12,13 @@ import modtox.Helpers.preprocess as pr
 
 class PubChem():
      
-    def __init__(self, pubchem_folder, stored_files):
+    def __init__(self, pubchem_folder, stored_files, csv_filename, outputfile, substrate):
         if stored_files != False: self.unknown = False
         else: self.unknown = True
-        self.filename = 'AID_1851_datatable_all.csv'
+        self.csv_filename = csv_filename
         self.folder = pubchem_folder
-        self.outputfile = 'inchi_all.pkl'
+        self.outputfile = outputfile
+        self.substrate = substrate
         self.splitting()
 
     def to_inchi(self, which_names):
@@ -25,15 +26,14 @@ class PubChem():
 
     def splitting(self):
        if self.unknown:
-           print('Reading from {}'.format(self.filename))
+           print('Reading from {}'.format(self.csv_filename))
            data = self.reading_from_pubchem()
        else:
-           try: data = reading_from_file()
+           try: data = self.reading_from_file()
            except: 
                print('Need to provide a valid input file or to read the PubChem file')
-           
-       self.active_names = [j for i,j in enumerate(data.keys()) if data.values()[i] == 'Active']
-       self.inactive_names = [j for i,j in enumerate(data.keys()) if data.values()[i] == 'Inactive']
+       self.active_names = [mol for mol, activity in data.items() if activity == 'Active']
+       self.inactive_names = [mol for mol, activity in data.items() if activity == 'Inactive']
 
     def to_sdf(self, actype):
 
@@ -73,44 +73,41 @@ class PubChem():
         iks = self.to_inchi(which_names)
         #checking duplicates
         uniq = set(iks)
-        if len(iks) > uniq: #cheking repeated inchikeys
+        if len(iks) > len(uniq): #cheking repeated inchikeys
             indices = { value : [ i for i, v in enumerate(iks) if v == value ] for value in uniq }
             filt_inchi = [iks[x[0]] for x in indices.values()] #filtered inchikeys
             filt_ids = [which_names[x[0]] for x in indices.values()] #filtering ids: we only get the first
             return filt_inchi, filt_ids
-        else: 
+        else:
+            print('Duplicates not detected') 
             return iks, which_names
 
 
     def reading_from_pubchem(self, total_molec = 100, trash_lines = 8):
-        with open(os.path.join(self.folder, self.filename), 'rb') as csvfile:
+        with open(os.path.join(self.folder, self.csv_filename), 'r') as csvfile:
             spamreader = csv.reader(csvfile, delimiter=',')
             idx = None; activities = {}; i = 0
             for row in spamreader:
                 if i < total_molec + trash_lines:
-                    try: idx = row.index('p450-cyp2c9 Activity Outcome')        
+                    try: idx = row.index(self.substrate + ' ' + 'Activity Outcome')        
                     except: pass
                     if idx != None and i > trash_lines: 
-                        #name = pcp.Compound.from_cid(int(row[1])) 
                         name = row[1]
                         activities[name] = row[idx]
-                        #activities[name.inchikey] = row[idx] #transformed to InchiKey
-                      #print('{}/{}'.format(i-trash_lines, total_molec))
                     i += 1
         with open(self.outputfile, 'wb') as op:
             pickle.dump(activities, op)
-
         return activities
 
-def reading_from_file(inputname = 'smiles_activities.pkl'): 
+    def reading_from_file(self): 
     
-    with open(inputname, 'rb') as f:
-        data = pickle.load(f)
-    return data
+        with open(self.inputname, 'rb') as f:
+            data = pickle.load(f)
+        return data
 
 
-def process_pubchem(pubchem_folder = 'home/moruiz/modtox_dir/modtox', stored_files = None, test=False):
-    pub_chem = PubChem(pubchem_folder, stored_files)
+def process_pubchem(pubchem_folder, csv_filename, substrate, stored_files = None, outputfile = 'inchi_all.pkl', test=False):
+    pub_chem = PubChem(pubchem_folder, stored_files, csv_filename, outputfile, substrate)
     active_output, n_actives = pub_chem.to_sdf(actype = 'actives')
     inactive_output, n_inactives = pub_chem.to_sdf(actype = 'inactives') 
     if not test: 
@@ -123,4 +120,5 @@ def process_pubchem(pubchem_folder = 'home/moruiz/modtox_dir/modtox', stored_fil
 def parse_args(parser):
     parser.add_argument("--pubchem",  type=str, help='Pubchem folder')
     parser.add_argument("--stored_files",  action = 'store_true', help='Pubchem folder')
-
+    parser.add_argument("--csv_filename", type=str, help = "csv filename with activities data (e.g. 'AID_1851_datatable_all.csv')")
+    parser.add_argument("--substrate", type = str, help = "substrate name codification on csv file (e.g. p450-cyp2c9)") 
