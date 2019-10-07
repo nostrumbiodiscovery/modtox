@@ -44,9 +44,9 @@ def parse_args():
     parser.add_argument('--debug', action="store_true", help='Run debug simulation')
     parser.add_argument('--output_dir', help='Folder to store modtox files', default="modtox_results")
     args = parser.parse_args()
-    return args.traj, args.resname, args.active, args.inactive, args.top, args.glide_files, args.best, args.csv, args.RMSD, args.cluster, args.last, args.clust_type, args.rmsd_type, args.receptor, args.ligands_to_dock, args.grid, args.precision, args.maxkeep, args.maxref, args.dock, args.analysis, args.test, args.save, args.load, args.external_data, args.pb, args.cv, args.features, args.features_cv, args.descriptors, args.classifier, args.dude, args.pubchem, args.stored_files, args.grid_mol, args.clust_sieve, args.debug, args.output_dir
+    return args.traj, args.resname, args.active, args.inactive, args.top, args.glide_files, args.best, args.csv, args.RMSD, args.cluster, args.last, args.clust_type, args.rmsd_type, args.receptor, args.ligands_to_dock, args.grid, args.precision, args.maxkeep, args.maxref, args.dock, args.analysis, args.test, args.save, args.load, args.external_data, args.pb, args.cv, args.features, args.features_cv, args.descriptors, args.classifier, args.save_model, args.dude, args.pubchem, args.stored_files, args.grid_mol, args.clust_sieve, args.debug, args.output_dir
 
-def main(traj, resname, active=None, inactive=None, top=None, glide_files="*dock*.maegz", best=False, csv=False, RMSD=True, cluster=True, last=True, clust_type="BS", rmsd_type="BS", receptor="*pv*.maegz", grid=None, precision="SP", maxkeep=500, maxref=400, dock=False, analysis=True, test=None, save=None, load=None, external_data=None, pb=False, cv=2, features=5, features_cv=1, descriptors=[], classifier="svm", dude=None, pubchem = None, stored_files = False, grid_mol=2, sieve=10, debug=False, output_dir = "modtox_results"):
+def main(traj, resname, active=None, inactive=None, top=None, glide_files="*dock*.maegz", best=False, csv=False, RMSD=True, cluster=True, last=True, clust_type="BS", rmsd_type="BS", receptor="*pv*.maegz", grid=None, precision="SP", maxkeep=500, maxref=400, dock=False, analysis=True, test=None, save=None, load=None, external_data=None, pb=False, cv=2, features=5, features_cv=1, descriptors=[], classifier="svm", save_model = None, dude=None, pubchem = None, stored_files = False, grid_mol=2, sieve=10, debug=False, output_dir = "modtox_results"):
     if not os.path.exists(output_dir):
         os.mkdir(output_dir)
     if dock:
@@ -80,7 +80,7 @@ def main(traj, resname, active=None, inactive=None, top=None, glide_files="*dock
         for model in MODELS:
             try:
                 model_obj = md.GenericModel(active, inactive, classifier, csv=model["csv"], test=test, pb=model["pb"], 
-                    fp=model["fingerprint"], descriptors=model["descriptors"], MACCS=model["MACCS"])
+                    fp=model["fingerprint"], descriptors=model["descriptors"], MACCS=model["MACCS"], save_model)
                 model_obj.build_model(cv=cv, output_conf=model["conf_matrix"])
                 #model_obj.feature_importance(cl.XGBOOST, cv=features_cv, number_feat=features, output_features=model["output_feat"])
             except IOError:
@@ -93,7 +93,7 @@ if __name__ == "__main__":
     trajs, resname, active, inactive, top, glide_files, best, csv, RMSD, cluster, last, clust_type, rmsd_type, \
        receptor, ligands_to_dock, grid, precision, maxkeep, maxref, dock, analysis, test, \
        save, load, external_data, pb, cv, features, features_cv, descriptors, \
-       classifier, dude, pubchem, stored_files, grid_mol, sieve, debug, output_dir = parse_args()
+       classifier, save_model, dude, pubchem, stored_files, grid_mol, sieve, debug, output_dir = parse_args()
     main(trajs, resname, active, inactive, top, glide_files, best, csv, RMSD, cluster, last, clust_type, rmsd_type, 
         receptor, grid, precision, maxkeep, maxref, dock, analysis, test, save, load, external_data, pb, cv, features, features_cv, descriptors,
-        classifier, dude, pubchem, stored_files, grid_mol, sieve, debug, output_dir)
+        classifier, save_model, dude, pubchem, stored_files, grid_mol, sieve, debug, output_dir)
