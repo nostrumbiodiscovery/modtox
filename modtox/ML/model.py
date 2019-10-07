@@ -34,7 +34,7 @@ CLF = ["SVM", "XGBOOST", "KN", "TREE", "NB", "NB_final"]
 
 class GenericModel(object):
 
-    def __init__(self, active, inactive, clf, csv=None, test=None, pb=False, fp=False, descriptors=False, MACCS=True, columns=None):
+    def __init__(self, active, inactive, clf, save_model, csv=None, test=None, pb=False, fp=False, descriptors=False, MACCS=True, columns=None):
         self.active = active
         self.inactive = inactive
         self.clf = cl.retrieve_classifier(clf)
@@ -47,6 +47,8 @@ class GenericModel(object):
         self.test = test
         self.data = self._load_training_set()
         self.features = self.data.iloc[:, :-1]
+        if save_model: self.save_model = True
+        else: self.save_model = False
         self.labels = self.data.iloc[:, -1]
         if self.test:
             self.data_test = self._load_test()
@@ -156,7 +158,12 @@ class GenericModel(object):
                                                        ])
         return pre.fit_transform(X)
             
-        
+    def saving_model(self):
+
+        filename = 'fitted_models.pkl'
+        for clf in self.clf:
+           clf.fit(self.x_train_trans, self.labels)
+           pickle.dump(clf, open(filename, 'wb'))
 
     def build_model(self, load=False, grid_search=False, output_model=None, save=False, cv=None, output_conf="conf.png", print_most_important=False):
         
@@ -167,8 +174,10 @@ class GenericModel(object):
         if self.columns:
             user_indexes = np.array([self.headers.index(column) for column in self.columns], dtype=int)
             self.x_train_trans = self.x_train_trans[:, user_indexes]        
-            self.headers = np.array(self.headers)[user_indexes].tolist()
-        
+            self.headers = np.array(self.headers)[user_indexes].tolist()       
+ 
+        if self.save_model: self.saving_model()
+
         ##Classification##
         np.random.seed(7)
         cv = self.n_final_active if not cv else cv
@@ -180,7 +189,7 @@ class GenericModel(object):
             preds = np.array([ cross_val_predict(c, self.x_train_trans, self.labels, cv=cv) for c in self.clf[:-1 ]])
             print(self.x_train_trans.shape, preds.T.shape)
             X = np.hstack( [self.x_train_trans, preds.T] )
-            #Stack all classfiers in a final one
+            #Stack all classifiers in a final one
             prediction = cross_val_predict(last_clf, scaler.fit_transform(X), self.labels, cv=cv)
             prediction_prob = cross_val_predict(last_clf, scaler.fit_transform(X), self.labels, cv=cv, method='predict_proba')
             uncertanties = self.calculate_uncertanties(preds) 
@@ -511,13 +520,14 @@ def parse_args(parser):
     parser.add_argument('--test_importance', nargs="+", help="Name of Molecules to include on testing feature importance", default=[])
     parser.add_argument('--print_most_important', action="store_true", help="Print most important features name to screen to use them as command lina arguments with --columns_to_keep")
     parser.add_argument('--build_model', action="store_true", help='Compute crossvalidation over active and inactives')
+    parser.add_argument('--save_model', action="store_true", help='Would you like to save the models')
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Build 2D QSAR model')
     parse_args(parser)
     args = parser.parse_args()
-    model = GenericModel(args.active, args.inactive, args.classifier, csv=args.external_data, test=args.test, pb=args.pb, columns=args.columns_to_keep)
+    model = GenericModel(args.active, args.inactive, args.classifier, args.save_model, csv=args.external_data, test=args.test, pb=args.pb, columns=args.columns_to_keep)
     if args.load:
         model = model.load(args.load)
     if args.build_model:
