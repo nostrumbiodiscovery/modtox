@@ -1,4 +1,4 @@
-# conda build -c rdkit -c josan_bcn -c nostrumbiodiscovery -c ambermd -c conda-forge conda_recipe/ python=3.6
+# conda build -c bioconda -c rdkit -c josan_bcn -c nostrumbiodiscovery -c ambermd -c conda-forge conda_recipe/ python=3.6
 package:
   name: modtox
   version: "1.0.0"
@@ -40,6 +40,7 @@ requirements:
     - pytest
     - greenlet==0.4.12
     - gevent==1.2.2
+    - pubchempy
 
 test:
  imports:
