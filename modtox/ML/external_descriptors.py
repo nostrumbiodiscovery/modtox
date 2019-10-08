@@ -1,12 +1,12 @@
 import pandas as pd
 import numpy as np
-
+import os
 
 
 class ExternalData():
 
     def __init__(self, csv, mol_names, exclude=[]):
-        self.csv = csv
+        self.csv = os.path.join("glide",  csv)
         self.mol_names = mol_names       
         self.exclude = exclude
 
@@ -37,7 +37,7 @@ class ExternalData():
         df = df.replace("--",  np.nan)
         features_to_drop = [feature for field in self.exclude for feature in headers if field in feature ]
         df.drop(features_to_drop, axis=1, inplace=True)
-        df.to_csv("model_features.txt")
+        df.to_csv(os.path.join("glide", "model_features.txt"))
         return df
 
     def retrieve_molecule_names(self):

@@ -23,9 +23,10 @@ URL = "https://www.ebi.ac.uk/chembl/api/data/molecule/{}.sdf"
 
 class DUDE(dbs.PullDB):
     
-    def __init__(self, dude_folder):
+    def __init__(self, dude_folder, status):
         os.system("gunzip {}".format(os.path.join(dude_folder, "*.gz")))
         self.actives_ism = os.path.join(dude_folder, "actives_final.ism")
+        self.status = status
         self.decoys_ism = os.path.join(dude_folder, "decoys_final.ism")
         self.actives_sdf = os.path.join(dude_folder, "actives_final.sdf")
         self.decoys_sdf = os.path.join(dude_folder, "decoys_final.sdf")
@@ -55,17 +56,18 @@ class DUDE(dbs.PullDB):
         similarity = np.array([DataStructs.FingerprintSimilarity(ref, fp) for fp in fps[1:]])
         idx = np.round(np.linspace(0, len(similarity) - 1, n_output_mols)).astype(int)
         molecules_out = mols[idx]
-        w = Chem.SDWriter(output_sdf) 
+        out = output_sdf.split('.')[0] + "_" + self.status + ".sdf"
+        w = Chem.SDWriter(out) 
         for m in molecules_out: w.write(m)
-        return output_sdf
+        return out
         
 
 def parse_args(parser):
     parser.add_argument("--dude",  type=str, help='DUD-E dataset folder')
     parser.add_argument("--output", type=str, help='sdf output', default="output.sdf")
 
-def process_dude(dude_folder, output="cyp_actives.sdf", test=False):
-    dud_e = DUDE(dude_folder)
+def process_dude(dude_folder, status, output="cyp_actives.sdf", test=False):
+    dud_e = DUDE(dude_folder, status)
     active_names = dud_e.active_names()
     active_output, n_actives = dud_e.to_sdf()
     inactive_output = dud_e.filter_for_similarity(dud_e.decoys_sdf, n_actives) 

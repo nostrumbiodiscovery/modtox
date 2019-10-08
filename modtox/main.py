@@ -44,11 +44,12 @@ def parse_args():
     parser.add_argument('--predict', action = 'store_true', help = 'Predict an external set')
     parser.add_argument('--debug', action="store_true", help='Run debug simulation')
     parser.add_argument('--output_dir', help='Folder to store modtox files', default="modtox_results")
+    parser.add_argument('--status', default = "train", help= "Train or test")
     args = parser.parse_args()
-    return args.traj, args.resname, args.active, args.inactive, args.top, args.glide_files, args.best, args.csv, args.RMSD, args.cluster, args.last, args.clust_type, args.rmsd_type, args.receptor, args.ligands_to_dock, args.grid, args.precision, args.maxkeep, args.maxref, args.dock, args.assemble_model, args.predict, args.test, args.save, args.load, args.external_data, args.pb, args.cv, args.features, args.features_cv, args.descriptors, args.classifier, args.dude, args.pubchem, args.stored_files, args.csv_filename, args.substrate, args.grid_mol, args.clust_sieve, args.debug, args.output_dir
+    return args.traj, args.resname, args.active, args.inactive, args.top, args.glide_files, args.best, args.csv, args.RMSD, args.cluster, args.last, args.clust_type, args.rmsd_type, args.receptor, args.ligands_to_dock, args.grid, args.precision, args.maxkeep, args.maxref, args.dock, args.assemble_model, args.predict, args.test, args.save, args.load, args.external_data, args.pb, args.cv, args.features, args.features_cv, args.descriptors, args.classifier, args.filename_model, args.save_model, args.dude, args.pubchem, args.stored_files, args.csv_filename, args.substrate, args.grid_mol, args.clust_sieve, args.debug, args.output_dir, args.status
 
 
-def main(traj, resname, active=None, inactive=None, top=None, glide_files="*dock*.maegz", best=False, csv=False, RMSD=True, cluster=True, last=True, clust_type="BS", rmsd_type="BS", receptor="*pv*.maegz", grid=None, precision="SP", maxkeep=500, maxref=400, dock=False, assemble_model=True, predict = False, test=None, save=None, load=None, external_data=None, pb=False, cv=2, features=5, features_cv=1, descriptors=[], classifier="svm", save_model = None, dude=None, pubchem = None, stored_files = False, csv_filename=None, substrate=None, grid_mol=2, sieve=10, debug=False, output_dir = "modtox_results"):
+def main(traj, resname, active=None, inactive=None, top=None, glide_files="*dock*.maegz", best=False, csv=False, RMSD=True, cluster=True, last=True, clust_type="BS", rmsd_type="BS", receptor="*pv*.maegz", grid=None, precision="SP", maxkeep=500, maxref=400, dock=False, assemble_model=True, predict = False, test=None, save=None, load=None, external_data=None, pb=False, cv=2, features=5, features_cv=1, descriptors=[], classifier="svm", save_model = None, filename_model = None, dude=None, pubchem = None, stored_files = False, csv_filename=None, substrate=None, grid_mol=2, sieve=10, debug=False, output_dir = "modtox_results", status = None):
     if not os.path.exists(output_dir):
         os.mkdir(output_dir)
     if dock:
@@ -59,10 +60,9 @@ def main(traj, resname, active=None, inactive=None, top=None, glide_files="*dock
                 an.analise(traj, resname, top, RMSD, cluster, last, clust_type, rmsd_type, sieve)
             # Cross dock all ligand to the extracted clusters
             if dude:
-                active, inactive = dd.process_dude(dude, test=debug)
-                print('actives', active)
+                active, inactive = dd.process_dude(dude, status, test=debug)
             if pubchem:
-                active, inactive = pchm.process_pubchem(pubchem, csv_filename, substrate, stored_files, test=debug)
+                active, inactive = pchm.process_pubchem(pubchem, csv_filename, status, substrate, stored_files, test=debug)
             if active.split(".")[-1] == "csv":
                 active = gpcr.process_gpcrdb(active)
                 inactive = inactive
@@ -72,34 +72,40 @@ def main(traj, resname, active=None, inactive=None, top=None, glide_files="*dock
                 docking_obj.dock(precision=precision, maxkeep=maxkeep, maxref=maxref, grid_mol=grid_mol)
                 print("Docking in process... Once is finished run the same command exchanging --dock by --assemble_model flag to build model")
     if assemble_model:
-        if dude:
-            active = "active.sdf"
-            inactive = "inactive.sdf"
-        if pubchem:
-            active = "actives.sdf"
-            inactive = "inactives.sdf"
+        results_folder = 'from_train'
+        if dude or pubchem:
+            active = "active_train.sdf"
+            inactive = "inactive_train.sdf"
         # Analyze dockig files and build model features
         inp_files = glob.glob(glide_files)
         gl.analyze(inp_files, best=best, csv=csv, active=active, inactive=inactive, debug=debug)
         # Build Model
         for model in MODELS:
             try:
-                model_obj = md.GenericModel(active, inactive, classifier, save_model, csv=model["csv"], test=test, pb=model["pb"], 
-                    fp=model["fingerprint"], descriptors=model["descriptors"], MACCS=model["MACCS"])
+                model_obj = md.GenericModel(active, inactive, classifier, save_model, filename_model, results_folder = results_folder, csv=model["csv"], test=test, pb=model["pb"], fp=model["fingerprint"], descriptors=model["descriptors"], MACCS=model["MACCS"])
                 model_obj.build_model(cv=cv, output_conf=model["conf_matrix"])
                 #model_obj.feature_importance(cl.XGBOOST, cv=features_cv, number_feat=features, output_features=model["output_feat"])
-            except IOError:
+            except IOError as e:
+                print(e)
                 print("Model with descriptors not build for failure to connect to client webserver")
         print("Models sucesfully build. Confusion_matrix.png outputted")
  
-    if predict: pass
+    if predict:
+        results_folder = 'from_test'
+        assert os.path.isfile(filename_model)== True
+        if dude or pubchem:
+            active = "active_test.sdf"
+            inactive = "inactive_test.sdf"
 
+        for model in MODELS: 
+            model_obj = md.GenericModel(active, inactive, classifier, save_model, filename_model, results_folder = results_folder, csv=model["csv"], test=test, pb=model["pb"], fp=model["fingerprint"], descriptors=model["descriptors"], MACCS=model["MACCS"])
+            model_obj.external_prediction()
 
 if __name__ == "__main__":
     trajs, resname, active, inactive, top, glide_files, best, csv, RMSD, cluster, last, clust_type, rmsd_type, \
        receptor, ligands_to_dock, grid, precision, maxkeep, maxref, dock, assemble_model, predict, test, \
        save, load, external_data, pb, cv, features, features_cv, descriptors, \
-       classifier, dude, pubchem, stored_files, csv_filename, substrate, grid_mol, sieve, debug, output_dir = parse_args()
+       classifier, filename_model, save_model, dude, pubchem, stored_files, csv_filename, substrate, grid_mol, sieve, debug, output_dir, status = parse_args()
     main(trajs, resname, active, inactive, top, glide_files, best, csv, RMSD, cluster, last, clust_type, rmsd_type, 
         receptor, grid, precision, maxkeep, maxref, dock, assemble_model, predict, test, save, load, external_data, pb, cv, features, features_cv, 
-        descriptors,classifier, dude, pubchem, stored_files, csv_filename, substrate, grid_mol, sieve, debug, output_dir)
+        descriptors, classifier, save_model, filename_model, dude, pubchem, stored_files, csv_filename, substrate, grid_mol, sieve, debug, output_dir, status)

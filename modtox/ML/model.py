@@ -34,7 +34,7 @@ CLF = ["SVM", "XGBOOST", "KN", "TREE", "NB", "NB_final"]
 
 class GenericModel(object):
 
-    def __init__(self, active, inactive, clf, save_model, csv=None, test=None, pb=False, fp=False, descriptors=False, MACCS=True, columns=None):
+    def __init__(self, active, inactive, clf, save_model, filename_model, results_folder,  csv=None, test=None, pb=False, fp=False, descriptors=False, MACCS=True, columns=None):
         self.active = active
         self.inactive = inactive
         self.clf = cl.retrieve_classifier(clf)
@@ -47,12 +47,15 @@ class GenericModel(object):
         self.test = test
         self.data = self._load_training_set()
         self.features = self.data.iloc[:, :-1]
-        if save_model: self.save_model = True
-        else: self.save_model = False
         self.labels = self.data.iloc[:, -1]
+        self.filename_model = filename_model
+        self.results_folder = results_folder
         if self.test:
             self.data_test = self._load_test()
-            
+        if save_model: self.save_model = True
+        else: self.save_model = False
+
+
     def _load_test(self):
         test_molecules = [ mol for mol in Chem.SDMolSupplier(self.test) if mol ]
         test_df = pd.DataFrame({TITLE_MOL: test_molecules })
@@ -158,14 +161,25 @@ class GenericModel(object):
                                                        ])
         return pre.fit_transform(X)
             
-    def saving_model(self):
+    def saving_model(self, cv):
+        scaler = StandardScaler() 
+        f = open(os.path.join(self.results_folder,self.filename_model), 'wb')
+        if self.is_stack_model():
+            for clf in self.clf[:-1]:
+                clf.fit(self.x_train_trans, self.labels)
+                pickle.dump(clf, f)
+                #and for the last model
+            preds_train = np.array([ cross_val_predict(c, self.x_train_trans, self.labels, cv=cv) for c in self.clf[:-1 ]])
+            X = np.hstack( [self.x_train_trans, preds_train.T] )
+            last_model = self.clf[-1].fit(scaler.fit_transform(X), self.labels)
+        else:
+            last_model = self.clf.fit(self.x_train_trans, self.labels)
 
-        filename = 'fitted_models.pkl'
-        for clf in self.clf:
-           clf.fit(self.x_train_trans, self.labels)
-           pickle.dump(clf, open(filename, 'wb'))
+        pickle.dump(last_model, f)
 
-    def build_model(self, load=False, grid_search=False, output_model=None, save=False, cv=None, output_conf="conf.png", print_most_important=False):
+        f.close()
+       
+    def build_model(self, load=False, grid_search=False, output_conf=None, save=False, cv=None):
         
     
         ##Preprocess data##
@@ -176,7 +190,7 @@ class GenericModel(object):
             self.x_train_trans = self.x_train_trans[:, user_indexes]        
             self.headers = np.array(self.headers)[user_indexes].tolist()       
  
-        if self.save_model: self.saving_model()
+        if self.save_model: self.saving_model(cv)
 
         ##Classification##
         np.random.seed(7)
@@ -190,29 +204,37 @@ class GenericModel(object):
             print(self.x_train_trans.shape, preds.T.shape)
             X = np.hstack( [self.x_train_trans, preds.T] )
             #Stack all classifiers in a final one
-            prediction = cross_val_predict(last_clf, scaler.fit_transform(X), self.labels, cv=cv)
-            prediction_prob = cross_val_predict(last_clf, scaler.fit_transform(X), self.labels, cv=cv, method='predict_proba')
-            uncertanties = self.calculate_uncertanties(preds) 
+            self.prediction = cross_val_predict(last_clf, scaler.fit_transform(X), self.labels, cv=cv)
+            self.prediction_prob = cross_val_predict(last_clf, scaler.fit_transform(X), self.labels, cv=cv, method='predict_proba')
+            self.uncertanties = self.calculate_uncertanties(preds) 
             #Obtain results
-            clf_result = np.vstack([preds, prediction])
+            clf_result = np.vstack([preds, self.prediction])
             self.clf_results = [] # All classfiers
             for results in clf_result:
                 self.clf_results.append([pred == true for pred, true  in zip(results, self.labels)])
-            self.results = [ pred == true for pred, true in zip(prediction, self.labels)] #last classifier
+            self.results = [ pred == true for pred, true in zip(self.prediction, self.labels)] #last classifier
             
         else:
             print("Normal model")
-            prediction = cross_val_predict(self.clf, self.x_train_trans, self.labels, cv=cv)
-            prediction_prob = cross_val_predict(self.clf, self.x_train_trans, self.labels, cv=cv, method='predict_proba')
+            self.prediction = cross_val_predict(self.clf, self.x_train_trans, self.labels, cv=cv)
+            self.prediction_prob = cross_val_predict(self.clf, self.x_train_trans, self.labels, cv=cv, method='predict_proba')
             #Obtain results
-            self.results = [ pred == true for pred, true in zip(prediction, self.labels)]
+            self.results = [ pred == true for pred, true in zip(self.prediction, self.labels)]
 
+        #finally postprocessing results
+
+        self.postprocessing()
+
+
+    def postprocessing(self, print_most_important=False, output_conf="conf.png"):
+        print(self.results_folder)
         ##Dimensionallity reduction##
         dim_reduct_folders = ["dimensionallity_reduction", "dimensionallity_reduction/umap",
            "dimensionallity_reduction/tsne", "dimensionallity_reduction/pca"]
+        dim_reduct_folders = [os.path.join(self.results_folder, direc) for direc in dim_reduct_folders]
         for folder in dim_reduct_folders:
             if not os.path.exists(folder):
-                os.mkdir(folder)
+                os.makedirs(folder)
         with hp.cd(dim_reduct_folders[0]):
             # Plot Sample landscape
             vs.UMAP_plot(self.x_train_trans, self.labels, output="umap/prediction_landscape_umap.png")
@@ -231,7 +253,7 @@ class GenericModel(object):
                 vs.tsne_plot(self.x_train_trans, self.results, output="tsne/{}_tsne.png".format("result"), title="result")
 
         ##Feature importance##
-        feature_folders = ["features"]
+        feature_folders = [os.path.join(self.results_folder, "features")]
         for folder in feature_folders:
             if not os.path.exists(folder):
                 os.mkdir(folder)
@@ -251,26 +273,27 @@ class GenericModel(object):
     
 
         ##Metrics##
-        metric_folders = ["metrics"]
+        metric_folders = [os.path.join(self.results_folder,"metrics")]
         for folder in metric_folders:
             if not os.path.exists(folder):
                 os.mkdir(folder)
         with hp.cd(metric_folders[0]):
             # Confusion Matrix
-            conf = confusion_matrix(self.labels, prediction)
+            conf = confusion_matrix(self.labels, self.prediction)
             conf[1][0] += (self.n_initial_active - self.n_final_active)
             conf[0][0] += (self.n_initial_inactive - self.n_final_inactive)
-            print("{} KFOLD Training Crossvalidation".format(cv))
+            try: print("{} KFOLD Training Crossvalidation".format(cv))
+            except : pass
             print(conf.T)
             md.conf(conf[1][1], conf[0][1], conf[0][0], conf[1][0], output=output_conf)
 
             # ROC/PR CURVE
-            self.plot_roc_curve_rate(self.labels, prediction_prob, prediction)
-            self.plot_pr_curve_rate(self.labels, prediction_prob, prediction)
+            self.plot_roc_curve_rate(self.labels, self.prediction_prob, self.prediction)
+            self.plot_pr_curve_rate(self.labels, self.prediction_prob, self.prediction)
 
 
         ##Model assesment##
-        model_folders = ["model"]
+        model_folders = [os.path.join(self.results_folder,"model")]
         for folder in model_folders:
             if not os.path.exists(folder):
                 os.mkdir(folder)
@@ -279,7 +302,7 @@ class GenericModel(object):
             print("\nMistaken Samples\n")
             errors = [ self.mol_names[i] for i, v in enumerate(self.results) if not v ]
             if self.is_stack_model(): 
-                uncertanties_errors = [ uncertanties[i] for i, v in enumerate(self.results) if not v ]
+                uncertanties_errors = [ self.uncertanties[i] for i, v in enumerate(self.results) if not v ]
             #np.savetxt("mistaken_samples.txt", errors)
             #np.savetxt("uncertanties.txt", uncertanties_errors)
             print(errors)
@@ -356,10 +379,17 @@ class GenericModel(object):
         uncertanties = [u/n_classifiers for u in n_class_predicting_active]
         return uncertanties
 
-    def load_model(self, model_file):
+    def load_model(self):
         print("Loading model")
-        return pickle.load(open(model_file, 'rb'))
-
+        data = []
+        with open(self.filename_model, 'rb') as rf:
+            try:
+                while True:
+                    data.append(pickle.load(rf))
+            except EOFError:
+                pass
+        #assert len(data) == len(self.clf)
+        return data
     def save(self, output):
         print("Saving Model")
         pickle.dump(model, open(output, 'wb'))
@@ -397,10 +427,7 @@ class GenericModel(object):
         dfscores = pd.DataFrame({"Score":fit.scores_})
         dfscores["header"] = self.retrieve_header()
         print(dfscores.nlargest(10,'Score'))
-        print(model.predict(X_test))
-
-
-            
+        print(model.predict(X_test))          
         
 
     def retrieve_header(self, exclude=COLUMNS_TO_EXCLUDE):
@@ -416,7 +443,7 @@ class GenericModel(object):
                 headers_pb = np.hstack([headers_pb, np.loadtxt("MAC_descriptors.txt", dtype=np.str)])
             headers.extend(headers_pb.tolist())
         if self.external_data:
-            headers.extend(list(pd.read_csv(self.external_data)))
+            headers.extend(list(pd.read_csv(os.path.join("glide", self.external_data))))
         # Remove specified headers
         headers_to_remove = [feature for field in exclude for feature in headers if field in feature ]
         for header in list(set(headers_to_remove)): 
@@ -492,6 +519,36 @@ class GenericModel(object):
         prediction = self.last_model.predict(scaler.fit_transform(X))
         return prediction
 
+    def external_prediction(self):
+        print('Predicting over the new dataset....')
+        scaler = StandardScaler()
+        self.x_test_trans = self.__fit_transform__(self.features)
+        self.headers = self.retrieve_header()
+        loaded_models = self.load_model()
+        if self.is_stack_model():
+            self.premodels = loaded_models[:-1]
+            #predicting with the individual clasifiers
+            predictions = np.array([ model.predict(self.x_test_trans) for model in self.premodels]) 
+            #finally aggregate prediction        
+            X = np.hstack( [self.x_test_trans, predictions.T] )
+            self.prediction = loaded_models[-1].predict(scaler.fit_transform(X))
+            self.prediction_prob = loaded_models[-1].predict_proba(scaler.fit_transform(X))
+            clf_result = np.vstack([predictions, self.prediction])
+            self.clf_results = [] # All classfiers
+            for results in clf_result:
+                self.clf_results.append([pred == true for pred, true  in zip(results, self.labels)])
+            self.uncertanties = self.calculate_uncertanties(predictions)
+            self.results = [ pred == true for pred, true in zip(self.prediction, self.labels)] #last classifier
+
+        else: 
+            self.prediction = np.array(loaded_models[0].predict(self.x_test_trans))
+            self.prediction_prob = np.array(loaded_models[0].predict_proba(self.x_test_trans))
+            #Obtain results
+            self.results = [ pred == true for pred, true in zip(self.prediction, self.labels)]
+
+        #setting test = train to call postprocessing
+        self.x_train_trans = self. x_test_trans  
+        self.postprocessing()
 
 def parse_args(parser):
     parser.add_argument('--active', type=str,
@@ -520,6 +577,7 @@ def parse_args(parser):
     parser.add_argument('--test_importance', nargs="+", help="Name of Molecules to include on testing feature importance", default=[])
     parser.add_argument('--print_most_important', action="store_true", help="Print most important features name to screen to use them as command lina arguments with --columns_to_keep")
     parser.add_argument('--build_model', action="store_true", help='Compute crossvalidation over active and inactives')
+    parser.add_argument('--filename_model', default = 'fitted_models.pkl', help='Filename for models')
     parser.add_argument('--save_model', action="store_true", help='Would you like to save the models')
 
 
@@ -527,7 +585,7 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Build 2D QSAR model')
     parse_args(parser)
     args = parser.parse_args()
-    model = GenericModel(args.active, args.inactive, args.classifier, args.save_model, csv=args.external_data, test=args.test, pb=args.pb, columns=args.columns_to_keep)
+    model = GenericModel(args.active, args.inactive, args.classifier, args.save_model, args.filename_model, csv=args.external_data, test=args.test, pb=args.pb, columns=args.columns_to_keep)
     if args.load:
         model = model.load(args.load)
     if args.build_model:

@@ -26,10 +26,10 @@ class PullDB():
                  yield str(struct["standardinchi"])
 
     def to_sdf(self, output="active.sdf"):
-
         molecules = []
         molecules_rdkit = []
-        w = Chem.SDWriter(output)
+        out = output.split('.')[0] + "_" + self.status + ".sdf"
+        w = Chem.SDWriter(out)
         for inchy, name in tqdm(zip(self.inchi_keys, self.ids), total=self.n_compounds-1):
             try:
                 m = Chem.inchi.MolFromInchi(inchy, removeHs=True)
@@ -43,7 +43,7 @@ class PullDB():
 
         for m in molecules_rdkit: w.write(m)
 
-        return output, len(molecules_rdkit)
+        return out, len(molecules_rdkit)
 
 
 if __name__ == "__main__":

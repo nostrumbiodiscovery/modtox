@@ -12,6 +12,8 @@ DUDE=os.path.join(DATA_PATH, "dude")
 PUBCHEM = os.path.join(DATA_PATH, "pubchem")
 CSV_FILENAME = "AID_1851_datatable_all.csv"
 SUBSTRATE = "p450-cyp2c9"
+STATUS = "train"
+FILENAME_MODEL = os.path.join(DATA_PATH, "analysis/fitted_models.pkl")
 GLIDE_FILES=os.path.join(DATA_PATH, "analysis/input__*dock_lib.maegz")
 RESNAME="198"
 ACTIVE_ANALYSIS=os.path.join(DATA_PATH, "analysis/active.sdf")
@@ -24,17 +26,17 @@ def test_docking(traj, resname, top, active, inactive):
      mn.main([traj,], resname, active, inactive, top=top, dock=True, sieve=1, debug=True)
 
 
-@pytest.mark.parametrize("traj, resname, top, dude", [
-                         (TRAJ, RESNAME, TOP, DUDE),
+@pytest.mark.parametrize("traj, resname, top, dude, status", [
+                         (TRAJ, RESNAME, TOP, DUDE, STATUS),
                          ])
-def test_dude(traj, resname, top, dude):
-     mn.main([traj,], resname, dude=dude, top=top, dock=True, debug=True)
+def test_dude(traj, resname, top, dude, status):
+     mn.main([traj,], resname, dude=dude, status = status, top=top, dock=True, debug=True)
 
-@pytest.mark.parametrize("traj, resname, top, pubchem, csv_filename, substrate", [
-                         (TRAJ, RESNAME, TOP, PUBCHEM, CSV_FILENAME, SUBSTRATE),
+@pytest.mark.parametrize("traj, resname, top, pubchem, csv_filename, substrate, status", [
+                         (TRAJ, RESNAME, TOP, PUBCHEM, CSV_FILENAME, SUBSTRATE, STATUS),
                          ])
-def test_pubchem(traj, resname, top, pubchem, csv_filename, substrate):
-     mn.main([traj,], resname, pubchem=pubchem, csv_filename = csv_filename, substrate = substrate,top=top, dock=True, debug=True)
+def test_pubchem(traj, resname, top, pubchem, csv_filename, substrate, status):
+     mn.main([traj,], resname, pubchem=pubchem, csv_filename = csv_filename, substrate = substrate,top=top, status = status, dock=True, debug=True)
 
 @pytest.mark.parametrize("traj, resname, top, active, inactive", [
                          (TRAJ, RESNAME, TOP, ACTIVE_ANALYSIS, INACTIVE_ANALYSIS),
@@ -53,3 +55,23 @@ def test_model_normal(traj, resname, top, active, inactive):
      os.chdir(os.path.join(DATA_PATH, "analysis"))
      mn.main(traj, resname, active, inactive, top=top, assemble_model=True, glide_files=GLIDE_FILES, debug=True, cv=2)
      os.chdir(initial_dir)
+
+@pytest.mark.parametrize("traj, resname, top, active, inactive, dude, filename_model", [
+                         (TRAJ, RESNAME, TOP, ACTIVE_ANALYSIS, INACTIVE_ANALYSIS, DUDE, FILENAME_MODEL),
+                         ])
+def test_predict_dude_normal(traj, resname, top, active, inactive, dude, filename_model):
+     initial_dir = os.getcwd()
+     os.chdir(os.path.join(DATA_PATH, "analysis"))
+     mn.main(traj, resname, active, inactive, top=top,filename_model = filename_model, predict = True, save_model = True)
+     os.chdir(initial_dir)
+
+@pytest.mark.parametrize("traj, resname, top, active, inactive, dude, filename_model", [
+                         (TRAJ, RESNAME, TOP, ACTIVE_ANALYSIS, INACTIVE_ANALYSIS, DUDE, FILENAME_MODEL),
+                         ])
+def test_predict_dude_stack(traj, resname, top, active, inactive, dude, filename_model):
+     initial_dir = os.getcwd()
+     os.chdir(os.path.join(DATA_PATH, "analysis"))
+     mn.main(traj, resname, active, inactive, top=top,filename_model = filename_model, classifier = "stack", predict = True, save_model = True)
+     os.chdir(initial_dir)
+
+

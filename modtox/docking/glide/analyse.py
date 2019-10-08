@@ -11,9 +11,13 @@ from itertools import chain
 
 
 def analyze(glide_files, active=False, inactive=False, best=False, csv=[], filter=None, debug=False):
+    glide_dir = "glide"
+    if not os.path.exists(glide_dir):
+        os.makedirs(glide_dir)
+       
     glide_results = []
     if best:
-        results_merge = merge(glide_files,  output="results_merge.mae")
+        results_merge = merge(glide_files,  output=os.path.join(glide_dir, "results_merge.mae"))
         best_poses_mae = best_poses(results_merge)
         best_poses_csv = csv_report(best_poses_mae)
         if active and inactive:
@@ -25,10 +29,10 @@ def analyze(glide_files, active=False, inactive=False, best=False, csv=[], filte
         return best_poses_csv
     else:
         for i, glide_file in enumerate(glide_files):
-            results_merge = merge([glide_file], output="results_merge_{}.mae".format(i), debug=debug)
-            results_mae = sort_by_dock_score([results_merge,], output="data_{}.txt".format(i), debug=debug)
-            glide_results.append(to_dataframe(results_mae, output="results_{}.csv".format(i), iteration=i, filter=filter))
-        all_results = join_results(glide_results)
+            results_merge = merge([glide_file], output=os.path.join(glide_dir,"results_merge_{}.mae".format(i)), debug=debug)
+            results_mae = sort_by_dock_score([results_merge,], output=os.path.join(glide_dir,"data_{}.txt".format(i)), debug=debug)
+            glide_results.append(to_dataframe(results_mae, output=os.path.join(glide_dir,"results_{}.csv".format(i)), iteration=i, filter=filter))
+        all_results = join_results(glide_dir, glide_results)
         return all_results       
 
 def sort_by_dock_score(glide_files, schr=cs.SCHR, output="data.txt", debug=False):
@@ -168,7 +172,7 @@ def summeryze_results(csv, tresh, n_active, n_inactive):
                
          
 
-def join_results(files, output="glide_features.csv"):
+def join_results(glide_dir, files, output="glide_features.csv"):
     for i, glide_file in enumerate(files):
         try:
             if len(files) == 1:
@@ -177,11 +181,11 @@ def join_results(files, output="glide_features.csv"):
                 df = pd.merge(files[i].drop_duplicates(subset=["Title"]), files[i+1].drop_duplicates(subset=["Title"]), on="Title", how="outer")
             else:
                 df = pd.merge(df, files[i+1].drop_duplicates(subset=["Title"]), on="Title", how="outer")
-                df.to_csv(output)
+                df.to_csv(os.path.join(glide_dir, output))
         except IndexError:
                 pass
-        df.to_csv(output)
-    return output
+        df.to_csv(os.path.join(glide_dir, output))
+    return os.path.join(glide_dir, output)
 
 def conf(TP, FP, TN, FN, output="confusion_matrix.png"):
     df_cm = pd.DataFrame([[TP, FP], [FN,TN]], index = [i for i in "PN"],

@@ -12,10 +12,11 @@ import modtox.Helpers.preprocess as pr
 
 class PubChem():
      
-    def __init__(self, pubchem_folder, stored_files, csv_filename, outputfile, substrate):
+    def __init__(self, pubchem_folder, stored_files, csv_filename, status, outputfile, substrate):
         if stored_files != False: self.unknown = False
         else: self.unknown = True
         self.csv_filename = csv_filename
+        self.status = status
         self.folder = pubchem_folder
         self.outputfile = outputfile
         self.substrate = substrate
@@ -39,15 +40,15 @@ class PubChem():
 
         molecules = []
         molecules_rdkit = []
-        output = actype + '.sdf'
+        output = actype + '_' + self.status +'.sdf'
         w = Chem.SDWriter(output)
         print('Filter and inchikey identification in process ... for {}'.format(actype))
-        if actype == 'actives': 
+        if actype == 'active': 
             iks, names = self.filtering(self.active_names)
             self.active_inchi = iks
             self.active_names = names
         
-        if actype == 'inactives':
+        if actype == 'inactive':
             iks, names = self.filtering(self.inactive_names)
             self.inactive_inchi = iks
             self.inactive_names = names
@@ -106,10 +107,10 @@ class PubChem():
         return data
 
 
-def process_pubchem(pubchem_folder, csv_filename, substrate, stored_files = None, outputfile = 'inchi_all.pkl', test=False):
-    pub_chem = PubChem(pubchem_folder, stored_files, csv_filename, outputfile, substrate)
-    active_output, n_actives = pub_chem.to_sdf(actype = 'actives')
-    inactive_output, n_inactives = pub_chem.to_sdf(actype = 'inactives') 
+def process_pubchem(pubchem_folder, csv_filename, status, substrate, stored_files = None, outputfile = 'inchi_all.pkl', test=False):
+    pub_chem = PubChem(pubchem_folder, stored_files, csv_filename, status, outputfile, substrate)
+    active_output, n_actives = pub_chem.to_sdf(actype = 'active')
+    inactive_output, n_inactives = pub_chem.to_sdf(actype = 'inactive') 
     if not test: 
         output_proc = pr.ligprep(active_output)
     else:
