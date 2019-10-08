@@ -106,11 +106,11 @@ class PubChem():
             data = pickle.load(f)
         return data
 
-
 def process_pubchem(pubchem_folder, csv_filename, status, substrate, stored_files = None, outputfile = 'inchi_all.pkl', test=False):
     pub_chem = PubChem(pubchem_folder, stored_files, csv_filename, status, outputfile, substrate)
     active_output, n_actives = pub_chem.to_sdf(actype = 'active')
     inactive_output, n_inactives = pub_chem.to_sdf(actype = 'inactive') 
+    
     if not test: 
         output_proc = pr.ligprep(active_output)
     else:
