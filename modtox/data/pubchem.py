@@ -23,6 +23,7 @@ class PubChem():
         self.temporal_file = os.path.join(pubchem_folder, 'temp.txt') 
         self.outputfile = outputfile
         self.substrate = substrate
+        self.n_molecules_to_read = n_molecules_to_read
         self.splitting()
 
     def to_inchi(self, which_names):
@@ -85,6 +86,7 @@ class PubChem():
             iks = [iks[x[0]] for x in indices.values()] #filtered inchikeys
             which_names = [which_names[x[0]] for x in indices.values()] #filtering ids: we only get the first
         else:
+<<<<<<< HEAD
             print('Duplicates not detected')
             pass
 
@@ -105,14 +107,24 @@ class PubChem():
                 self.active_inchi = [inchi for inchi in self.active_inchi if inchi not in datalines]
                 self.inactive_inchi = [inchi for inchi in self.inactive_inchi if inchi not in datalines]
 
-    def reading_from_pubchem(self, total_molec = 100, trash_lines = 9):
+        return 
+
+    def reading_from_pubchem(self, trash_lines = 9):
+
         with open(os.path.join(self.folder, self.csv_filename), 'r') as csvfile:
             spamreader = csv.reader(csvfile, delimiter=',')
             idx = None; activities = {}; i = 0
             for row in spamreader:
-                if i < total_molec + trash_lines:
+                if not self.n_molecules_to_read:
                     try: idx = row.index(self.substrate + ' ' + 'Activity Outcome')        
-                    except: pass
+                    except ValueError: pass
+                    if idx != None and i > trash_lines: 
+                        name = row[1]
+                        activities[name] = row[idx]
+                    i += 1
+                elif i < self.n_molecules_to_read + trash_lines:
+                    try: idx = row.index(self.substrate + ' ' + 'Activity Outcome')        
+                    except ValueError: pass
                     if idx != None and i > trash_lines: 
                         name = row[1]
                         activities[name] = row[idx]
@@ -127,8 +139,8 @@ class PubChem():
             data = pickle.load(f)
         return data
 
-def process_pubchem(pubchem_folder, csv_filename, status, substrate, stored_files = None, outputfile = 'inchi_all.pkl', test=False):
-    pub_chem = PubChem(pubchem_folder, stored_files, csv_filename, status, outputfile, substrate)
+def process_pubchem(pubchem_folder, csv_filename, status, substrate, stored_files = None, outputfile = 'inchi_all.pkl', test=False, mol_to_read=None):
+    pub_chem = PubChem(pubchem_folder, stored_files, csv_filename, status, outputfile, substrate, mol_to_read)
     active_output, n_actives = pub_chem.to_sdf(actype = 'active')
     inactive_output, n_inactives = pub_chem.to_sdf(actype = 'inactive') 
      
@@ -143,3 +155,4 @@ def parse_args(parser):
     parser.add_argument("--stored_files", type=str, help='Pubchem stores analysis')
     parser.add_argument("--csv_filename", type=str, help = "csv filename with activities data (e.g. 'AID_1851_datatable_all.csv')")
     parser.add_argument("--substrate", type = str, default = "p450-cyp2c9", help = "substrate name codification on csv file (e.g. p450-cyp2c9)") 
+    parser.add_argument("--mol_to_read", type = int, help = "Number of molecules to read from pubchem (e.g. 100)") 
