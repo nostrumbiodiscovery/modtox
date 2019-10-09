@@ -12,7 +12,7 @@ import modtox.Helpers.preprocess as pr
 
 class PubChem():
      
-    def __init__(self, pubchem_folder, stored_files, csv_filename, status, outputfile, substrate):
+    def __init__(self, pubchem_folder, stored_files, csv_filename, status, outputfile, substrate, n_molecules_to_read):
         if stored_files != False: self.unknown = False
         else: self.unknown = True
         self.csv_filename = csv_filename
@@ -20,6 +20,7 @@ class PubChem():
         self.folder = pubchem_folder
         self.outputfile = outputfile
         self.substrate = substrate
+        self.n_molecules_to_read = n_molecules_to_read
         self.splitting()
 
     def to_inchi(self, which_names):
@@ -84,14 +85,21 @@ class PubChem():
             return iks, which_names
 
 
-    def reading_from_pubchem(self, total_molec = 100, trash_lines = 8):
+    def reading_from_pubchem(self, trash_lines = 8):
         with open(os.path.join(self.folder, self.csv_filename), 'r') as csvfile:
             spamreader = csv.reader(csvfile, delimiter=',')
             idx = None; activities = {}; i = 0
             for row in spamreader:
-                if i < total_molec + trash_lines:
+                if not self.n_molecules_to_read:
                     try: idx = row.index(self.substrate + ' ' + 'Activity Outcome')        
-                    except: pass
+                    except ValueError: pass
+                    if idx != None and i > trash_lines: 
+                        name = row[1]
+                        activities[name] = row[idx]
+                    i += 1
+                elif i < self.n_molecules_to_read + trash_lines:
+                    try: idx = row.index(self.substrate + ' ' + 'Activity Outcome')        
+                    except ValueError: pass
                     if idx != None and i > trash_lines: 
                         name = row[1]
                         activities[name] = row[idx]
@@ -106,8 +114,8 @@ class PubChem():
             data = pickle.load(f)
         return data
 
-def process_pubchem(pubchem_folder, csv_filename, status, substrate, stored_files = None, outputfile = 'inchi_all.pkl', test=False):
-    pub_chem = PubChem(pubchem_folder, stored_files, csv_filename, status, outputfile, substrate)
+def process_pubchem(pubchem_folder, csv_filename, status, substrate, stored_files = None, outputfile = 'inchi_all.pkl', test=False, mol_to_read=None):
+    pub_chem = PubChem(pubchem_folder, stored_files, csv_filename, status, outputfile, substrate, mol_to_read)
     active_output, n_actives = pub_chem.to_sdf(actype = 'active')
     inactive_output, n_inactives = pub_chem.to_sdf(actype = 'inactive') 
     
@@ -123,3 +131,4 @@ def parse_args(parser):
     parser.add_argument("--stored_files",  action = 'store_true', help='Pubchem folder')
     parser.add_argument("--csv_filename", type=str, help = "csv filename with activities data (e.g. 'AID_1851_datatable_all.csv')")
     parser.add_argument("--substrate", type = str, help = "substrate name codification on csv file (e.g. p450-cyp2c9)") 
+    parser.add_argument("--mol_to_read", type = int, help = "number of molecules to read from pubchem (e.g. 100)") 
