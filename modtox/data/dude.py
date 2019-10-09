@@ -24,12 +24,19 @@ URL = "https://www.ebi.ac.uk/chembl/api/data/molecule/{}.sdf"
 class DUDE(dbs.PullDB):
     
     def __init__(self, dude_folder, status):
-        os.system("gunzip {}".format(os.path.join(dude_folder, "*.gz")))
-        self.actives_ism = os.path.join(dude_folder, "actives_final.ism")
+        #If relative path move one down
+        import pdb; pdb.set_trace()
+        if os.path.abspath(dude_folder) == dude_folder:
+            pass
+        else:
+            dude_folder = os.path.join("..", dude_folder)
+        self.dude_folder = os.path.abspath(dude_folder)
+        os.system("gunzip {}".format(os.path.join(self.dude_folder, "*.gz")))
+        self.actives_ism = os.path.join(self.dude_folder, "actives_final.ism")
         self.status = status
-        self.decoys_ism = os.path.join(dude_folder, "decoys_final.ism")
-        self.actives_sdf = os.path.join(dude_folder, "actives_final.sdf")
-        self.decoys_sdf = os.path.join(dude_folder, "decoys_final.sdf")
+        self.decoys_ism = os.path.join(self.dude_folder, "decoys_final.ism")
+        self.actives_sdf = os.path.join(self.dude_folder, "actives_final.sdf")
+        self.decoys_sdf = os.path.join(self.dude_folder, "decoys_final.sdf")
         dbs.PullDB.__init__(self, self.active_names(), source="chembl")
         
     def active_names(self):
