@@ -59,16 +59,16 @@ def test_model_normal(traj, resname, top, active, inactive, filename_model):
 @pytest.mark.parametrize("traj, resname, top, active, inactive, dude, filename_model", [
                          (TRAJ, RESNAME, TOP, ACTIVE_ANALYSIS, INACTIVE_ANALYSIS, DUDE, FILENAME_MODEL),
                          ])
-def test_predict_dude_normal(traj, resname, top, active, inactive, dude, filename_model):
+def test_predict_normal(traj, resname, top, active, inactive, filename_model):
      initial_dir = os.getcwd()
      os.chdir(os.path.join(DATA_PATH, "analysis"))
      mn.main(traj, resname, active, inactive, top=top,filename_model = filename_model, predict = True)
      os.chdir(initial_dir)
 
-@pytest.mark.parametrize("traj, resname, top, active, inactive, dude, filename_model", [
-                         (TRAJ, RESNAME, TOP, ACTIVE_ANALYSIS, INACTIVE_ANALYSIS, DUDE, FILENAME_MODEL),
+@pytest.mark.parametrize("traj, resname, top, active, inactive, filename_model", [
+                         (TRAJ, RESNAME, TOP, ACTIVE_ANALYSIS, INACTIVE_ANALYSIS, FILENAME_MODEL),
                          ])
-def test_predict_dude_stack(traj, resname, top, active, inactive, dude, filename_model):
+def test_predict_stack(traj, resname, top, active, inactive, filename_model):
      initial_dir = os.getcwd()
      os.chdir(os.path.join(DATA_PATH, "analysis"))
      mn.main(traj, resname, active, inactive, top=top,filename_model = filename_model, classifier = "stack", predict = True)
