@@ -13,7 +13,7 @@ import modtox.Helpers.preprocess as pr
 
 class PubChem():
      
-    def __init__(self, pubchem_folder, stored_files, csv_filename, status, outputfile, substrate):
+    def __init__(self, pubchem_folder, stored_files, csv_filename, status, outputfile, substrate, n_molecules_to_read):
         self.stored_files = stored_files
         if self.stored_files != None: self.unknown = False
         else: self.unknown = True
@@ -86,7 +86,6 @@ class PubChem():
             iks = [iks[x[0]] for x in indices.values()] #filtered inchikeys
             which_names = [which_names[x[0]] for x in indices.values()] #filtering ids: we only get the first
         else:
-<<<<<<< HEAD
             print('Duplicates not detected')
             pass
 
