@@ -25,7 +25,6 @@ class DUDE(dbs.PullDB):
     
     def __init__(self, dude_folder, status):
         #If relative path move one down
-        import pdb; pdb.set_trace()
         if os.path.abspath(dude_folder) == dude_folder:
             pass
         else:
