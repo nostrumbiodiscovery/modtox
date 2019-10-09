@@ -513,7 +513,6 @@ class GenericModel(object):
         X = np.hstack( [self.x_train_trans, preds_train.T] )
         self.last_model = self.clf[-1].fit(scaler.fit_transform(X), self.labels)
         #Predict last model
-        print(preds_test)
         X = np.hstack( [self.x_test_trans, preds_test.T] )
         prediction = self.last_model.predict(scaler.fit_transform(X))
         return prediction
@@ -546,7 +545,7 @@ class GenericModel(object):
             self.results = [ pred == true for pred, true in zip(self.prediction, self.labels)]
 
         #setting test = train to call postprocessing
-        self.x_train_trans = self. x_test_trans  
+        self.x_train_trans = self.x_test_trans  
         self.postprocessing()
 
 def parse_args(parser):

@@ -36,7 +36,7 @@ def test_dude(traj, resname, top, dude, status):
                          (TRAJ, RESNAME, TOP, PUBCHEM, CSV_FILENAME, SUBSTRATE, STATUS),
                          ])
 def test_pubchem(traj, resname, top, pubchem, csv_filename, substrate, status):
-     mn.main([traj,], resname, pubchem=pubchem, csv_filename = csv_filename, substrate = substrate,top=top, status = status, dock=True, debug=True)
+     mn.main([traj,], resname, pubchem=pubchem, csv_filename = csv_filename, substrate = substrate,top=top, status = status, dock=True, debug=True, mol_to_read=1)
 
 @pytest.mark.parametrize("traj, resname, top, active, inactive, filename_model", [
                          (TRAJ, RESNAME, TOP, ACTIVE_ANALYSIS, INACTIVE_ANALYSIS, FILENAME_MODEL),
