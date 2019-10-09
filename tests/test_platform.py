@@ -56,8 +56,8 @@ def test_model_normal(traj, resname, top, active, inactive, filename_model):
      mn.main(traj, resname, active, inactive, top=top, assemble_model=True, filename_model = filename_model, glide_files=GLIDE_FILES, debug=True, cv=2)
      os.chdir(initial_dir)
 
-@pytest.mark.parametrize("traj, resname, top, active, inactive, dude, filename_model", [
-                         (TRAJ, RESNAME, TOP, ACTIVE_ANALYSIS, INACTIVE_ANALYSIS, DUDE, FILENAME_MODEL),
+@pytest.mark.parametrize("traj, resname, top, active, inactive, filename_model", [
+                         (TRAJ, RESNAME, TOP, ACTIVE_ANALYSIS, INACTIVE_ANALYSIS, FILENAME_MODEL),
                          ])
 def test_predict_normal(traj, resname, top, active, inactive, filename_model):
      initial_dir = os.getcwd()
