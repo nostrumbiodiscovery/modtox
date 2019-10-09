@@ -15,7 +15,7 @@ class PubChem():
      
     def __init__(self, pubchem_folder, stored_files, csv_filename, status, outputfile, substrate, n_molecules_to_read):
         self.stored_files = stored_files
-        if self.stored_files != None: self.unknown = False
+        if self.stored_files: self.unknown = False
         else: self.unknown = True
         self.csv_filename = csv_filename
         self.status = status
@@ -35,8 +35,8 @@ class PubChem():
            data = self.reading_from_pubchem()
        else:
            try: data = self.reading_from_file()
-           except: 
-               print('Need to provide a valid input file or to read the PubChem file')
+           except ValueError: 
+               raise ValueError('Need to provide a valid input file or to read the PubChem file')
        self.active_names = [mol for mol, activity in data.items() if activity == 'Active']
        self.inactive_names = [mol for mol, activity in data.items() if activity == 'Inactive']
        print('Discard of inconclusive essays done. Final set: {}'.format(len(self.active_names) + len(self.inactive_names)))
