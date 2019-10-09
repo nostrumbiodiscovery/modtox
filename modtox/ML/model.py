@@ -162,7 +162,7 @@ class GenericModel(object):
         return pre.fit_transform(X)
             
     def saving_model(self, cv):
-        scaler = StandardScaler() 
+        scaler = StandardScaler()
         f = open(os.path.join(self.results_folder,self.filename_model), 'wb')
         if self.is_stack_model():
             for clf in self.clf[:-1]:
@@ -227,7 +227,6 @@ class GenericModel(object):
 
 
     def postprocessing(self, print_most_important=False, output_conf="conf.png"):
-        print(self.results_folder)
         ##Dimensionallity reduction##
         dim_reduct_folders = ["dimensionallity_reduction", "dimensionallity_reduction/umap",
            "dimensionallity_reduction/tsne", "dimensionallity_reduction/pca"]
@@ -578,7 +577,6 @@ def parse_args(parser):
     parser.add_argument('--print_most_important', action="store_true", help="Print most important features name to screen to use them as command lina arguments with --columns_to_keep")
     parser.add_argument('--build_model', action="store_true", help='Compute crossvalidation over active and inactives')
     parser.add_argument('--filename_model', default = 'fitted_models.pkl', help='Filename for models')
-    parser.add_argument('--save_model', action="store_true", help='Would you like to save the models')
 
 
 if __name__ == "__main__":
