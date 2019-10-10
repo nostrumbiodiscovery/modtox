@@ -15,36 +15,36 @@ import os
 from chembl_webresource_client.unichem import unichem_client as unichem
 from chembl_webresource_client.new_client import new_client
 import modtox.Helpers.preprocess as pr
-from modtox.data import databases as dbs
 
 
 URL = "https://www.ebi.ac.uk/chembl/api/data/molecule/{}.sdf"
 
 
-class DUDE(dbs.PullDB):
+class DUDE(object):
     
     def __init__(self, dude_folder, status):
-        #If relative path move one down
-        if os.path.abspath(dude_folder) == dude_folder:
-            pass
-        else:
-            dude_folder = os.path.join("..", dude_folder)
         self.dude_folder = os.path.abspath(dude_folder)
-        os.system("gunzip {}".format(os.path.join(self.dude_folder, "*.gz")))
         self.actives_ism = os.path.join(self.dude_folder, "actives_final.ism")
-        self.status = status
         self.decoys_ism = os.path.join(self.dude_folder, "decoys_final.ism")
         self.actives_sdf = os.path.join(self.dude_folder, "actives_final.sdf")
         self.decoys_sdf = os.path.join(self.dude_folder, "decoys_final.sdf")
-        dbs.PullDB.__init__(self, self.active_names(), source="chembl")
+        self.status = status
         
-    def active_names(self):
+    def get_active_names(self):
         with open(self.actives_ism, "r") as f:
-            return [line.split()[-1] for line in f if line ]
+            self.active_names = [line.split()[-1] for line in f if line ]
+            return self.active_names
 
-    def inactive_names(self):
-        with open(self.inactives_ism, "r") as f:
-            return [line.split()[-1] for line in f if line ]
+    def get_inactive_names(self):
+        with open(self.decoys_ism, "r") as f:
+            self.inactive_names = [line.split()[-1] for line in f if line ]
+            return self.inactive_names
+
+    def retrieve_inchi_from_chembl(self, ids):
+        for name in ids:
+            for struct in unichem.structure(name,1):
+                 yield str(struct["standardinchi"])
+
 
     def activities(self):
         pass 
@@ -53,6 +53,25 @@ class DUDE(dbs.PullDB):
         for name in ids:
             for struct in unichem.structure(name,1):
                  yield str(struct["standardinchi"])
+
+    def to_sdf(self, inchies, mol_names=None, output="active.sdf"):
+        # Prepare output
+        mol_names = mol_names if mol_names else range(len(inchies))
+        outputfile = output.split('.')[0] + "_" + self.status + ".sdf"
+        
+        # Convert to sdf
+        molecules_rdkit = [] ;w = Chem.SDWriter(outputfile)
+        for inchy, name in tqdm(zip(inchies, mol_names)):
+            try:
+                m = Chem.inchi.MolFromInchi(inchy, removeHs=True)
+                Chem.AssignStereochemistry(m)
+                AllChem.EmbedMolecule(m)
+                m.SetProp("_Name", name)
+                m.SetProp("_MolFileChiralFlag", "1")
+                molecules_rdkit.append(m)
+            except IndexError:
+                print("Molecules {} not found".format(name))
+        return outputfile
 
 
     def filter_for_similarity(self, sdf_file, n_output_mols=100, output_sdf="inactive.sdf"):
@@ -72,17 +91,45 @@ def parse_args(parser):
     parser.add_argument("--dude",  type=str, help='DUD-E dataset folder')
     parser.add_argument("--output", type=str, help='sdf output', default="output.sdf")
 
-def process_dude(dude_folder, status, output="cyp_actives.sdf", test=False):
-    dud_e = DUDE(dude_folder, status)
-    active_names = dud_e.active_names()
-    active_output, n_actives = dud_e.to_sdf()
-    inactive_output = dud_e.filter_for_similarity(dud_e.decoys_sdf, n_actives) 
-    if not test:
-        output_proc = pr.ligprep(active_output)
+def process_dude(dude_folder, status, output="cyp_actives.sdf", test=False, production=False):
+    """
+    Separate a dataset from dude into active/inactive
+    having into account stereochemistry and tautomers
+    """
+    #If relative path move one down
+    if os.path.abspath(dude_folder) == dude_folder:
+        pass
     else:
-        output_proc = active_output
-    print("File {} created with chembl curated compounds".format(output))
-    return output_proc, inactive_output
+        dude_folder = os.path.join("..", dude_folder)
+
+    #If input zip is present decompress
+    inputzip = os.path.join(dude_folder, "*.gz")
+    if os.path.exists(inputzip):
+        os.system("gunzip {}".format(inputzip))
+
+
+    #Retrieve inchies
+    dud_e = DUDE(dude_folder, status)
+    active_names = dud_e.get_active_names()
+    inchi_active = dud_e.retrieve_inchi_from_chembl(active_names)
+    inactive_names = dud_e.get_inactive_names()
+    inchi_inactive = dud_e.retrieve_inchi_from_chembl(inactive_names)
+	
+    #Retrieve active sdf
+    dud_e.n_actives = len(active_names)
+    active_output = dud_e.to_sdf(inchi_active, mol_names=active_names)
+    if not test:
+        active_output_proc = pr.ligprep(active_output)
+    else:
+        active_output_proc = active_output
+    #Retrieve inactive sdf
+    if production:
+        #What will we do in production??
+        pass
+    else:
+        inactive_output = dud_e.filter_for_similarity(dud_e.decoys_sdf, dud_e.n_actives)
+    print("Files {}, {} created with chembl curated compounds".format(active_output_proc, inactive_output))
+    return active_output_proc, inactive_output
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Preprocess dataset from chembl by using ligprep over the actives having  \
