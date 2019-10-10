@@ -11,6 +11,7 @@ from itertools import chain
 
 
 def analyze(glide_files, active=False, inactive=False, best=False, csv=[], filter=None, debug=False):
+    print(glide_files)
     glide_dir = "glide"
     if not os.path.exists(glide_dir):
         os.makedirs(glide_dir)
@@ -196,7 +197,7 @@ def conf(TP, FP, TN, FN, output="confusion_matrix.png"):
 
 
 def parse_args(parser):
-    parser.add_argument("--glide_files",  nargs="+", help='Glide files to be analyze', default="*dock*.maegz")
+    parser.add_argument("--glide_files",  nargs="+", help='Glide files to be analyze', default="*dock_lib.maegz")
     parser.add_argument("--csv",  nargs="+", help='Csv to be analyze')
     parser.add_argument("--best",  action="store_true", help='Retrieve best poses from docking results')
     parser.add_argument("--active",  type=str, help='Files with all active structures used for docking. Must be a sdf file', default=None)
