@@ -13,14 +13,18 @@ import modtox.Helpers.preprocess as pr
 
 class PubChem():
      
-    def __init__(self, pubchem_folder, stored_files, csv_filename, status, outputfile, substrate, n_molecules_to_read):
+    def __init__(self, pubchem_folder, training_path, stored_files, csv_filename, status, outputfile, substrate, n_molecules_to_read):
         self.stored_files = stored_files
         if self.stored_files != None: self.unknown = False
         else: self.unknown = True
         self.csv_filename = csv_filename
         self.status = status
         self.folder = pubchem_folder
-        self.temporal_file = os.path.join(pubchem_folder, 'temp.txt') 
+        self.used_mols = 'used_mols.txt'
+        if self.status == 'train': 
+            self.training_path = status 
+        if self.status == 'test':
+            self.training_path = training_path
         self.outputfile = outputfile
         self.substrate = substrate
         self.n_molecules_to_read = n_molecules_to_read
@@ -94,18 +98,17 @@ class PubChem():
     def cleaning(self):
                 # recording instances from the training data
         if self.status == 'train':
-            with open(self.temporal_file, 'w') as r:
+            with open(os.path.join(self.training_path, self.used_mols), 'w') as r:
                 for item in self.active_inchi + self.inactive_inchi:
                     r.write("{}\n".format(item))
 
         # extracting molecules from test already present in train
         if self.status == 'test':
-            with open(self.temporal_file, 'r') as r:
+            with open(os.path.join(self.training_path, self.used_mols), 'r') as r:
                 data = r.readlines()
                 datalines = [x.split('\n')[0] for x in data]
                 self.active_inchi = [inchi for inchi in self.active_inchi if inchi not in datalines]
                 self.inactive_inchi = [inchi for inchi in self.inactive_inchi if inchi not in datalines]
-
         return 
 
     def reading_from_pubchem(self, trash_lines = 9):
@@ -138,7 +141,7 @@ class PubChem():
             data = pickle.load(f)
         return data
 
-def process_pubchem(pubchem_folder, csv_filename, status, substrate, stored_files = None, outputfile = 'inchi_all.pkl', test=False, mol_to_read=None):
+def process_pubchem(pubchem_folder, training_path, csv_filename, status, substrate, stored_files = None, outputfile = 'inchi_all.pkl', test=False, mol_to_read=None):
     pub_chem = PubChem(pubchem_folder, stored_files, csv_filename, status, outputfile, substrate, mol_to_read)
     active_output, n_actives = pub_chem.to_sdf(actype = 'active')
     inactive_output, n_inactives = pub_chem.to_sdf(actype = 'inactive') 
