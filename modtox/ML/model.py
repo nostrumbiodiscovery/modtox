@@ -190,7 +190,6 @@ class GenericModel(object):
             self.x_train_trans = self.x_train_trans[:, user_indexes]        
             self.headers = np.array(self.headers)[user_indexes].tolist()       
  
-        if self.save_model: self.saving_model(cv)
 
         ##Classification##
         np.random.seed(7)
@@ -224,6 +223,7 @@ class GenericModel(object):
         #finally postprocessing results
 
         self.postprocessing()
+        if self.save_model: self.saving_model(cv)
 
 
     def postprocessing(self, print_most_important=False, output_conf="conf.png"):
@@ -237,7 +237,7 @@ class GenericModel(object):
         with hp.cd(dim_reduct_folders[0]):
             # Plot Sample landscape
             vs.UMAP_plot(self.x_train_trans, self.labels, output="umap/prediction_landscape_umap.png")
-            vs.pca_plot(self.x_train_trans, self.labels, output="pca/sample_landscape_pca.png")
+            vs.pca_plot(self.x_train_trans, self.labels, output="pca/sample_landscape_pca.png", biplot=self.headers)
             vs.tsne_plot(self.x_train_trans, self.labels, output="tsne/sample_landscape_tsne.png")
 
             # Plot result each clf
