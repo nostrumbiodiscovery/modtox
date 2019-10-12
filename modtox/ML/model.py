@@ -34,10 +34,9 @@ CLF = ["SVM", "XGBOOST", "KN", "TREE", "NB", "NB_final"]
 
 class GenericModel(object):
 
-    def __init__(self, active, inactive, clf, save_model, filename_model, results_folder,  csv=None, test=None, pb=False, fp=False, descriptors=False, MACCS=True, columns=None):
+    def __init__(self, active, inactive, clf, save_model, filename_model, results_folder,  csv=None, test=None, pb=False, fp=False, descriptors=False, MACCS=True, columns=None, tpot=False, cv=None, debug=False):
         self.active = active
         self.inactive = inactive
-        self.clf = cl.retrieve_classifier(clf)
         self.pb = pb
         self.fp = fp
         self.descriptors = descriptors
@@ -50,10 +49,14 @@ class GenericModel(object):
         self.labels = self.data.iloc[:, -1]
         self.filename_model = filename_model
         self.results_folder = results_folder
+        self.tpot = tpot
+        self.cv = self.n_final_active if not cv else cv
+        self.clf = cl.retrieve_classifier(clf, self.tpot, cv=self.cv)
         if self.test:
             self.data_test = self._load_test()
         if save_model: self.save_model = True
         else: self.save_model = False
+        self.debug = debug
 
 
     def _load_test(self):
@@ -164,19 +167,26 @@ class GenericModel(object):
     def saving_model(self, cv):
         scaler = StandardScaler()
         f = open(os.path.join(self.results_folder,self.filename_model), 'wb')
+
         if self.is_stack_model():
-            for clf in self.clf[:-1]:
-                clf.fit(self.x_train_trans, self.labels)
-                pickle.dump(clf, f)
-                #and for the last model
-            preds_train = np.array([ cross_val_predict(c, self.x_train_trans, self.labels, cv=cv) for c in self.clf[:-1 ]])
-            X = np.hstack( [self.x_train_trans, preds_train.T] )
-            last_model = self.clf[-1].fit(scaler.fit_transform(X), self.labels)
+            if self.tpot:
+                for clf in self.clf:
+                    pickle.dump(clf.fitted_pipeline_, f)
+            else:
+                for clf in self.clf[:-1]:
+                    clf.fit(self.x_train_trans, self.labels)
+                    pickle.dump(clf, f)
+                    #and for the last model
+                preds_train = np.array([ cross_val_predict(c, self.x_train_trans, self.labels, cv=cv) for c in self.clf[:-1 ]])
+                X = np.hstack( [self.x_train_trans, preds_train.T] )
+                last_model = self.clf[-1].fit(X, self.labels)
+                pickle.dump(last_model, f)
         else:
-            last_model = self.clf.fit(self.x_train_trans, self.labels)
-
-        pickle.dump(last_model, f)
-
+            if self.tpot:
+                pickle.dump(self.clf.fitted_pipeline_, f)
+            else:
+                last_model = self.clf.fit(self.x_train_trans, self.labels)
+                pickle.dump(last_model, f)
         f.close()
        
     def build_model(self, load=False, grid_search=False, output_conf=None, save=False, cv=None):
@@ -193,37 +203,62 @@ class GenericModel(object):
 
         ##Classification##
         np.random.seed(7)
-        cv = self.n_final_active if not cv else cv
+        print("Stack model")
         if self.is_stack_model():
-            print("Stack model")
-            last_clf = self.clf[-1]
-            scaler = StandardScaler()
-            #Predict with 5 classfiers
-            preds = np.array([ cross_val_predict(c, self.x_train_trans, self.labels, cv=cv) for c in self.clf[:-1 ]])
-            print(self.x_train_trans.shape, preds.T.shape)
-            X = np.hstack( [self.x_train_trans, preds.T] )
-            #Stack all classifiers in a final one
-            self.prediction = cross_val_predict(last_clf, scaler.fit_transform(X), self.labels, cv=cv)
-            self.prediction_prob = cross_val_predict(last_clf, scaler.fit_transform(X), self.labels, cv=cv, method='predict_proba')
-            self.uncertanties = self.calculate_uncertanties(preds) 
-            #Obtain results
-            clf_result = np.vstack([preds, self.prediction])
-            self.clf_results = [] # All classfiers
-            for results in clf_result:
-                self.clf_results.append([pred == true for pred, true  in zip(results, self.labels)])
-            self.results = [ pred == true for pred, true in zip(self.prediction, self.labels)] #last classifier
+            if self.tpot:
+                for c in self.clf[:-1 ]:
+                    c.fit(self.x_train_trans, self.labels)
+                preds = np.array([ c.predict(self.x_train_trans) for c in self.clf[:-1 ]])
+                X = np.hstack( [self.x_train_trans, preds.T] )
+                #Stack all classifiers in a final one
+                last_clf = self.clf[-1]
+                last_clf.fit(X, self.labels)
+                self.prediction = last_clf.predict(X)
+                self.prediction_prob = last_clf.predict_proba(X)
+                self.uncertanties = self.calculate_uncertanties(preds) 
+
+                #Obtain results
+                clf_result = np.vstack([preds, self.prediction])
+                self.clf_results = [] # All classfiers
+                for results in clf_result:
+                    self.clf_results.append([pred == true for pred, true  in zip(results, self.labels)])
+                self.results = [ pred == true for pred, true in zip(self.prediction, self.labels)] #last classifier
+            else:
+                last_clf = self.clf[-1]
+                scaler = StandardScaler()
+                #Predict with 5 classfiers
+                preds = np.array([ cross_val_predict(c, self.x_train_trans, self.labels, cv=self.cv) for c in self.clf[:-1 ]])
+                print(self.x_train_trans.shape, preds.T.shape)
+                X = np.hstack( [self.x_train_trans, preds.T] )
+                #Stack all classifiers in a final one
+                self.prediction = cross_val_predict(last_clf, scaler.fit_transform(X), self.labels, cv=self.cv)
+                self.prediction_prob = cross_val_predict(last_clf, scaler.fit_transform(X), self.labels, cv=self.cv, method='predict_proba')
+                self.uncertanties = self.calculate_uncertanties(preds) 
+                #Obtain results
+                clf_result = np.vstack([preds, self.prediction])
+                self.clf_results = [] # All classfiers
+                for results in clf_result:
+                    self.clf_results.append([pred == true for pred, true  in zip(results, self.labels)])
+                self.results = [ pred == true for pred, true in zip(self.prediction, self.labels)] #last classifier
             
         else:
             print("Normal model")
-            self.prediction = cross_val_predict(self.clf, self.x_train_trans, self.labels, cv=cv)
-            self.prediction_prob = cross_val_predict(self.clf, self.x_train_trans, self.labels, cv=cv, method='predict_proba')
-            #Obtain results
-            self.results = [ pred == true for pred, true in zip(self.prediction, self.labels)]
+            if self.tpot:
+                self.clf.fit(self.x_train_trans, self.labels)
+                self.prediction = self.clf.predict(self.x_train_trans)
+                self.prediction_prob = self.clf.predict_proba(self.x_train_trans)
+            else:
+                self.prediction = cross_val_predict(self.clf, self.x_train_trans, self.labels, cv=self.cv)
+                self.prediction_prob = cross_val_predict(self.clf, self.x_train_trans, self.labels, cv=self.cv, method='predict_proba')
+                #Obtain results
+                self.results = [ pred == true for pred, true in zip(self.prediction, self.labels)]
 
-        #finally postprocessing results
+        #Analyse results
+        if not self.debug:
+            self.postprocessing()
 
-        self.postprocessing()
-        if self.save_model: self.saving_model(cv)
+        #Save mode
+        if self.save_model: self.saving_model(self.cv)
 
 
     def postprocessing(self, print_most_important=False, output_conf="conf.png"):
@@ -546,7 +581,8 @@ class GenericModel(object):
 
         #setting test = train to call postprocessing
         self.x_train_trans = self.x_test_trans  
-        self.postprocessing()
+        if not self.debug:
+            self.postprocessing()
 
 def parse_args(parser):
     parser.add_argument('--active', type=str,
@@ -575,7 +611,8 @@ def parse_args(parser):
     parser.add_argument('--test_importance', nargs="+", help="Name of Molecules to include on testing feature importance", default=[])
     parser.add_argument('--print_most_important', action="store_true", help="Print most important features name to screen to use them as command lina arguments with --columns_to_keep")
     parser.add_argument('--build_model', action="store_true", help='Compute crossvalidation over active and inactives')
-    parser.add_argument('--filename_model', default = 'fitted_models.pkl', help='Filename for models')
+    parser.add_argument('--filename_model', default='fitted_models.pkl', help='Filename for models')
+    parser.add_argument('--tpot', action="store_true", help='Use tpot optimizer')
 
 
 if __name__ == "__main__":
