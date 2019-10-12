@@ -47,10 +47,10 @@ def parse_args():
     parser.add_argument('--status', default = "train", help= "Train or test")
     args = parser.parse_args()
     
-    return args.traj, args.resname, args.active, args.inactive, args.top, args.glide_files, args.best, args.csv, args.RMSD, args.cluster, args.last, args.clust_type, args.rmsd_type, args.receptor, args.ligands_to_dock, args.grid, args.precision, args.maxkeep, args.maxref, args.dock, args.assemble_model, args.predict, args.test, args.save, args.load, args.external_data, args.pb, args.cv, args.features, args.features_cv, args.descriptors, args.classifier, args.filename_model, args.dude, args.pubchem, args.stored_files, args.csv_filename, args.substrate, args.grid_mol, args.clust_sieve, args.debug, args.output_dir, args.status, args.mol_to_read
+    return args.traj, args.resname, args.active, args.inactive, args.top, args.glide_files, args.best, args.csv, args.RMSD, args.cluster, args.last, args.clust_type, args.rmsd_type, args.receptor, args.ligands_to_dock, args.grid, args.precision, args.maxkeep, args.maxref, args.dock, args.assemble_model, args.predict, args.test, args.save, args.load, args.external_data, args.pb, args.cv, args.features, args.features_cv, args.descriptors, args.classifier, args.filename_model, args.dude, args.pubchem, args.stored_files, args.csv_filename, args.substrate, args.grid_mol, args.clust_sieve, args.debug, args.output_dir, args.status, args.mol_to_read, args.tpot
 
 
-def main(traj, resname, active=None, inactive=None, top=None, glide_files="*dock*.maegz", best=False, csv=False, RMSD=True, cluster=True, last=True, clust_type="BS", rmsd_type="BS", receptor="*pv*.maegz", grid=None, precision="SP", maxkeep=500, maxref=400, dock=False, assemble_model=True, predict = False, test=None, save=None, load=None, external_data=None, pb=False, cv=2, features=5, features_cv=1, descriptors=[], classifier="svm", filename_model = None, dude=None, pubchem = None, stored_files = False, csv_filename=None, substrate=None, grid_mol=2, sieve=10, debug=False, output_dir = "modtox_results", status = None, mol_to_read=None):
+def main(traj, resname, active=None, inactive=None, top=None, glide_files="*dock*.maegz", best=False, csv=False, RMSD=True, cluster=True, last=True, clust_type="BS", rmsd_type="BS", receptor="*pv*.maegz", grid=None, precision="SP", maxkeep=500, maxref=400, dock=False, assemble_model=True, predict = False, test=None, save=None, load=None, external_data=None, pb=False, cv=2, features=5, features_cv=1, descriptors=[], classifier="svm", filename_model = None, dude=None, pubchem = None, stored_files = False, csv_filename=None, substrate=None, grid_mol=2, sieve=10, debug=False, output_dir = "modtox_results", status = None, mol_to_read=None, tpot=False):
     
     if not os.path.exists(output_dir):
         os.mkdir(output_dir)
@@ -84,8 +84,8 @@ def main(traj, resname, active=None, inactive=None, top=None, glide_files="*dock
         # Build Model
         for model in MODELS:
             try:
-                model_obj = md.GenericModel(active, inactive, classifier, True, filename_model, results_folder = results_folder, csv=model["csv"], test=test, pb=model["pb"], fp=model["fingerprint"], descriptors=model["descriptors"], MACCS=model["MACCS"])
-                model_obj.build_model(cv=cv, output_conf=model["conf_matrix"])
+                model_obj = md.GenericModel(active, inactive, classifier, True, filename_model, results_folder = results_folder, csv=model["csv"], test=test, pb=model["pb"], fp=model["fingerprint"], descriptors=model["descriptors"], MACCS=model["MACCS"], cv=cv, tpot=tpot, debug=debug)
+                model_obj.build_model(output_conf=model["conf_matrix"])
                 #model_obj.feature_importance(cl.XGBOOST, cv=features_cv, number_feat=features, output_features=model["output_feat"])
             except IOError as e:
                 print(e)
@@ -102,14 +102,14 @@ def main(traj, resname, active=None, inactive=None, top=None, glide_files="*dock
         inp_files = glob.glob(glide_files)
         gl.analyze(inp_files, best=best, csv=csv, active=active, inactive=inactive, debug=debug)
         for model in MODELS: 
-            model_obj = md.GenericModel(active, inactive, classifier, True, filename_model, results_folder = results_folder, csv=model["csv"], test=test, pb=model["pb"], fp=model["fingerprint"], descriptors=model["descriptors"], MACCS=model["MACCS"])
+            model_obj = md.GenericModel(active, inactive, classifier, True, filename_model, results_folder = results_folder, csv=model["csv"], test=test, pb=model["pb"], fp=model["fingerprint"], descriptors=model["descriptors"], MACCS=model["MACCS"], cv=cv, tpot=tpot, debug=debug)
             model_obj.external_prediction()
 
 if __name__ == "__main__":
     trajs, resname, active, inactive, top, glide_files, best, csv, RMSD, cluster, last, clust_type, rmsd_type, \
     receptor, ligands_to_dock, grid, precision, maxkeep, maxref, dock, assemble_model, predict, test, \
     save, load, external_data, pb, cv, features, features_cv, descriptors, \
-    classifier, filename_model, dude, pubchem, stored_files, csv_filename, substrate, grid_mol, sieve, debug, output_dir, status, mol_to_read = parse_args()
+    classifier, filename_model, dude, pubchem, stored_files, csv_filename, substrate, grid_mol, sieve, debug, output_dir, status, mol_to_read, tpot = parse_args()
     main(trajs, resname, active, inactive, top, glide_files, best, csv, RMSD, cluster, last, clust_type, rmsd_type, 
         receptor, grid, precision, maxkeep, maxref, dock, assemble_model, predict, test, save, load, external_data, pb, cv, features, features_cv, 
-        descriptors, classifier, filename_model, dude, pubchem, stored_files, csv_filename, substrate, grid_mol, sieve, debug, output_dir, status, mol_to_read)
+        descriptors, classifier, filename_model, dude, pubchem, stored_files, csv_filename, substrate, grid_mol, sieve, debug, output_dir, status, mol_to_read, tpot)

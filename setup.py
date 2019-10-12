@@ -9,5 +9,5 @@ setup(name='modtox',
       author='Daniel Soler',
       author_email='daniel.soler@nostrumbiodiscovery.com',
       url='https://github.com/NostrumBioDiscovery/modtox',
-      install_requires=['pytraj', 'mdtraj', 'matplotlib', 'xgboost', 'sklearn', 'prody', 'biopython', 'pandas', 'mordred', 'nltk', 'seaborn', 'umap-learn', 'tqdm', 'requests', 'chembl_webresource_client', 'pytest', 'pubchempy'],
+      install_requires=['pytraj', 'mdtraj', 'matplotlib', 'xgboost', 'sklearn', 'prody', 'biopython', 'pandas', 'mordred', 'nltk', 'seaborn', 'umap-learn', 'tqdm', 'requests', 'chembl_webresource_client', 'pytest', 'pubchempy', 'tpot'],
      )
