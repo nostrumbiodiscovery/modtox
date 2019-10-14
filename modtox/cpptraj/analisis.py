@@ -148,7 +148,10 @@ def parse_args(parser):
     parser.add_argument('--clust_sieve', type=int, help='Sieve for clustering', default=10)
     parser.add_argument('--rmsd_type', type=str, help='Type of RMSD [BS (default), CA, all]', default="BS")
 
-def analise(traj, resname, top, RMSD, cluster, last, clust_type, rmsd_type, sieve, output_dir="."):
+def analise(traj, resname, top, RMSD, cluster, last, clust_type, rmsd_type, sieve, train, test):
+    output_dir = "analisis"
+    if not os.path.exists(output_dir): os.makedirs(output_dir)
+
     trajectory = CpptajBuilder(traj, top)
     if RMSD:
         trajectory.strip(trajectory.traj, autoimage=True)
@@ -156,7 +159,7 @@ def analise(traj, resname, top, RMSD, cluster, last, clust_type, rmsd_type, siev
             mask = ":1-10000,@CA"
         elif rmsd_type == "BS":
             output = trajectory.save_traj(trajectory.traj_converged, frame_indices=[trajectory.traj_converged.n_frames-1],
-            output_path = "analisis", output="last_snap.pdb")
+            output_path = output_dir, output="last_snap.pdb")
             mask = mk.retrieve_closest(output, resname) 
         elif rmsd_type == "all": 
             mask="*" 
@@ -165,7 +168,7 @@ def analise(traj, resname, top, RMSD, cluster, last, clust_type, rmsd_type, siev
     if cluster:
         trajectory.strip(trajectory.traj, autoimage=True)
         output = trajectory.save_traj(trajectory.traj_converged, frame_indices=[trajectory.traj_converged.n_frames-1],
-        output_path="analisis", output="last_snap.pdb")
+        output_path=output_dir, output="last_snap.pdb")
         if clust_type == "CA":
             mask = ":1-10000,@CA"
         elif clust_type == "BS":
