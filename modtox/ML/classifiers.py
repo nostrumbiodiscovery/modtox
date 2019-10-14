@@ -38,7 +38,7 @@ def retrieve_classifier(classifier, tpot=False, cv=5):
             clf = SVM
     elif classifier == "stack":
         if tpot:
-            clf = get_tpot_classifiers(cv)
+            clf = get_tpot_classifiers(cv=cv)
         else:
             clf = [SVM, XGBOOST, KN, TREE, NB, NB]
     else:

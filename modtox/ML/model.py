@@ -160,20 +160,20 @@ class GenericModel(object):
 
         return pre.fit_transform(X)
             
-    def saving_model(self, scaler, cv):
+    def saving_model(self, scaler):
         f = open(os.path.join("model", self.filename_model), 'wb')
 
         if self.is_stack_model():
             if self.tpot:
                 for clf in self.clf:
                     pickle.dump(clf.fitted_pipeline_, f)
-                    pickle.dump(scaler, f)
+                pickle.dump(scaler, f)
             else:
                 for clf in self.clf[:-1]:
                     clf.fit(self.x_train_trans, self.labels)
                     pickle.dump(clf, f)
                     #and for the last model
-                preds_train = np.array([ cross_val_predict(c, self.x_train_trans, self.labels, cv=cv) for c in self.clf[:-1 ]])
+                preds_train = np.array([ cross_val_predict(c, self.x_train_trans, self.labels, cv=self.cv) for c in self.clf[:-1 ]])
                 X = np.hstack( [self.x_train_trans, preds_train.T] )
                 last_model = self.clf[-1].fit(X, self.labels)
                 pickle.dump(last_model, f)
@@ -230,12 +230,12 @@ class GenericModel(object):
                 print("Stack model")
                 last_clf = self.clf[-1]
                 #Predict with 5 classfiers
-                preds = np.array([ cross_val_predict(c, self.x_train_trans, self.labels, cv=cv) for c in self.clf[:-1 ]])
+                preds = np.array([ cross_val_predict(c, self.x_train_trans, self.labels, cv=self.cv) for c in self.clf[:-1 ]])
                 print(self.x_train_trans.shape, preds.T.shape)
                 X = np.hstack( [self.x_train_trans, preds.T] )
                 #Stack all classifiers in a final one
-                self.prediction = cross_val_predict(last_clf, X, self.labels, cv=cv)
-                self.prediction_prob = cross_val_predict(last_clf, X, self.labels, cv=cv, method='predict_proba')
+                self.prediction = cross_val_predict(last_clf, X, self.labels, cv=self.cv)
+                self.prediction_prob = cross_val_predict(last_clf, X, self.labels, cv=self.cv, method='predict_proba')
                 self.uncertanties = self.calculate_uncertanties(preds) 
                 #Obtain results
                 clf_result = np.vstack([preds, self.prediction])
@@ -260,8 +260,7 @@ class GenericModel(object):
         if not self.debug:
             self.postprocessing()
 
-        self.postprocessing()
-        self.saving_model(scaler, cv)
+        self.saving_model(scaler)
 
     def postprocessing(self, print_most_important=False, output_conf="conf.png"):
         ##Dimensionallity reduction##
@@ -318,7 +317,7 @@ class GenericModel(object):
             conf = confusion_matrix(self.labels, self.prediction)
             conf[1][0] += (self.n_initial_active - self.n_final_active)
             conf[0][0] += (self.n_initial_inactive - self.n_final_inactive)
-            try: print("{} KFOLD Training Crossvalidation".format(cv))
+            try: print("{} KFOLD Training Crossvalidation".format(self.cv))
             except : pass
             print(conf.T)
             md.conf(conf[1][1], conf[0][1], conf[0][0], conf[1][0], output=output_conf)
@@ -547,7 +546,7 @@ class GenericModel(object):
         #Predict pre-model
         preds_test = np.array([ model.predict(self.x_test_trans) for model in self.models_fitted ])
         # Fit last model
-        preds_train = np.array([ cross_val_predict(c, self.x_train_trans, self.labels, cv=cv) for c in self.clf[:-1 ]])
+        preds_train = np.array([ cross_val_predict(c, self.x_train_trans, self.labels, cv=self.cv) for c in self.clf[:-1 ]])
         X = np.hstack( [self.x_train_trans, preds_train.T] )
         self.last_model = self.clf[-1].fit(scaler.fit_transform(X), self.labels)
         #Predict last model
