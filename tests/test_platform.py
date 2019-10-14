@@ -12,12 +12,12 @@ DUDE=os.path.join(DATA_PATH, "dude")
 PUBCHEM = os.path.join(DATA_PATH, "pubchem")
 CSV_FILENAME = "AID_1851_datatable_all.csv"
 SUBSTRATE = "p450-cyp2c9"
-FILENAME_MODEL = os.path.join(DATA_PATH, "analysis/fitted_models.pkl")
-FILENAME_MODEL_STACK = os.path.join(DATA_PATH, "analysis/fitted_models_stack.pkl")
+FILENAME_MODEL = os.path.join(DATA_PATH, "general/fitted_models.pkl")
+FILENAME_MODEL_STACK = os.path.join(DATA_PATH, "general/fitted_models_stack.pkl")
 GLIDE_FILES=os.path.join(DATA_PATH, "analysis/input__*dock_lib.maegz")
 RESNAME="198"
-ACTIVE_ANALYSIS=os.path.join(DATA_PATH, "analysis/active.sdf")
-INACTIVE_ANALYSIS=os.path.join(DATA_PATH, "analysis/decoys.sdf")
+ACTIVE_ANALYSIS=os.path.join(DATA_PATH, "general/active.sdf")
+INACTIVE_ANALYSIS=os.path.join(DATA_PATH, "general/decoys.sdf")
 
 @pytest.mark.parametrize("traj, resname, top, active, inactive", [
                          (TRAJ, RESNAME, TOP, ACTIVE, INACTIVE),
