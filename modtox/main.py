@@ -43,73 +43,82 @@ def parse_args():
     parser.add_argument('--assemble_model', action="store_true", help='Assemble model')
     parser.add_argument('--predict', action = 'store_true', help = 'Predict an external set')
     parser.add_argument('--debug', action="store_true", help='Run debug simulation')
-    parser.add_argument('--output_dir', help='Folder to store modtox files', default="modtox_results")
-    parser.add_argument('--status', default = "train", help= "Train or test")
+    parser.add_argument('--output_dir', help='Folder to store modtox files', default="cyp2c9")
+    status = parser.add_mutually_exclusive_group(required=True)
+    status.add_argument('--train',action="store_true")
+    status.add_argument('--test',action="store_true")
     args = parser.parse_args()
     
-    return args.traj, args.resname, args.active, args.inactive, args.top, args.glide_files, args.best, args.csv, args.RMSD, args.cluster, args.last, args.clust_type, args.rmsd_type, args.receptor, args.ligands_to_dock, args.grid, args.precision, args.maxkeep, args.maxref, args.dock, args.assemble_model, args.predict, args.test, args.save, args.load, args.external_data, args.pb, args.cv, args.features, args.features_cv, args.descriptors, args.classifier, args.filename_model, args.dude, args.pubchem, args.stored_files, args.csv_filename, args.substrate, args.grid_mol, args.clust_sieve, args.debug, args.output_dir, args.status, args.mol_to_read
+    return args.traj, args.resname, args.active, args.inactive, args.top, args.glide_files, args.best, args.csv, args.RMSD, args.cluster, args.last, args.clust_type, args.rmsd_type, args.receptor, args.ligands_to_dock, args.grid, args.precision, args.maxkeep, args.maxref, args.dock, args.assemble_model, args.predict, args.do_test, args.save, args.load, args.external_data, args.pb, args.cv, args.features, args.features_cv, args.descriptors, args.classifier, args.filename_model, args.dude, args.pubchem, args.csv_filename, args.substrate, args.grid_mol, args.clust_sieve, args.debug, args.output_dir,args.train, args.test, args.mol_to_read
 
 
-def main(traj, resname, active=None, inactive=None, top=None, glide_files="*dock_lib.maegz", best=False, csv=False, RMSD=True, cluster=True, last=True, clust_type="BS", rmsd_type="BS", receptor="*pv*.maegz", grid=None, precision="SP", maxkeep=500, maxref=400, dock=False, assemble_model=True, predict = False, test=None, save=None, load=None, external_data=None, pb=False, cv=2, features=5, features_cv=1, descriptors=[], classifier="svm", filename_model = None, dude=None, pubchem = None, stored_files = False, csv_filename=None, substrate=None, grid_mol=2, sieve=10, debug=False, output_dir = "modtox_results", status = None, mol_to_read=None):
+def main(traj, resname, active=None, inactive=None, top=None, glide_files="*dock_lib.maegz", best=False, csv=False, RMSD=True, cluster=True, last=True, clust_type="BS", rmsd_type="BS", receptor="*pv*.maegz", grid=None, precision="SP", maxkeep=500, maxref=400, dock=False, assemble_model=False, predict = False, do_test=None, save=None, load=None, external_data=None, pb=False, cv=2, features=5, features_cv=1, descriptors=[], classifier="svm", filename_model = None, dude=None, pubchem = None, csv_filename=None, substrate=None, grid_mol=2, sieve=10, debug=False, output_dir="cyp2c9", train=False, test=False, mol_to_read=None):
     
     if not os.path.exists(output_dir):
         os.mkdir(output_dir)
+    if train: direct = os.path.join(output_dir, "from_train")
+    if test: direct = os.path.join(output_dir, "from_test")
+    if not os.path.exists(direct): os.mkdir(direct)
+
     if dock:
-        with hp.cd(output_dir):
+        with hp.cd(direct):
             # Analyze trajectory&extract clusters
             print("Extracting clusters from MD")
             if not os.path.exists("analisis"):
-                an.analise(traj, resname, top, RMSD, cluster, last, clust_type, rmsd_type, sieve)
+                an.analise(traj, resname, top, RMSD, cluster, last, clust_type, rmsd_type, sieve, train, test)
             # Cross dock all ligand to the extracted clusters
             if dude:
-                active, inactive = dd.process_dude(dude, status, test=debug)
+                active, inactive = dd.process_dude(dude, train, test, do_test=debug)
             if pubchem:
-                active, inactive = pchm.process_pubchem(pubchem, stored_files = stored_files, csv_filename = csv_filename, status = status, substrate = substrate, mol_to_read=mol_to_read, test = debug)
+                active, inactive = pchm.process_pubchem(pubchem, train, test, csv_filename, substrate, mol_to_read=mol_to_read, do_test = debug)
             if active.split(".")[-1] == "csv":
                 active = gpcr.process_gpcrdb(active)
                 inactive = inactive
             print("Docking active and inactive dataset")
             if not debug:
-                docking_obj = dk.Glide_Docker(glob.glob("analisis/*clust*.pdb"), [active, inactive], test=debug)
-                docking_obj.dock(precision=precision, maxkeep=maxkeep, maxref=maxref, grid_mol=grid_mol)
+                if not os.path.exists("docking"): os.mkdir("docking")
+                with hp.cd("docking"):
+                    docking_obj = dk.Glide_Docker(glob.glob("../analisis/*clust*.pdb"), [active, inactive], do_test=debug)
+                    docking_obj.dock(precision=precision, maxkeep=maxkeep, maxref=maxref, grid_mol=grid_mol)
                 print("Docking in process... Once is finished run the same command exchanging --dock by --assemble_model flag to build model")
     if assemble_model:
-        results_folder = 'from_train'
+        assert train, "Assemble model only allowed with train flag" 
         if dude or pubchem:
             active = "active_train.sdf"
             inactive = "inactive_train.sdf"
-        # Analyze dockig files and build model features
-        inp_files = glob.glob(glide_files)
-        gl.analyze(inp_files, best=best, csv=csv, active=active, inactive=inactive, debug=debug)
-        # Build Model
-        for model in MODELS:
-            try:
-                model_obj = md.GenericModel(active, inactive, classifier, True, filename_model, results_folder = results_folder, csv=model["csv"], test=test, pb=model["pb"], fp=model["fingerprint"], descriptors=model["descriptors"], MACCS=model["MACCS"])
-                model_obj.build_model(cv=cv, output_conf=model["conf_matrix"])
-                #model_obj.feature_importance(cl.XGBOOST, cv=features_cv, number_feat=features, output_features=model["output_feat"])
-            except IOError as e:
-                print(e)
-                print("Model with descriptors not build for failure to connect to client webserver")
-        print("Models sucesfully build. Confusion_matrix.png outputted")
- 
+    
+            # Analyze dockig files and build model features
+            inp_files = glob.glob(glide_files)
+            gl.analyze(inp_files, best=best, csv=csv, active=active, inactive=inactive, debug=debug)
+        with hp.cd(direct):
+            # Build Model
+            for model in MODELS:
+                try:
+                    model_obj = md.GenericModel(active, inactive, classifier, filename_model, csv=model["csv"], do_test=do_test, pb=model["pb"], fp=model["fingerprint"], descriptors=model["descriptors"], MACCS=model["MACCS"])
+                    model_obj.build_model(cv=cv, output_conf=model["conf_matrix"])
+                    #model_obj.feature_importance(cl.XGBOOST, cv=features_cv, number_feat=features, output_features=model["output_feat"])
+                except IOError as e:
+                    print(e)
+                    print("Model with descriptors not build for failure to connect to client webserver")
+            print("Models sucesfully build. Confusion_matrix.png outputted")
+     
     if predict:
-        results_folder = 'from_test'
-        assert os.path.isfile(filename_model)== True, "Run the training of the module first with flag --build_model. More in docs"
+        assert os.path.isfile(filename_model)== True, "Run the training of the module first with flag --assemble_model. More in docs"
         if dude or pubchem:
             active = "active_test.sdf"
             inactive = "inactive_test.sdf"
-
         inp_files = glob.glob(glide_files)
         gl.analyze(inp_files, best=best, csv=csv, active=active, inactive=inactive, debug=debug)
-        for model in MODELS: 
-            model_obj = md.GenericModel(active, inactive, classifier, True, filename_model, results_folder = results_folder, csv=model["csv"], test=test, pb=model["pb"], fp=model["fingerprint"], descriptors=model["descriptors"], MACCS=model["MACCS"])
-            model_obj.external_prediction()
-
+        with hp.cd(direct):
+            for model in MODELS: 
+                model_obj = md.GenericModel(active, inactive, classifier, filename_model, csv=model["csv"], do_test=do_test, pb=model["pb"], fp=model["fingerprint"], descriptors=model["descriptors"], MACCS=model["MACCS"])
+                model_obj.external_prediction()
+    
 if __name__ == "__main__":
     trajs, resname, active, inactive, top, glide_files, best, csv, RMSD, cluster, last, clust_type, rmsd_type, \
     receptor, ligands_to_dock, grid, precision, maxkeep, maxref, dock, assemble_model, predict, test, \
     save, load, external_data, pb, cv, features, features_cv, descriptors, \
-    classifier, filename_model, dude, pubchem, stored_files, csv_filename, substrate, grid_mol, sieve, debug, output_dir, status, mol_to_read = parse_args()
+    classifier, filename_model, dude, pubchem, csv_filename, substrate, grid_mol, sieve, debug, output_dir, train, test, mol_to_read = parse_args()
     main(trajs, resname, active, inactive, top, glide_files, best, csv, RMSD, cluster, last, clust_type, rmsd_type, 
         receptor, grid, precision, maxkeep, maxref, dock, assemble_model, predict, test, save, load, external_data, pb, cv, features, features_cv, 
-        descriptors, classifier, filename_model, dude, pubchem, stored_files, csv_filename, substrate, grid_mol, sieve, debug, output_dir, status, mol_to_read)
+        descriptors, classifier, filename_model, dude, pubchem, csv_filename, substrate, grid_mol, sieve, debug, output_dir, train, test, mol_to_read)

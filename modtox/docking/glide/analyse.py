@@ -11,8 +11,7 @@ from itertools import chain
 
 
 def analyze(glide_files, active=False, inactive=False, best=False, csv=[], filter=None, debug=False):
-    print(glide_files)
-    glide_dir = "glide"
+    glide_dir = "descriptors"
     if not os.path.exists(glide_dir):
         os.makedirs(glide_dir)
        
@@ -73,6 +72,7 @@ def csv_report(glide_file,  schr=cs.SCHR, properties = ["s_m_title", "r_i_dockin
 def to_dataframe(glide_results_file, output="results.csv", write=True, iteration=None, filter=None):
     found=False
     info = []
+    print(glide_results_file)
     with open(glide_results_file, "r") as f:
         for line in f:
             if line.split():

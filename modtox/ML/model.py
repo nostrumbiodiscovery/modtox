@@ -34,7 +34,7 @@ CLF = ["SVM", "XGBOOST", "KN", "TREE", "NB", "NB_final"]
 
 class GenericModel(object):
 
-    def __init__(self, active, inactive, clf, save_model, filename_model, results_folder,  csv=None, test=None, pb=False, fp=False, descriptors=False, MACCS=True, columns=None):
+    def __init__(self, active, inactive, clf, filename_model, csv=None, do_test=None, pb=False, fp=False, descriptors=False, MACCS=True, columns=None):
         self.active = active
         self.inactive = inactive
         self.clf = cl.retrieve_classifier(clf)
@@ -44,16 +44,13 @@ class GenericModel(object):
         self.MACCS = MACCS
         self.external_data = csv
         self.columns = columns
-        self.test = test
+        self.do_test = do_test
         self.data = self._load_training_set()
         self.features = self.data.iloc[:, :-1]
         self.labels = self.data.iloc[:, -1]
         self.filename_model = filename_model
-        self.results_folder = results_folder
-        if self.test:
+        if self.do_test:
             self.data_test = self._load_test()
-        if save_model: self.save_model = True
-        else: self.save_model = False
 
 
     def _load_test(self):
@@ -125,7 +122,7 @@ class GenericModel(object):
     
         return self.data
 
-    def __fit_transform__(self, X, exclude=COLUMNS_TO_EXCLUDE):
+    def __fit_transform__(self, X, predict=False, exclude=COLUMNS_TO_EXCLUDE):
         molecular_data = [ TITLE_MOL, ]
         
         numeric_transformer = Pipeline(steps=[
@@ -156,14 +153,12 @@ class GenericModel(object):
             transformers=[
                     ('mol', molec_transformer, molecular_data)])
         
-        pre = Pipeline(steps=[('transformer', preprocessor),
-                                  ('scaler', numeric_transformer),
-                                                       ])
+        pre = Pipeline(steps=[('transformer', preprocessor)])
+
         return pre.fit_transform(X)
             
-    def saving_model(self, cv):
-        scaler = StandardScaler()
-        f = open(os.path.join(self.results_folder,self.filename_model), 'wb')
+    def saving_model(self, scaler, cv):
+        f = open(os.path.join("model",self.filename_model), 'wb')
         if self.is_stack_model():
             for clf in self.clf[:-1]:
                 clf.fit(self.x_train_trans, self.labels)
@@ -171,26 +166,29 @@ class GenericModel(object):
                 #and for the last model
             preds_train = np.array([ cross_val_predict(c, self.x_train_trans, self.labels, cv=cv) for c in self.clf[:-1 ]])
             X = np.hstack( [self.x_train_trans, preds_train.T] )
-            last_model = self.clf[-1].fit(scaler.fit_transform(X), self.labels)
+            last_model = self.clf[-1].fit(X, self.labels)
+            pickle.dump(last_model, f)
+            pickle.dump(scaler, f)
+
         else:
             last_model = self.clf.fit(self.x_train_trans, self.labels)
-
-        pickle.dump(last_model, f)
-
+            pickle.dump(last_model, f)
+            pickle.dump(scaler, f)
         f.close()
        
     def build_model(self, load=False, grid_search=False, output_conf=None, save=False, cv=None):
-        
-    
+         
         ##Preprocess data##
         self.x_train_trans = self.__fit_transform__(self.features)
+        scaler = StandardScaler()
+        imputer = SimpleImputer(strategy="constant")
+        self.x_train_trans = scaler.fit_transform(imputer.fit_transform(self.x_train_trans))
         self.headers = self.retrieve_header()
         if self.columns:
             user_indexes = np.array([self.headers.index(column) for column in self.columns], dtype=int)
             self.x_train_trans = self.x_train_trans[:, user_indexes]        
             self.headers = np.array(self.headers)[user_indexes].tolist()       
  
-        if self.save_model: self.saving_model(cv)
 
         ##Classification##
         np.random.seed(7)
@@ -198,14 +196,13 @@ class GenericModel(object):
         if self.is_stack_model():
             print("Stack model")
             last_clf = self.clf[-1]
-            scaler = StandardScaler()
             #Predict with 5 classfiers
             preds = np.array([ cross_val_predict(c, self.x_train_trans, self.labels, cv=cv) for c in self.clf[:-1 ]])
             print(self.x_train_trans.shape, preds.T.shape)
             X = np.hstack( [self.x_train_trans, preds.T] )
             #Stack all classifiers in a final one
-            self.prediction = cross_val_predict(last_clf, scaler.fit_transform(X), self.labels, cv=cv)
-            self.prediction_prob = cross_val_predict(last_clf, scaler.fit_transform(X), self.labels, cv=cv, method='predict_proba')
+            self.prediction = cross_val_predict(last_clf, X, self.labels, cv=cv)
+            self.prediction_prob = cross_val_predict(last_clf, X, self.labels, cv=cv, method='predict_proba')
             self.uncertanties = self.calculate_uncertanties(preds) 
             #Obtain results
             clf_result = np.vstack([preds, self.prediction])
@@ -224,13 +221,13 @@ class GenericModel(object):
         #finally postprocessing results
 
         self.postprocessing()
-
+        self.saving_model(scaler, cv)
 
     def postprocessing(self, print_most_important=False, output_conf="conf.png"):
         ##Dimensionallity reduction##
         dim_reduct_folders = ["dimensionallity_reduction", "dimensionallity_reduction/umap",
            "dimensionallity_reduction/tsne", "dimensionallity_reduction/pca"]
-        dim_reduct_folders = [os.path.join(self.results_folder, direc) for direc in dim_reduct_folders]
+        dim_reduct_folders = [direc for direc in dim_reduct_folders]
         for folder in dim_reduct_folders:
             if not os.path.exists(folder):
                 os.makedirs(folder)
@@ -252,7 +249,7 @@ class GenericModel(object):
                 vs.tsne_plot(self.x_train_trans, self.results, output="tsne/{}_tsne.png".format("result"), title="result")
 
         ##Feature importance##
-        feature_folders = [os.path.join(self.results_folder, "features")]
+        feature_folders = ["features"]
         for folder in feature_folders:
             if not os.path.exists(folder):
                 os.mkdir(folder)
@@ -272,7 +269,7 @@ class GenericModel(object):
     
 
         ##Metrics##
-        metric_folders = [os.path.join(self.results_folder,"metrics")]
+        metric_folders = ["metrics"]
         for folder in metric_folders:
             if not os.path.exists(folder):
                 os.mkdir(folder)
@@ -292,7 +289,7 @@ class GenericModel(object):
 
 
         ##Model assesment##
-        model_folders = [os.path.join(self.results_folder,"model")]
+        model_folders = ["model"]
         for folder in model_folders:
             if not os.path.exists(folder):
                 os.mkdir(folder)
@@ -381,7 +378,7 @@ class GenericModel(object):
     def load_model(self):
         print("Loading model")
         data = []
-        with open(self.filename_model, 'rb') as rf:
+        with open(os.path.join("../from_train/model", self.filename_model), 'rb') as rf:
             try:
                 while True:
                     data.append(pickle.load(rf))
@@ -389,6 +386,7 @@ class GenericModel(object):
                 pass
         #assert len(data) == len(self.clf)
         return data
+
     def save(self, output):
         print("Saving Model")
         pickle.dump(model, open(output, 'wb'))
@@ -442,7 +440,7 @@ class GenericModel(object):
                 headers_pb = np.hstack([headers_pb, np.loadtxt("MAC_descriptors.txt", dtype=np.str)])
             headers.extend(headers_pb.tolist())
         if self.external_data:
-            headers.extend(list(pd.read_csv(os.path.join("glide", self.external_data))))
+            headers.extend(list(pd.read_csv(os.path.join("descriptors", self.external_data))))
         # Remove specified headers
         headers_to_remove = [feature for field in exclude for feature in headers if field in feature ]
         for header in list(set(headers_to_remove)): 
@@ -519,18 +517,22 @@ class GenericModel(object):
 
     def external_prediction(self):
         print('Predicting over the new dataset....')
-        scaler = StandardScaler()
-        self.x_test_trans = self.__fit_transform__(self.features)
         self.headers = self.retrieve_header()
         loaded_models = self.load_model()
+        print(loaded_models)
+        scaler = loaded_models[-1]
+        self.x_test_trans = self.__fit_transform__(self.features)
+        print(self.x_test_trans.shape)
+        imputer = SimpleImputer(strategy="constant")
+        self.x_test_trans = scaler.transform(imputer.fit_transform(self.x_test_trans))
         if self.is_stack_model():
-            self.premodels = loaded_models[:-1]
+            self.premodels = loaded_models[:-2]
             #predicting with the individual clasifiers
             predictions = np.array([ model.predict(self.x_test_trans) for model in self.premodels]) 
             #finally aggregate prediction        
             X = np.hstack( [self.x_test_trans, predictions.T] )
-            self.prediction = loaded_models[-1].predict(scaler.fit_transform(X))
-            self.prediction_prob = loaded_models[-1].predict_proba(scaler.fit_transform(X))
+            self.prediction = loaded_models[-2].predict(X)
+            self.prediction_prob = loaded_models[-2].predict_proba(X)
             clf_result = np.vstack([predictions, self.prediction])
             self.clf_results = [] # All classfiers
             for results in clf_result:
@@ -576,13 +578,13 @@ def parse_args(parser):
     parser.add_argument('--print_most_important', action="store_true", help="Print most important features name to screen to use them as command lina arguments with --columns_to_keep")
     parser.add_argument('--build_model', action="store_true", help='Compute crossvalidation over active and inactives')
     parser.add_argument('--filename_model', default = 'fitted_models.pkl', help='Filename for models')
-
+    parser.add_argument('--training_path', default = None, help='Path where training has been done')
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Build 2D QSAR model')
     parse_args(parser)
     args = parser.parse_args()
-    model = GenericModel(args.active, args.inactive, args.classifier, args.save_model, args.filename_model, csv=args.external_data, test=args.test, pb=args.pb, columns=args.columns_to_keep)
+    model = GenericModel(args.active, args.inactive, args.classifier, args.filename_model, csv=args.external_data, test=args.test, pb=args.pb, columns=args.columns_to_keep)
     if args.load:
         model = model.load(args.load)
     if args.build_model:
