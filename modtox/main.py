@@ -94,8 +94,8 @@ def main(traj, resname, active=None, inactive=None, top=None, glide_files="*dock
             # Build Model
             for model in MODELS:
                 try:
-                    model_obj = md.GenericModel(active, inactive, classifier, filename_model, csv=model["csv"], do_test=do_test, pb=model["pb"], fp=model["fingerprint"], descriptors=model["descriptors"], MACCS=model["MACCS"], tpot=tpot, debug=debug)
-                    model_obj.build_model(cv=cv, output_conf=model["conf_matrix"])
+                    model_obj = md.GenericModel(active, inactive, classifier, filename_model, csv=model["csv"], do_test=do_test, pb=model["pb"], fp=model["fingerprint"], descriptors=model["descriptors"], MACCS=model["MACCS"], tpot=tpot, debug=debug, cv=cv)
+                    model_obj.build_model(output_conf=model["conf_matrix"])
                     #model_obj.feature_importance(cl.XGBOOST, cv=features_cv, number_feat=features, output_features=model["output_feat"])
                 except IOError as e:
                     print(e)
@@ -111,7 +111,7 @@ def main(traj, resname, active=None, inactive=None, top=None, glide_files="*dock
         gl.analyze(inp_files, best=best, csv=csv, active=active, inactive=inactive, debug=debug)
         with hp.cd(direct):
             for model in MODELS: 
-                model_obj = md.GenericModel(active, inactive, classifier, filename_model, csv=model["csv"], do_test=do_test, pb=model["pb"], fp=model["fingerprint"], descriptors=model["descriptors"], MACCS=model["MACCS"], tpot=tpot, debug=debug)
+                model_obj = md.GenericModel(active, inactive, classifier, filename_model, csv=model["csv"], do_test=do_test, pb=model["pb"], fp=model["fingerprint"], descriptors=model["descriptors"], MACCS=model["MACCS"], tpot=tpot, debug=debug, cv=cv)
                 model_obj.external_prediction()
     
 if __name__ == "__main__":

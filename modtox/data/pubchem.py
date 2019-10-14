@@ -139,7 +139,7 @@ def process_pubchem(pubchem_folder, train, test, csv_filename, substrate, output
     active_output, n_actives = pub_chem.to_sdf(actype = 'active')
     inactive_output, n_inactives = pub_chem.to_sdf(actype = 'inactive') 
      
-    if not test: 
+    if not do_test: 
         output_proc = pr.ligprep(active_output)
     else:
         output_proc = active_output

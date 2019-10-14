@@ -43,13 +43,8 @@ class DUDE(object):
         return self.inactive_names
 
     def retrieve_inchi_from_chembl(self, ids):
-<<<<<<< HEAD
         return [str(struct["standardinchi"]) for name in ids for struct in unichem.structure(name,1)]
     
-=======
-            return [str(struct["standardinchi"]) for name in ids for struct in unichem.structure(name,1)]
-
->>>>>>> af1e41351bfc9c2f3a058ee37120057c585db1d1
     def retrieve_inchi_from_sdf(self, sdf):
         mols = Chem.SDMolSupplier(sdf)
         return [Chem.MolToInchi(mol) for mol in mols]
@@ -171,7 +166,7 @@ def process_dude(dude_folder, train, test, output="cyp_actives.sdf", do_test=Fal
 
     #sdf generation for actives
     active_output = dud_e.to_sdf(inchi_active, mol_names=active_names)
-    if not test:
+    if not do_test:
         active_output_proc = pr.ligprep(active_output)
     else:
         active_output_proc = active_output
