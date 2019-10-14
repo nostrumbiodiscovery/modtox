@@ -1,6 +1,7 @@
 import os
 import numpy as np
 import csv
+import uuid
 import pubchempy as pcp
 import argparse
 import pickle
@@ -12,45 +13,49 @@ import modtox.Helpers.preprocess as pr
 
 class PubChem():
      
-    def __init__(self, pubchem_folder, stored_files, csv_filename, outputfile, substrate):
-        if stored_files != False: self.unknown = False
-        else: self.unknown = True
+    def __init__(self, pubchem_folder, train, test, csv_filename, outputfile, substrate, n_molecules_to_read):
         self.csv_filename = csv_filename
         self.folder = pubchem_folder
+        self.used_mols = 'used_mols.txt'
+        self.test = test
+        self.train = train
         self.outputfile = outputfile
         self.substrate = substrate
+        self.n_molecules_to_read = n_molecules_to_read
         self.splitting()
 
     def to_inchi(self, which_names):
            return [pcp.Compound.from_cid(int(i)).inchi for i in tqdm(which_names)]
 
     def splitting(self):
-       if self.unknown:
-           print('Reading from {}'.format(self.csv_filename))
-           data = self.reading_from_pubchem()
-       else:
-           try: data = self.reading_from_file()
-           except: 
-               print('Need to provide a valid input file or to read the PubChem file')
+       print('Reading from {}'.format(self.csv_filename))
+       data = self.reading_from_pubchem()
        self.active_names = [mol for mol, activity in data.items() if activity == 'Active']
        self.inactive_names = [mol for mol, activity in data.items() if activity == 'Inactive']
+       print('Discard of inconclusive essays done. Initial set: {} , Final set: {}'.format(len(data.items()), len(self.active_names) + len(self.inactive_names)))
 
     def to_sdf(self, actype):
 
         molecules = []
         molecules_rdkit = []
-        output = actype + '.sdf'
+        if self.train: where = "train"
+        if self.test: where = "test"
+        outputname = actype + '_' + where +'.sdf'
+        if not os.path.exists("dataset"): os.mkdir("dataset")
+        output = os.path.join("dataset", outputname)
         w = Chem.SDWriter(output)
         print('Filter and inchikey identification in process ... for {}'.format(actype))
-        if actype == 'actives': 
+        if actype == 'active':
             iks, names = self.filtering(self.active_names)
             self.active_inchi = iks
             self.active_names = names
         
-        if actype == 'inactives':
+        if actype == 'inactive':
             iks, names = self.filtering(self.inactive_names)
             self.inactive_inchi = iks
             self.inactive_names = names
+            #removing from training repeated instances
+            self.cleaning()
 
         for inchy, name in tqdm(zip(iks, names), total=len(names)-1):
             try:
@@ -62,7 +67,6 @@ class PubChem():
                 molecules_rdkit.append(m)
             except IndexError:
                 print("Molecules {} not found".format(name))
-        
         for m in molecules_rdkit:             
             w.write(m)
 
@@ -74,23 +78,48 @@ class PubChem():
         #checking duplicates
         uniq = set(iks)
         if len(iks) > len(uniq): #cheking repeated inchikeys
+            print('Duplicates detected')
             indices = { value : [ i for i, v in enumerate(iks) if v == value ] for value in uniq }
-            filt_inchi = [iks[x[0]] for x in indices.values()] #filtered inchikeys
-            filt_ids = [which_names[x[0]] for x in indices.values()] #filtering ids: we only get the first
-            return filt_inchi, filt_ids
+            iks = [iks[x[0]] for x in indices.values()] #filtered inchikeys
+            which_names = [which_names[x[0]] for x in indices.values()] #filtering ids: we only get the first
         else:
-            print('Duplicates not detected') 
-            return iks, which_names
+            print('Duplicates not detected')
 
+        return iks, which_names
 
-    def reading_from_pubchem(self, total_molec = 100, trash_lines = 8):
+    def cleaning(self):
+                # recording instances from the training data
+        if self.train:
+            with open(os.path.join("dataset", self.used_mols), 'w') as r:
+                for item in self.active_inchi + self.inactive_inchi:
+                    r.write("{}\n".format(item))
+
+        # extracting molecules from test already present in train
+        if self.test:
+            folder_to_get = "../../from_train/dataset"
+            with open(os.path.join(folder_to_get, self.used_mols), 'r') as r:
+                data = r.readlines()
+                datalines = [x.split('\n')[0] for x in data]
+                self.active_inchi = [inchi for inchi in self.active_inchi if inchi not in datalines]
+                self.inactive_inchi = [inchi for inchi in self.inactive_inchi if inchi not in datalines]
+        return 
+
+    def reading_from_pubchem(self, trash_lines = 9):
+
         with open(os.path.join(self.folder, self.csv_filename), 'r') as csvfile:
             spamreader = csv.reader(csvfile, delimiter=',')
             idx = None; activities = {}; i = 0
             for row in spamreader:
-                if i < total_molec + trash_lines:
+                if not self.n_molecules_to_read:
                     try: idx = row.index(self.substrate + ' ' + 'Activity Outcome')        
-                    except: pass
+                    except ValueError: pass
+                    if idx != None and i > trash_lines: 
+                        name = row[1]
+                        activities[name] = row[idx]
+                    i += 1
+                elif i < self.n_molecules_to_read + trash_lines:
+                    try: idx = row.index(self.substrate + ' ' + 'Activity Outcome')        
+                    except ValueError: pass
                     if idx != None and i > trash_lines: 
                         name = row[1]
                         activities[name] = row[idx]
@@ -101,24 +130,23 @@ class PubChem():
 
     def reading_from_file(self): 
     
-        with open(self.inputname, 'rb') as f:
+        with open(self.stored_files, 'rb') as f:
             data = pickle.load(f)
         return data
 
-
-def process_pubchem(pubchem_folder, csv_filename, substrate, stored_files = None, outputfile = 'inchi_all.pkl', test=False):
-    pub_chem = PubChem(pubchem_folder, stored_files, csv_filename, outputfile, substrate)
-    active_output, n_actives = pub_chem.to_sdf(actype = 'actives')
-    inactive_output, n_inactives = pub_chem.to_sdf(actype = 'inactives') 
-    if not test: 
+def process_pubchem(pubchem_folder, train, test, csv_filename, substrate, outputfile = 'inchi_all.pkl', do_test=False, mol_to_read=None):
+    pub_chem = PubChem(pubchem_folder, train, test, csv_filename, outputfile, substrate, mol_to_read)
+    active_output, n_actives = pub_chem.to_sdf(actype = 'active')
+    inactive_output, n_inactives = pub_chem.to_sdf(actype = 'inactive') 
+     
+    if not do_test: 
         output_proc = pr.ligprep(active_output)
     else:
         output_proc = active_output
-
     return output_proc, inactive_output
 
 def parse_args(parser):
     parser.add_argument("--pubchem",  type=str, help='Pubchem folder')
-    parser.add_argument("--stored_files",  action = 'store_true', help='Pubchem folder')
     parser.add_argument("--csv_filename", type=str, help = "csv filename with activities data (e.g. 'AID_1851_datatable_all.csv')")
-    parser.add_argument("--substrate", type = str, help = "substrate name codification on csv file (e.g. p450-cyp2c9)") 
+    parser.add_argument("--substrate", type = str, default = "p450-cyp2c9", help = "substrate name codification on csv file (e.g. p450-cyp2c9)") 
+    parser.add_argument("--mol_to_read", type = int, help = "Number of molecules to read from pubchem (e.g. 100)") 

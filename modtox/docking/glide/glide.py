@@ -14,10 +14,10 @@ ACCEPTED_FORMATS = ["pdb", "mae", "sdf"]
 
 class Glide_Docker(object):
     
-    def __init__(self, systems, ligands_to_dock, test=False):
+    def __init__(self, systems, ligands_to_dock, do_test=False):
         self.systems = systems
         self.ligands_to_dock = ligands_to_dock
-        self.test = test
+        self.do_test = do_test
 
     def dock(self, input_file="input.in", schr=cs.SCHR, host="localhost:1", cpus=1, output="glide_output", precision="SP",
         maxkeep=500, maxref=40, grid_mol=2):
@@ -58,7 +58,7 @@ class Glide_Docker(object):
 
         # Run docking
         print(self.docking_command)
-        if not self.test:
+        if not self.do_test:
             subprocess.call(self.docking_command.split())
 
 
