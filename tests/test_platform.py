@@ -51,23 +51,41 @@ def test_pubchem(traj, resname, top, pubchem, csv_filename, substrate):
     
     os.chdir(initial_dir)
 
-@pytest.mark.parametrize("traj, resname, top, active, inactive, filename_model, dude", [
-                         (TRAJ, RESNAME, TOP, ACTIVE_ANALYSIS, INACTIVE_ANALYSIS, FILENAME_MODEL_STACK,  DUDE),
+@pytest.mark.parametrize("traj, resname, top, active, inactive, filename_model", [
+                         (TRAJ, RESNAME, TOP, ACTIVE_ANALYSIS, INACTIVE_ANALYSIS, FILENAME_MODEL_STACK),
                          ])
-def test_model_stack(traj, resname, top, active, inactive, filename_model, dude):
+def test_model_stack(traj, resname, top, active, inactive, filename_model):
 
      initial_dir = os.getcwd()
      os.chdir(os.path.join(DATA_PATH, "analysis"))
-     mn.main(traj, resname, active, inactive, top=top, assemble_model=True, filename_model = filename_model, glide_files=GLIDE_FILES, debug=True, cv=2, train=True, test=False, classifier="stack")
+     mn.main(traj, resname, active, inactive, top=top, assemble_model=True, filename_model = filename_model, glide_files=GLIDE_FILES, debug=False, cv=2, train=True, test=False, classifier="stack")
      os.chdir(initial_dir)
 
-@pytest.mark.parametrize("traj, resname, top, active, inactive, filename_model, dude", [
-                         (TRAJ, RESNAME, TOP, ACTIVE_ANALYSIS, INACTIVE_ANALYSIS, FILENAME_MODEL, DUDE),
+@pytest.mark.parametrize("traj, resname, top, active, inactive, filename_model", [
+                         (TRAJ, RESNAME, TOP, ACTIVE_ANALYSIS, INACTIVE_ANALYSIS, FILENAME_MODEL),
                          ])
-def test_model_normal(traj, resname, top, active, inactive, filename_model, dude):
+def test_model_normal(traj, resname, top, active, inactive, filename_model):
      initial_dir = os.getcwd()
      os.chdir(os.path.join(DATA_PATH, "analysis"))
      mn.main(traj, resname, active, inactive, top=top, assemble_model=True, filename_model = filename_model, glide_files=GLIDE_FILES, debug=True, cv=2, train=True, test=False)
+     os.chdir(initial_dir)
+
+@pytest.mark.parametrize("traj, resname, top, active, inactive, filename_model", [
+                         (TRAJ, RESNAME, TOP, ACTIVE_ANALYSIS, INACTIVE_ANALYSIS, FILENAME_MODEL_STACK),
+                         ])
+def test_model_stack_tpot(traj, resname, top, active, inactive, filename_model):
+     initial_dir = os.getcwd()
+     os.chdir(os.path.join(DATA_PATH, "analysis"))
+     mn.main(traj, resname, active, inactive, top=top, assemble_model=True, filename_model=filename_model, glide_files=GLIDE_FILES, debug=True, cv=2, tpot=True, classifier="stack", test=False, train=True)
+     os.chdir(initial_dir)
+
+@pytest.mark.parametrize("traj, resname, top, active, inactive, filename_model", [
+                         (TRAJ, RESNAME, TOP, ACTIVE_ANALYSIS, INACTIVE_ANALYSIS, FILENAME_MODEL),
+                         ])
+def test_model_normal_tpot(traj, resname, top, active, inactive, filename_model):
+     initial_dir = os.getcwd()
+     os.chdir(os.path.join(DATA_PATH, "analysis"))
+     mn.main(traj, resname, active, inactive, top=top, assemble_model=True, filename_model=filename_model, glide_files=GLIDE_FILES, debug=True, cv=2, tpot=True, test=False, train=True)
      os.chdir(initial_dir)
 
 @pytest.mark.parametrize("traj, resname, top, active, inactive, filename_model", [
@@ -76,7 +94,7 @@ def test_model_normal(traj, resname, top, active, inactive, filename_model, dude
 def test_predict_normal(traj, resname, top, active, inactive, filename_model):
      initial_dir = os.getcwd()
      os.chdir(os.path.join(DATA_PATH, "analysis"))
-     mn.main(traj, resname, active, inactive, top=top,filename_model = filename_model, predict=True, train=False, test=True)
+     mn.main(traj, resname, active, inactive, top=top,filename_model = filename_model, predict=True, train=False, test=True, debug=True)
      os.chdir(initial_dir)
 
 @pytest.mark.parametrize("traj, resname, top, active, inactive, filename_model", [
@@ -85,5 +103,5 @@ def test_predict_normal(traj, resname, top, active, inactive, filename_model):
 def test_predict_stack(traj, resname, top, active, inactive, filename_model):
      initial_dir = os.getcwd()
      os.chdir(os.path.join(DATA_PATH, "analysis"))
-     mn.main(traj, resname, active, inactive, top=top,filename_model=filename_model, classifier="stack", train=False, test=True, predict=True)
+     mn.main(traj, resname, active, inactive, top=top,filename_model=filename_model, classifier="stack", train=False, test=True, predict=True, debug=True)
      os.chdir(initial_dir)
