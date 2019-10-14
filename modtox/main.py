@@ -14,6 +14,10 @@ import modtox.Helpers.helpers as hp
 import modtox.data.gpcrdb as gpcr
 import modtox.data.pubchem as pchm
 
+DOCKING_FOLDER = "docking"
+ANALISIS_FOLDER = "analisis"
+
+
 MODELS = [{"csv":None, "pb":True, "fingerprint":True, "MACCS":False, "descriptors":False,
             "output_feat":"fingerprint_important_features.txt", "conf_matrix":"fingerprint_conf_matrix.png"},
          {"csv":None, "pb":True, "fingerprint":False, "MACCS":True, "descriptors":False,
@@ -54,6 +58,7 @@ def parse_args():
 
 def main(traj, resname, active=None, inactive=None, top=None, glide_files="*dock_lib.maegz", best=False, csv=False, RMSD=True, cluster=True, last=True, clust_type="BS", rmsd_type="BS", receptor="*pv*.maegz", grid=None, precision="SP", maxkeep=500, maxref=400, dock=False, assemble_model=False, predict = False, do_test=None, save=None, load=None, external_data=None, pb=False, cv=2, features=5, features_cv=1, descriptors=[], classifier="svm", filename_model = None, dude=None, pubchem = None, csv_filename=None, substrate=None, grid_mol=2, sieve=10, debug=False, output_dir="cyp2c9", train=False, test=False, mol_to_read=None, tpot=False):
     
+    # Create test training folder
     if not os.path.exists(output_dir):
         os.mkdir(output_dir)
     if train: direct = os.path.join(output_dir, "from_train")
@@ -61,55 +66,64 @@ def main(traj, resname, active=None, inactive=None, top=None, glide_files="*dock
     if not os.path.exists(direct): os.mkdir(direct)
 
     if dock:
+        # Retrieve receptor, ligands and dock them
         with hp.cd(direct):
-            # Analyze trajectory&extract clusters
+
             print("Extracting clusters from MD")
-            if not os.path.exists("analisis"):
+            if not os.path.exists(ANALISIS_FOLDER):
                 an.analise(traj, resname, top, RMSD, cluster, last, clust_type, rmsd_type, sieve, train, test)
-            # Cross dock all ligand to the extracted clusters
+
+            print("Prepare active and inactive ligands")
             if dude:
                 active, inactive = dd.process_dude(dude, train, test, do_test=debug)
-            if pubchem:
+            elif pubchem:
                 active, inactive = pchm.process_pubchem(pubchem, train, test, csv_filename, substrate, mol_to_read=mol_to_read, do_test = debug)
-            if active.split(".")[-1] == "csv":
+            elif active.split(".")[-1] == "csv":
                 active = gpcr.process_gpcrdb(active)
                 inactive = inactive
-            print("Docking active and inactive dataset")
+
+            print("Dock active and inactive dataset")
             if not debug:
-                if not os.path.exists("docking"): os.mkdir("docking")
-                with hp.cd("docking"):
+                if not os.path.exists(DOCKING_FOLDER): os.mkdir(DOCKING_FOLDER)
+                with hp.cd(DOCKING_FOLDER):
                     docking_obj = dk.Glide_Docker(glob.glob("../analisis/*clust*.pdb"), [active, inactive], do_test=debug)
                     docking_obj.dock(precision=precision, maxkeep=maxkeep, maxref=maxref, grid_mol=grid_mol)
                 print("Docking in process... Once is finished run the same command exchanging --dock by --assemble_model flag to build model")
+
     if assemble_model:
         assert train, "Assemble model only allowed with train flag" 
         if dude or pubchem:
             active = "active_train.sdf"
             inactive = "inactive_train.sdf"
     
-            # Analyze dockig files and build model features
-            inp_files = glob.glob(glide_files)
-            gl.analyze(inp_files, best=best, csv=csv, active=active, inactive=inactive, debug=debug)
         with hp.cd(direct):
-            # Build Model
+            print("Build input fingerprints from docking terms")
+            inp_files = glob.glob(os.path.join(DOCKING_FOLDER, glide_files))
+            gl.analyze(inp_files, best=best, csv=csv, active=active, inactive=inactive, debug=debug)
+
+            print("Build model")
             for model in MODELS:
                 try:
                     model_obj = md.GenericModel(active, inactive, classifier, filename_model, csv=model["csv"], do_test=do_test, pb=model["pb"], fp=model["fingerprint"], descriptors=model["descriptors"], MACCS=model["MACCS"], tpot=tpot, debug=debug, cv=cv)
                     model_obj.build_model(output_conf=model["conf_matrix"])
                     #model_obj.feature_importance(cl.XGBOOST, cv=features_cv, number_feat=features, output_features=model["output_feat"])
                 except IOError as e:
-                    print(e)
                     print("Model with descriptors not build for failure to connect to client webserver")
-            print("Models sucesfully build. Confusion_matrix.png outputted")
+
+            print("Models sucesfully build and saved.")
      
     if predict:
         assert os.path.isfile(filename_model)== True, "Run the training of the module first with flag --assemble_model. More in docs"
         if dude or pubchem:
             active = "active_test.sdf"
             inactive = "inactive_test.sdf"
-        inp_files = glob.glob(glide_files)
-        gl.analyze(inp_files, best=best, csv=csv, active=active, inactive=inactive, debug=debug)
+
         with hp.cd(direct):
+            print("Build input fingerprints from docking terms")
+            inp_files = glob.glob(os.path.join(DOCKING_FOLDER, glide_files))
+            gl.analyze(inp_files, best=best, csv=csv, active=active, inactive=inactive, debug=debug)
+
+            print("Predict samples")
             for model in MODELS: 
                 model_obj = md.GenericModel(active, inactive, classifier, filename_model, csv=model["csv"], do_test=do_test, pb=model["pb"], fp=model["fingerprint"], descriptors=model["descriptors"], MACCS=model["MACCS"], tpot=tpot, debug=debug, cv=cv)
                 model_obj.external_prediction()
