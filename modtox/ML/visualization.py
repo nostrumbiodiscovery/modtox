@@ -5,6 +5,7 @@ import seaborn as sns
 import pandas as pd
 from scipy.linalg import svd
 from matplotlib.patches import Ellipse
+from matplotlib.lines import Line2D
 from sklearn.decomposition import PCA
 from sklearn.preprocessing import normalize
 from sklearn.manifold import TSNE
@@ -57,12 +58,36 @@ def variance_plot(X, output = "Variances_values.txt"):
     ax.set_ylabel('Variance ratio')
     fig.savefig('Variance.png')
 
+def biplot_pca(score, coeff, headers=None, labels=None):
+    fig, ax = plt.subplots()
+    xs = score[:,0]
+    ys = score[:,1]
+    n = coeff.shape[0]
+    scalex = 1.0/(xs.max() - xs.min())
+    scaley = 1.0/(ys.max() - ys.min())
+    plt.scatter(xs * scalex,ys * scaley, c=labels)
+    importance = [x+y for x, y in zip(coeff[:,0], coeff[:,1])]
+    indexes = np.argsort(importance)[::-1]
+    headers = headers if headers else range(5)
+    colors = ["r", "b", "y", "g", "m"]
+    legend = []; custom_lines = []
+    for i, c in zip(indexes[0:5], colors):
+        plt.arrow(0, 0, coeff[i,0]*100, coeff[i,1]*100, color=c, alpha=0.5, width=0.005)
+        legend.append(headers[i])
+        custom_lines.append(Line2D([0], [0], color=c, lw=4))
+    ax.set_xlabel("PC{}".format(1))
+    ax.set_ylabel("PC{}".format(2))
+    ax.legend(custom_lines, legend, loc="upper_left")
+    fig.savefig("biplot.png")
 
-def pca_plot(X, Y, title="PCA projection", output="PCAproj.png"):
+
+def pca_plot(X, Y, title="PCA projection", output="PCAproj.png", biplot=False):
    
     variance_plot(X) 
     pca = PCA(n_components=2)
     embedding = pca.fit_transform(X)
+    if biplot:
+        biplot_pca(embedding[:,0:2], np.transpose(pca.components_[0:2, :]), biplot, labels=Y)
     variance_ratio = pca.explained_variance_ratio_
     variance_total = sum(variance_ratio)
     fig, ax = plt.subplots()

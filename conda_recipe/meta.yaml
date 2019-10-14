@@ -41,6 +41,7 @@ requirements:
     - greenlet==0.4.12
     - gevent==1.2.2
     - pubchempy
+    - tpot
 
 test:
  imports:

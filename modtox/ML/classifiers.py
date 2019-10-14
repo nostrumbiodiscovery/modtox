@@ -3,6 +3,7 @@ from sklearn import svm
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.naive_bayes import GaussianNB
+from tpot import TPOTClassifier
 
 
 XGBOOST = xgb.XGBClassifier(
@@ -27,13 +28,40 @@ TREE = DecisionTreeClassifier(max_depth=5)
 
 NB = GaussianNB()
 
-def retrieve_classifier(classifier):
+def retrieve_classifier(classifier, tpot=False, cv=5):
     if classifier == "xgboost":
         clf = XGBOOST
     elif classifier == "svm":
-        clf = SVM
+        if tpot:
+            clf = get_tpot_classifier(cv=cv)
+        else:
+            clf = SVM
     elif classifier == "stack":
-        clf = [SVM, XGBOOST, KN, TREE, NB, NB]
+        if tpot:
+            clf = get_tpot_classifiers(cv=cv)
+        else:
+            clf = [SVM, XGBOOST, KN, TREE, NB, NB]
     else:
         clf = classifier
     return clf
+
+def get_tpot_classifiers(generations=1, population_size=2, cv=2):
+    pipeline_optimizer1 = TPOTClassifier(generations=generations, population_size=population_size, cv=cv,
+                                        random_state=42432, verbosity=2)
+    pipeline_optimizer2 = TPOTClassifier(generations=generations, population_size=population_size, cv=cv,
+                                        random_state=21312, verbosity=2)
+    pipeline_optimizer3 = TPOTClassifier(generations=generations, population_size=population_size, cv=cv,
+                                        random_state=42, verbosity=2)
+    pipeline_optimizer4 = TPOTClassifier(generations=generations, population_size=population_size, cv=cv,
+                                        random_state=1, verbosity=2)
+    pipeline_optimizer5 = TPOTClassifier(generations=generations, population_size=population_size, cv=cv,
+                                        random_state=98, verbosity=2)
+    pipeline_optimizer6 = TPOTClassifier(generations=generations, population_size=population_size, cv=cv,
+                                        random_state=56, verbosity=2)
+    return [pipeline_optimizer1, pipeline_optimizer2, pipeline_optimizer3, 
+                    pipeline_optimizer4, pipeline_optimizer5, pipeline_optimizer6]
+
+def get_tpot_classifier(generations=1, population_size=2, cv=2):
+    return TPOTClassifier(generations=generations, population_size=population_size, cv=cv,
+                                        random_state=42432, verbosity=2)
+
