@@ -43,8 +43,13 @@ class DUDE(object):
         return self.inactive_names
 
     def retrieve_inchi_from_chembl(self, ids):
+<<<<<<< HEAD
         return [str(struct["standardinchi"]) for name in ids for struct in unichem.structure(name,1)]
     
+=======
+            return [str(struct["standardinchi"]) for name in ids for struct in unichem.structure(name,1)]
+
+>>>>>>> af1e41351bfc9c2f3a058ee37120057c585db1d1
     def retrieve_inchi_from_sdf(self, sdf):
         mols = Chem.SDMolSupplier(sdf)
         return [Chem.MolToInchi(mol) for mol in mols]
@@ -141,6 +146,8 @@ def process_dude(dude_folder, train, test, output="cyp_actives.sdf", do_test=Fal
 
     #Retrieve active inchies
     active_names = dud_e.get_active_names()
+    inchi_active = dud_e.retrieve_inchi_from_chembl(active_names)
+	
     dud_e.n_actives = len(active_names)
     inchi_active = dud_e.retrieve_inchi_from_chembl(active_names)   
     
@@ -170,6 +177,11 @@ def process_dude(dude_folder, train, test, output="cyp_actives.sdf", do_test=Fal
         active_output_proc = active_output
 
     print("Files {}, {} created with chembl curated compounds".format(active_output_proc, inactive_output))
+
+    #Retrieve inactive inchi
+    inactive_names = dud_e.get_inactive_names()
+    inchi_inactive = dud_e.retrieve_inchi_from_sdf(inactive_output)
+
     return active_output_proc, inactive_output
 
 if __name__ == "__main__":
