@@ -4,6 +4,7 @@ import modtox.ML.classifiers as cl
 import modtox.cpptraj.analisis as an
 import glob
 import os
+import sys
 import argparse
 import modtox.ML.model as md
 from argparse import RawTextHelpFormatter
@@ -68,6 +69,9 @@ def main(traj, resname, active=None, inactive=None, top=None, glide_files="*dock
     if dock:
         # Retrieve receptor, ligands and dock them
         with hp.cd(direct):
+            #Saving commandline arguments
+            with open('commandline_args_dock.txt', 'w') as f:
+                f.write('\n'.join(sys.argv[1:]))
 
             print("Extracting clusters from MD")
             if not os.path.exists(ANALISIS_FOLDER):
@@ -97,6 +101,9 @@ def main(traj, resname, active=None, inactive=None, top=None, glide_files="*dock
             inactive = "inactive_train.sdf"
     
         with hp.cd(direct):
+            #Saving commandline arguments
+            with open('commandline_args_assemble.txt', 'w') as f:
+                f.write('\n'.join(sys.argv[1:]))
             print("Build input fingerprints from docking terms")
             inp_files = glob.glob(os.path.join(DOCKING_FOLDER, glide_files))
             gl.analyze(inp_files, best=best, csv=csv, active=active, inactive=inactive, debug=debug)
@@ -119,6 +126,10 @@ def main(traj, resname, active=None, inactive=None, top=None, glide_files="*dock
             inactive = "inactive_test.sdf"
 
         with hp.cd(direct):
+            #Saving commandline arguments
+            with open('commandline_args_predict.txt', 'w') as f:
+                f.write('\n'.join(sys.argv[1:]))
+            
             print("Build input fingerprints from docking terms")
             inp_files = glob.glob(os.path.join(DOCKING_FOLDER, glide_files))
             gl.analyze(inp_files, best=best, csv=csv, active=active, inactive=inactive, debug=debug)
@@ -130,9 +141,9 @@ def main(traj, resname, active=None, inactive=None, top=None, glide_files="*dock
     
 if __name__ == "__main__":
     trajs, resname, active, inactive, top, glide_files, best, csv, RMSD, cluster, last, clust_type, rmsd_type, \
-    receptor, ligands_to_dock, grid, precision, maxkeep, maxref, dock, assemble_model, predict, test, \
+    receptor, ligands_to_dock, grid, precision, maxkeep, maxref, dock, assemble_model, predict,\
     save, load, external_data, pb, cv, features, features_cv, descriptors, \
-    classifier, filename_model, dude, pubchem, csv_filename, substrate, grid_mol, sieve, debug, output_dir, train, test, mol_to_read = parse_args()
+    classifier, filename_model, dude, pubchem, csv_filename, substrate, grid_mol, sieve, debug, output_dir, train, test, mol_to_read, tpot = parse_args()
     main(trajs, resname, active, inactive, top, glide_files, best, csv, RMSD, cluster, last, clust_type, rmsd_type, 
-        receptor, grid, precision, maxkeep, maxref, dock, assemble_model, predict, test, save, load, external_data, pb, cv, features, features_cv, 
+        receptor, grid, precision, maxkeep, maxref, dock, assemble_model, predict, save, load, external_data, pb, cv, features, features_cv, 
         descriptors, classifier, filename_model, dude, pubchem, csv_filename, substrate, grid_mol, sieve, debug, output_dir, train, test, mol_to_read, tpot)
