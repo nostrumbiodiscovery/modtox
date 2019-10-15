@@ -120,7 +120,7 @@ def parse_args(parser):
     parser.add_argument("--dude",  type=str, help='DUD-E dataset folder')
     parser.add_argument("--output", type=str, help='sdf output', default="output.sdf")
 
-def process_dude(dude_folder, train, test, output="cyp_actives.sdf", do_test=False, production=False):
+def process_dude(dude_folder, train, test, output="cyp_actives.sdf", debug=False, production=False):
     """
     Separate a dataset from dude into active/inactive
     having into account stereochemistry and tautomers
@@ -166,7 +166,7 @@ def process_dude(dude_folder, train, test, output="cyp_actives.sdf", do_test=Fal
 
     #sdf generation for actives
     active_output = dud_e.to_sdf(inchi_active, mol_names=active_names)
-    if not do_test:
+    if not debug:
         active_output_proc = pr.ligprep(active_output)
     else:
         active_output_proc = active_output

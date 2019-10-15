@@ -34,7 +34,7 @@ CLF = ["SVM", "XGBOOST", "KN", "TREE", "NB", "NB_final"]
 
 class GenericModel(object):
 
-    def __init__(self, active, inactive, clf, filename_model, csv=None, do_test=None, pb=False, fp=False, descriptors=False, MACCS=True, columns=None, tpot=False, cv=None, debug=False):
+    def __init__(self, active, inactive, clf, filename_model, csv=None, pb=False, fp=False, descriptors=False, MACCS=True, columns=None, tpot=False, cv=None, debug=False):
         self.active = active
         self.inactive = inactive
         self.pb = pb
@@ -43,13 +43,10 @@ class GenericModel(object):
         self.MACCS = MACCS
         self.external_data = csv
         self.columns = columns
-        self.do_test = do_test
         self.data = self._load_training_set()
         self.features = self.data.iloc[:, :-1]
         self.labels = self.data.iloc[:, -1]
         self.filename_model = filename_model
-        if self.do_test:
-            self.data_test = self._load_test()
         self.tpot = tpot
         self.cv = self.n_final_active if not cv else cv
         self.clf = cl.retrieve_classifier(clf, self.tpot, cv=self.cv)

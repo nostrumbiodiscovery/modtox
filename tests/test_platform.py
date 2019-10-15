@@ -47,7 +47,7 @@ def test_pubchem(traj, resname, top, pubchem, csv_filename, substrate):
     initial_dir = os.getcwd()
     os.chdir(os.path.join(DATA_PATH, "analysis")) 
   
-    mn.main([traj,], resname, pubchem=pubchem, csv_filename = csv_filename, substrate = substrate, top=top, train=True, test=False, dock=True, debug=True, mol_to_read=5, do_test=True)
+    mn.main([traj,], resname, pubchem=pubchem, csv_filename = csv_filename, substrate = substrate, top=top, train=True, test=False, dock=True, debug=True, mol_to_read=5)
     
     os.chdir(initial_dir)
 
