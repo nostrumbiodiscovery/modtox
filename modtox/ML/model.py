@@ -23,7 +23,7 @@ from modtox.docking.glide import analyse as md
 import modtox.ML.classifiers as cl
 import modtox.ML.visualization as vs
 import modtox.Helpers.helpers as hp
-
+import modtox.ML.app_domain as dom
 
 
 TITLE_MOL = "molecules"
@@ -73,7 +73,7 @@ class GenericModel(object):
         """
         assert self.active, "--active flag must be given for analysis"        
         assert self.inactive, "--inactive flag must be given for analysis"        
-
+        print(self.active, self.inactive)
         actives = [ mol for mol in Chem.SDMolSupplier(self.active) if mol ]
         inactives = [ mol for mol in Chem.SDMolSupplier(self.inactive) if mol ]
             
@@ -186,7 +186,14 @@ class GenericModel(object):
                 pickle.dump(scaler, f)
 
         f.close()
-       
+        print('Saving thresholds')
+               #now saving thresholds
+        with open("thresholds.txt", "wb") as fp:
+            pickle.dump(self.thresholds, fp)
+        with open("x_from_train.txt", "wb") as fp:
+            pickle.dump(self.x_train_trans, fp)
+        
+ 
     def build_model(self, load=False, grid_search=False, output_conf=None, save=False, cv=None):
          
         ##Preprocess data##
@@ -199,13 +206,15 @@ class GenericModel(object):
             user_indexes = np.array([self.headers.index(column) for column in self.columns], dtype=int)
             self.x_train_trans = self.x_train_trans[:, user_indexes]        
             self.headers = np.array(self.headers)[user_indexes].tolist()       
- 
 
+        self.thresholds = dom.threshold(self.x_train_trans, self.labels, self.debug)
+        
         ##Classification##
         np.random.seed(7)
-        print("Stack model")
         if self.is_stack_model():
+            print('Stack model')
             if self.tpot:
+                print('Tpot')
                 for c in self.clf[:-1 ]:
                     c.fit(self.x_train_trans, self.labels)
                 preds = np.array([ c.predict(self.x_train_trans) for c in self.clf[:-1 ]])
@@ -224,7 +233,7 @@ class GenericModel(object):
                     self.clf_results.append([pred == true for pred, true  in zip(results, self.labels)])
                 self.results = [ pred == true for pred, true in zip(self.prediction, self.labels)] #last classifier
             else:
-                print("Stack model")
+                print("No tpot")
                 last_clf = self.clf[-1]
                 #Predict with 5 classfiers
                 preds = np.array([ cross_val_predict(c, self.x_train_trans, self.labels, cv=self.cv) for c in self.clf[:-1 ]])
@@ -254,10 +263,11 @@ class GenericModel(object):
                 self.results = [ pred == true for pred, true in zip(self.prediction, self.labels)]
 
         #Analyse results
+        print('Postprocessing')
         if not self.debug:
             self.postprocessing()
 
-        self.saving_model(scaler)
+        self.saving_model(scaler) #and also saving thresholds
 
     def postprocessing(self, print_most_important=False, output_conf="conf.png"):
         ##Dimensionallity reduction##
@@ -302,8 +312,7 @@ class GenericModel(object):
             if print_most_important:
                 print("\nMost Important Features\n")
                 print(" ".join(important_features))
-    
-
+   
         ##Metrics##
         metric_folders = ["metrics"]
         for folder in metric_folders:
@@ -420,7 +429,11 @@ class GenericModel(object):
                     data.append(pickle.load(rf))
             except EOFError:
                 pass
-        #assert len(data) == len(self.clf)
+        with open(os.path.join("../from_train/thresholds.txt"), "rb") as fp:
+            self.threshold_from_train = pickle.load(fp)
+        with open(os.path.join("../from_train/x_from_train.txt"), "rb") as fp:
+            self.x_from_train = pickle.load(fp)
+
         return data
 
     def save(self, output):
@@ -550,17 +563,21 @@ class GenericModel(object):
         X = np.hstack( [self.x_test_trans, preds_test.T] )
         prediction = self.last_model.predict(scaler.fit_transform(X))
         return prediction
+    
 
     def external_prediction(self):
         print('Predicting over the new dataset....')
         self.headers = self.retrieve_header()
-        loaded_models = self.load_model()
-        print(loaded_models)
+        loaded_models = self.load_model() #loaded model and also thresholds from training set
         scaler = loaded_models[-1]
         self.x_test_trans = self.__fit_transform__(self.features)
-        print(self.x_test_trans.shape)
         imputer = SimpleImputer(strategy="constant")
         self.x_test_trans = scaler.transform(imputer.fit_transform(self.x_test_trans))
+
+
+        #evaluating applicability domains and credibilities
+        self.insiders = dom.evaluating_domain(self.x_from_train, self.x_test_trans, self.threshold_from_train, self.mol_names, self.debug)   
+         
         if self.is_stack_model():
             self.premodels = loaded_models[:-2]
             #predicting with the individual clasifiers
@@ -581,6 +598,7 @@ class GenericModel(object):
             self.prediction_prob = np.array(loaded_models[0].predict_proba(self.x_test_trans))
             #Obtain results
             self.results = [ pred == true for pred, true in zip(self.prediction, self.labels)]
+
 
         #setting test = train to call postprocessing
         self.x_train_trans = self.x_test_trans  
