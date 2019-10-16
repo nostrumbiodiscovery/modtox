@@ -6,6 +6,7 @@ import pubchempy as pcp
 import argparse
 import pickle
 from tqdm import tqdm
+import rdkit
 from rdkit import Chem
 from rdkit.Chem import AllChem
 import modtox.Helpers.preprocess as pr
@@ -13,9 +14,9 @@ import modtox.Helpers.preprocess as pr
 
 class PubChem():
      
-    def __init__(self, pubchem_folder, train, test, csv_filename, outputfile, substrate, n_molecules_to_read):
-        self.csv_filename = csv_filename
-        self.folder = pubchem_folder
+    def __init__(self, pubchem, train, test, outputfile, substrate, n_molecules_to_read, production):
+        self.production = production
+        self.csv_filename = os.path.abspath(pubchem)
         self.used_mols = 'used_mols.txt'
         self.test = test
         self.train = train
@@ -55,7 +56,7 @@ class PubChem():
             self.inactive_inchi = iks
             self.inactive_names = names
             #removing from training repeated instances
-            self.cleaning()
+            if not self.production: self.cleaning()
 
         for inchy, name in tqdm(zip(iks, names), total=len(names)-1):
             try:
@@ -96,17 +97,45 @@ class PubChem():
 
         # extracting molecules from test already present in train
         if self.test:
-            folder_to_get = "../../from_train/dataset"
+            folder_to_get = "../from_train/dataset"
             with open(os.path.join(folder_to_get, self.used_mols), 'r') as r:
                 data = r.readlines()
                 datalines = [x.split('\n')[0] for x in data]
-                self.active_inchi = [inchi for inchi in self.active_inchi if inchi not in datalines]
-                self.inactive_inchi = [inchi for inchi in self.inactive_inchi if inchi not in datalines]
+                #filtering by exact inchikey
+                active_inchi = [inchi for inchi in self.active_inchi if inchi not in datalines]
+                inactive_inchi = [inchi for inchi in self.inactive_inchi if inchi not in datalines]
+                #filtering by similarity >= 0.7
+                mols_test_active = [Chem.inchi.MolFromInchi(str(inchi)) for inchi in active_inchi]
+                mols_test_inactive = [Chem.inchi.MolFromInchi(str(inchi)) for inchi in inactive_inchi]
+                mols_train = [Chem.inchi.MolFromInchi(str(inchi)) for inchi in datalines]
+                fps_test_active = [Chem.Fingerprints.FingerprintMols.FingerprintMol(m) for m in mols_test_active]
+                fps_test_inactive = [Chem.Fingerprints.FingerprintMols.FingerprintMol(m) for m in mols_test_inactive]
+                fps_train = [Chem.Fingerprints.FingerprintMols.FingerprintMol(m) for m in mols_train]
+                
+                similarities_active = [rdkit.DataStructs.FingerprintSimilarity(fp_train, fp_test) for fp_test in fps_test_active for fp_train in fps_train]
+                similarities_inactive = [rdkit.DataStructs.FingerprintSimilarity(fp_train, fp_test) for fp_test in fps_test_inactive for fp_train in fps_train]
+                #all similarity-pairs
+                to_keep = []
+                for i in range(len(fps_test_active)):
+                    sim_i = similarities_active[i*len(fps_train):(i+1)*len(fps_train)]
+                    if len([s for s in sim_i if s<=0.7]) > 0 : to_keep.append(i) 
+
+                self.active_inchi = [active_inchi[i] for i in to_keep]
+
+                to_keep = []
+                for i in range(len(fps_test_inactive)):
+                    sim_i = similarities_inactive[i*len(fps_train):(i+1)*len(fps_train)]
+                    if len([s for s in sim_i if s<=0.7]) > 0 : to_keep.append(i) 
+
+                self.inactive_inchi = [inactive_inchi[i] for i in to_keep]
+
         return 
+
+
 
     def reading_from_pubchem(self, trash_lines = 9):
 
-        with open(os.path.join(self.folder, self.csv_filename), 'r') as csvfile:
+        with open(self.csv_filename, 'r') as csvfile:
             spamreader = csv.reader(csvfile, delimiter=',')
             idx = None; activities = {}; i = 0
             for row in spamreader:
@@ -134,19 +163,21 @@ class PubChem():
             data = pickle.load(f)
         return data
 
-def process_pubchem(pubchem_folder, train, test, csv_filename, substrate, outputfile = 'inchi_all.pkl', debug=False, mol_to_read=None):
-    pub_chem = PubChem(pubchem_folder, train, test, csv_filename, outputfile, substrate, mol_to_read)
+def process_pubchem(pubchem, train, test, substrate, outputfile = 'inchi_all.pkl', debug=False, mol_to_read=None, production=False):
+    pub_chem = PubChem(pubchem, train, test, outputfile, substrate, mol_to_read, production)
     active_output, n_actives = pub_chem.to_sdf(actype = 'active')
     inactive_output, n_inactives = pub_chem.to_sdf(actype = 'inactive') 
      
     if not debug: 
-        output_proc = pr.ligprep(active_output)
+        output_active_proc = pr.ligprep(active_output, output="active_processed.mae")
+        output_inactive_proc = pr.ligprep(inactive_output, output="inactive_processed.mae")
     else:
-        output_proc = active_output
-    return output_proc, inactive_output
+        output_active_proc = active_output
+        output_inactive_proc = inactive_output
+
+    return output_active_proc, output_inactive_proc
 
 def parse_args(parser):
-    parser.add_argument("--pubchem",  type=str, help='Pubchem folder')
-    parser.add_argument("--csv_filename", type=str, help = "csv filename with activities data (e.g. 'AID_1851_datatable_all.csv')")
+    parser.add_argument("--pubchem",  type=str, help='Pubchem file (e.g. AID_1851_datatable_all.csv)')
     parser.add_argument("--substrate", type = str, default = "p450-cyp2c9", help = "substrate name codification on csv file (e.g. p450-cyp2c9)") 
     parser.add_argument("--mol_to_read", type = int, help = "Number of molecules to read from pubchem (e.g. 100)") 

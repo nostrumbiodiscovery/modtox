@@ -111,8 +111,37 @@ class DUDE(object):
 
                 inchi_active = [inchi for inchi in inchi_active if inchi not in datalines]
                 inchi_inactive = [inchi for inchi in inchi_inactive if inchi not in datalines]
+                
+                #filtering by similarity >= 0.7
+                mols_test_active = [Chem.inchi.MolFromInchi(str(inchi)) for inchi in inchi_active]
+                mols_test_inactive = [Chem.inchi.MolFromInchi(str(inchi)) for inchi in inchi_inactive]
+                mols_train = [Chem.inchi.MolFromInchi(str(inchi)) for inchi in datalines]
+                fps_test_active = [Chem.Fingerprints.FingerprintMols.FingerprintMol(m) for m in mols_test_active]
+                fps_test_inactive = [Chem.Fingerprints.FingerprintMols.FingerprintMol(m) for m in mols_test_inactive]
+                fps_train = [Chem.Fingerprints.FingerprintMols.FingerprintMol(m) for m in mols_train]
+
+                similarities_active = [rdkit.DataStructs.FingerprintSimilarity(fp_train, fp_test) for fp_test in fps_test_active for fp_train in fps_train]
+                similarities_inactive = [rdkit.DataStructs.FingerprintSimilarity(fp_train, fp_test) for fp_test in fps_test_inactive for fp_train in fps_train]
+                #all similarity-pairs
+                to_keep = []
+                for i in range(len(fps_test_active)):
+                    sim_i = similarities_active[i*len(fps_train):(i+1)*len(fps_train)]
+                    if len([s for s in sim_i if s<=0.7]) > 0 : to_keep.append(i)
+
+                inchi_active = [inchi_active[i] for i in to_keep]
+
+                to_keep = []
+                for i in range(len(fps_test_inactive)):
+                    sim_i = similarities_inactive[i*len(fps_train):(i+1)*len(fps_train)]
+                    if len([s for s in sim_i if s<=0.7]) > 0 : to_keep.append(i)
+
+                inchi_inactive = [inchi_inactive[i] for i in to_keep]
+                
+                #finally getting that names
+
                 active_names = [active_inchi_name[inchi] for inchi in inchi_active]
                 inactive_names = [inactive_inchi_name[inchi] for inchi in inchi_inactive]
+
 
         return inchi_active, active_names, inchi_inactive, inactive_names
         
@@ -157,9 +186,10 @@ def process_dude(dude_folder, train, test, output="cyp_actives.sdf", debug=False
     inactive_names = dud_e.get_inactive_names()
     inchi_inactive = dud_e.retrieve_inchi_from_sdf(inactive_output)
 
-    #Filter inchies 
-    inchi_active, active_names, inchi_inactive, inactive_names = dud_e.cleaning(inchi_active, active_names, inchi_inactive, inactive_names)
-    print('Filter done')
+    #Filter inchies
+    if not production: 
+        inchi_active, active_names, inchi_inactive, inactive_names = dud_e.cleaning(inchi_active, active_names, inchi_inactive, inactive_names)
+        print('Filter done')
 
     #Rewriting sdf for inactives
     inactive_output = dud_e.to_sdf(inchi_inactive, mol_names = inactive_names, output = 'decoys.sdf')

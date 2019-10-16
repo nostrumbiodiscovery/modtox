@@ -9,8 +9,7 @@ TOP=os.path.join(DATA_PATH, "general/init.top")
 ACTIVE=os.path.join(DATA_PATH, "active_decoys/active.sdf")
 INACTIVE=os.path.join(DATA_PATH, "active_decoys/decoys.sdf")
 DUDE=os.path.join(DATA_PATH, "dude")
-PUBCHEM = os.path.join(DATA_PATH, "pubchem")
-CSV_FILENAME = "AID_1851_datatable_all.csv"
+PUBCHEM = os.path.join(DATA_PATH, "pubchem/AID_1851_datatable_all.csv")
 SUBSTRATE = "p450-cyp2c9"
 FILENAME_MODEL = os.path.join(DATA_PATH, "general/fitted_models.pkl")
 FILENAME_MODEL_STACK = os.path.join(DATA_PATH, "general/fitted_models_stack.pkl")
@@ -39,15 +38,15 @@ def test_dude(traj, resname, top, dude):
     mn.main([traj,], resname, dude=dude, train=True, test=False, top=top, dock=True, debug=True)
     os.chdir(initial_dir)
 
-@pytest.mark.parametrize("traj, resname, top, pubchem, csv_filename, substrate", [
-                         (TRAJ, RESNAME, TOP, PUBCHEM, CSV_FILENAME, SUBSTRATE),
+@pytest.mark.parametrize("traj, resname, top, pubchem, substrate", [
+                         (TRAJ, RESNAME, TOP, PUBCHEM, SUBSTRATE),
                          ])
-def test_pubchem(traj, resname, top, pubchem, csv_filename, substrate):
+def test_pubchem(traj, resname, top, pubchem, substrate):
     
     initial_dir = os.getcwd()
     os.chdir(os.path.join(DATA_PATH, "analysis")) 
   
-    mn.main([traj,], resname, pubchem=pubchem, csv_filename = csv_filename, substrate = substrate, top=top, train=True, test=False, dock=True, debug=True, mol_to_read=5)
+    mn.main([traj,], resname, pubchem=pubchem, substrate = substrate, top=top, train=True, test=False, dock=True, debug=True, mol_to_read=5)
     
     os.chdir(initial_dir)
 

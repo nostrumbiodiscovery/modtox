@@ -54,10 +54,10 @@ def parse_args():
     status.add_argument('--test',action="store_true")
     args = parser.parse_args()
     
-    return args.traj, args.resname, args.active, args.inactive, args.top, args.glide_files, args.best, args.csv, args.RMSD, args.cluster, args.last, args.clust_type, args.rmsd_type, args.receptor, args.ligands_to_dock, args.grid, args.precision, args.maxkeep, args.maxref, args.dock, args.assemble_model, args.predict, args.save, args.load, args.external_data, args.pb, args.cv, args.features, args.features_cv, args.descriptors, args.classifier, args.filename_model, args.dude, args.pubchem, args.csv_filename, args.substrate, args.grid_mol, args.clust_sieve, args.debug, args.output_dir,args.train, args.test, args.mol_to_read, args.tpot
+    return args.traj, args.resname, args.active, args.inactive, args.top, args.glide_files, args.best, args.csv, args.RMSD, args.cluster, args.last, args.clust_type, args.rmsd_type, args.receptor, args.ligands_to_dock, args.grid, args.precision, args.maxkeep, args.maxref, args.dock, args.assemble_model, args.predict, args.save, args.load, args.external_data, args.pb, args.cv, args.features, args.features_cv, args.descriptors, args.classifier, args.filename_model, args.dude, args.pubchem, args.substrate, args.grid_mol, args.clust_sieve, args.debug, args.output_dir,args.train, args.test, args.mol_to_read, args.tpot
 
 
-def main(traj, resname, active=None, inactive=None, top=None, glide_files="*dock_lib.maegz", best=False, csv=False, RMSD=True, cluster=True, last=True, clust_type="BS", rmsd_type="BS", receptor="*pv*.maegz", grid=None, precision="SP", maxkeep=500, maxref=400, dock=False, assemble_model=False, predict = False, save=None, load=None, external_data=None, pb=False, cv=2, features=5, features_cv=1, descriptors=[], classifier="svm", filename_model = None, dude=None, pubchem = None, csv_filename=None, substrate=None, grid_mol=2, sieve=10, debug=False, output_dir="cyp2c9", train=False, test=False, mol_to_read=None, tpot=False):
+def main(traj, resname, active=None, inactive=None, top=None, glide_files="*dock_lib.maegz", best=False, csv=False, RMSD=True, cluster=True, last=True, clust_type="BS", rmsd_type="BS", receptor="*pv*.maegz", grid=None, precision="SP", maxkeep=500, maxref=400, dock=False, assemble_model=False, predict = False, save=None, load=None, external_data=None, pb=False, cv=2, features=5, features_cv=1, descriptors=[], classifier="svm", filename_model = None, dude=None, pubchem = None, substrate=None, grid_mol=2, sieve=10, debug=False, output_dir="cyp2c9", train=False, test=False, mol_to_read=None, tpot=False):
     
     # Create test training folder
     if not os.path.exists(output_dir):
@@ -65,7 +65,6 @@ def main(traj, resname, active=None, inactive=None, top=None, glide_files="*dock
     if train: direct = os.path.join(output_dir, "from_train")
     if test: direct = os.path.join(output_dir, "from_test")
     if not os.path.exists(direct): os.mkdir(direct)
-
     if dock:
         # Retrieve receptor, ligands and dock them
         with hp.cd(direct):
@@ -81,7 +80,7 @@ def main(traj, resname, active=None, inactive=None, top=None, glide_files="*dock
             if dude:
                 active, inactive = dd.process_dude(dude, train, test, debug=debug)
             elif pubchem:
-                active, inactive = pchm.process_pubchem(pubchem, train, test, csv_filename, substrate, mol_to_read=mol_to_read, debug=debug)
+                active, inactive = pchm.process_pubchem(pubchem, train, test, substrate, mol_to_read=mol_to_read, debug=debug)
             elif active.split(".")[-1] == "csv":
                 active = gpcr.process_gpcrdb(active)
                 inactive = inactive
@@ -115,17 +114,18 @@ def main(traj, resname, active=None, inactive=None, top=None, glide_files="*dock
                     model_obj.build_model(output_conf=model["conf_matrix"])
                     #model_obj.feature_importance(cl.XGBOOST, cv=features_cv, number_feat=features, output_features=model["output_feat"])
                 except IOError as e:
-                    print("Model with descriptors not build for failure to connect to client webserver")
+                    print("Model with descriptors not build for failure to connect to client webserver", e)
 
             print("Models sucesfully build and saved.")
      
     if predict:
-        assert os.path.isfile(filename_model)== True, "Run the training of the module first with flag --assemble_model. More in docs"
         if dude or pubchem:
             active = "active_test.sdf"
             inactive = "inactive_test.sdf"
 
         with hp.cd(direct):
+            print(direct)
+            assert os.path.isfile(os.path.join("../from_train/model", filename_model))== True, "Run the training of the module first with flag --assemble_model. More in docs"
             #Saving commandline arguments
             with open('commandline_args_predict.txt', 'w') as f:
                 f.write('\n'.join(sys.argv[1:]))
@@ -143,7 +143,7 @@ if __name__ == "__main__":
     trajs, resname, active, inactive, top, glide_files, best, csv, RMSD, cluster, last, clust_type, rmsd_type, \
     receptor, ligands_to_dock, grid, precision, maxkeep, maxref, dock, assemble_model, predict,\
     save, load, external_data, pb, cv, features, features_cv, descriptors, \
-    classifier, filename_model, dude, pubchem, csv_filename, substrate, grid_mol, sieve, debug, output_dir, train, test, mol_to_read, tpot = parse_args()
+    classifier, filename_model, dude, pubchem, substrate, grid_mol, sieve, debug, output_dir, train, test, mol_to_read, tpot = parse_args()
     main(trajs, resname, active, inactive, top, glide_files, best, csv, RMSD, cluster, last, clust_type, rmsd_type, 
         receptor, grid, precision, maxkeep, maxref, dock, assemble_model, predict, save, load, external_data, pb, cv, features, features_cv, 
-        descriptors, classifier, filename_model, dude, pubchem, csv_filename, substrate, grid_mol, sieve, debug, output_dir, train, test, mol_to_read, tpot)
+        descriptors, classifier, filename_model, dude, pubchem, substrate, grid_mol, sieve, debug, output_dir, train, test, mol_to_read, tpot)
