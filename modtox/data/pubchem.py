@@ -1,4 +1,5 @@
 import os
+import pandas as pd
 import numpy as np
 import csv
 import uuid
@@ -63,7 +64,7 @@ class PubChem():
                 m = Chem.inchi.MolFromInchi(str(inchy))
                 Chem.AssignStereochemistry(m)
                 AllChem.EmbedMolecule(m)
-                m.SetProp("_Name", name)
+                m.SetProp("_Name", str(name))
                 m.SetProp("_MolFileChiralFlag", "1")
                 molecules_rdkit.append(m)
             except IndexError:
@@ -152,7 +153,7 @@ class PubChem():
         with open(self.outputfile, 'wb') as op:
             pickle.dump(activities, op)
 
-    return activities
+        return activities
 
     def reading_from_file(self): 
     
