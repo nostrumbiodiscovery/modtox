@@ -191,7 +191,7 @@ class GenericModel(object):
         with open("thresholds.txt", "wb") as fp:
             pickle.dump(self.thresholds, fp)
 
-        xy_train_trans = [[x,y] for x,y in zip(self.x_train_train, self.labels)]
+        self.xy_train_trans = [[x,y] for x,y in zip(self.x_train_trans, self.labels)]
 
         with open("xy_from_train.txt", "wb") as fp:
             pickle.dump(self.xy_train_trans, fp)
