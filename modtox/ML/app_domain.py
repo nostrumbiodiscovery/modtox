@@ -2,7 +2,7 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
-import pandas ad pd
+import pandas as pd
 from scipy.spatial import distance
 from tqdm import tqdm
 
@@ -59,8 +59,8 @@ def evaluating_domain(xy_from_train, x_from_test, y_from_test, threshold, names,
     count_inactive = []
     for i in distances: # for each molecule 
         idxs = [j for j,d in enumerate(i[0]) if d <= threshold[j]] #saving indexes of training with threshold > distance
-        how_many_from_active =  len([y_from_train[i] for i in indxs if y_from_train[i] == 1]) #labels
-        how_many_from_inactive =  len([y_from_train[i] for i in indxs if y_from_train[i] == 0])
+        how_many_from_active =  len([y_from_train[i] for i in idxs if y_from_train[i] == 1]) #labels
+        how_many_from_inactive =  len([y_from_train[i] for i in idxs if y_from_train[i] == 0])
         assert how_many_from_active + how_many_from_inactive == len(idxs)
         n_insiders.append(len(idxs))
         count_active.append(how_many_from_active)
@@ -73,14 +73,14 @@ def evaluating_domain(xy_from_train, x_from_test, y_from_test, threshold, names,
     df['Thresholds'] = n_insiders 
     df['Active thresholds'] = count_active
     df['Inactive thresholds'] = count_inactive
-    df['True labels'] = y_from_test
+    df['True labels'] = y_from_test.values
  
     df.sort_values(by=['Thresholds'], ascending = False)
   
     #plotting results 
     if not debug:
         
-        with open(os.path.join("model", "threshold_analysis.txt") as f:
+        with open(os.path.join("model", "threshold_analysis.txt")) as f:
             f.write(df.to_string()) 
 
         for j in tqdm(range(len(names))):
