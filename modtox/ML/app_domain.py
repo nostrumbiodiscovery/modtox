@@ -2,6 +2,7 @@ import os
 import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
+import pandas ad pd
 from scipy.spatial import distance
 from tqdm import tqdm
 
@@ -45,19 +46,45 @@ def threshold(x_train, y_train, debug):
     return thres
 
 
-def evaluating_domain(x_from_train, x_from_test, threshold, names, debug):
-  
+def evaluating_domain(xy_from_train, x_from_test, y_from_test, threshold, names, debug):
+ 
+    #splitting x and from train:
+
+    x_from_train = [x[0] for x in xy_from_train] #first component
+    y_from_train = [x[1] for x in xy_from_train] #second component
+ 
     distances = np.array([distance.cdist([x], x_from_train) for x in x_from_test]) #d between each test and training set
     n_insiders = []
-    for i in distances:
-        acc = [d for j,d in enumerate(i[0]) if d <= threshold[j]]
-        n_insiders.append(len(acc))
+    count_active = []
+    count_inactive = []
+    for i in distances: # for each molecule 
+        idxs = [j for j,d in enumerate(i[0]) if d <= threshold[j]] #saving indexes of training with threshold > distance
+        how_many_from_active =  len([y_from_train[i] for i in indxs if y_from_train[i] == 1]) #labels
+        how_many_from_inactive =  len([y_from_train[i] for i in indxs if y_from_train[i] == 0])
+        assert how_many_from_active + how_many_from_inactive == len(idxs)
+        n_insiders.append(len(idxs))
+        count_active.append(how_many_from_active)
+        count_inactive.append(how_many_from_inactive)
 
     mean_insiders = np.mean(n_insiders)
+  
+    df = pd.DataFrame()
+    df['Names'] = names
+    df['Thresholds'] = n_insiders 
+    df['Active thresholds'] = count_active
+    df['Inactive thresholds'] = count_inactive
+    df['True labels'] = y_from_test
+ 
+    df.sort_values(by=['Thresholds'], ascending = False)
+  
     #plotting results 
     if not debug:
+        
+        with open(os.path.join("model", "threshold_analysis.txt") as f:
+            f.write(df.to_string()) 
+
         for j in tqdm(range(len(names))):
-    
+            #plotting 
             fig, ax1 = plt.subplots()
             sns.distplot(distances[j], label = 'Distances to train molecules', ax=ax1)
             sns.distplot(threshold, label = 'Thresholds of train molecules', ax=ax1)
@@ -76,9 +103,5 @@ def evaluating_domain(x_from_train, x_from_test, threshold, names, debug):
             plt.title('{}'.format(names[j]))
             plt.savefig('distplot_{}.png'.format(names[j]))
     return n_insiders
-
-
-
-
 
 

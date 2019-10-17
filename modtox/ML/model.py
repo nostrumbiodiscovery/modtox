@@ -190,8 +190,11 @@ class GenericModel(object):
                #now saving thresholds
         with open("thresholds.txt", "wb") as fp:
             pickle.dump(self.thresholds, fp)
-        with open("x_from_train.txt", "wb") as fp:
-            pickle.dump(self.x_train_trans, fp)
+
+        xy_train_trans = [[x,y] for x,y in zip(self.x_train_train, self.labels)]
+
+        with open("xy_from_train.txt", "wb") as fp:
+            pickle.dump(self.xy_train_trans, fp)
         
  
     def build_model(self, load=False, grid_search=False, output_conf=None, save=False, cv=None):
@@ -431,9 +434,9 @@ class GenericModel(object):
                 pass
         with open(os.path.join("../from_train/thresholds.txt"), "rb") as fp:
             self.threshold_from_train = pickle.load(fp)
-        with open(os.path.join("../from_train/x_from_train.txt"), "rb") as fp:
-            self.x_from_train = pickle.load(fp)
-
+        with open(os.path.join("../from_train/xy_from_train.txt"), "rb") as fp:
+            self.xy_from_train = pickle.load(fp)
+            
         return data
 
     def save(self, output):
@@ -576,7 +579,7 @@ class GenericModel(object):
 
 
         #evaluating applicability domains and credibilities
-        self.insiders = dom.evaluating_domain(self.x_from_train, self.x_test_trans, self.threshold_from_train, self.mol_names, self.debug)   
+        self.insiders = dom.evaluating_domain(self.xy_from_train, self.x_test_trans, self.labels, self.threshold_from_train, self.mol_names, self.debug)   
          
         if self.is_stack_model():
             self.premodels = loaded_models[:-2]
