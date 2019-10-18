@@ -70,7 +70,7 @@ def main(traj, resname, active=None, inactive=None, top=None, glide_files="*dock
         with hp.cd(direct):
             #Saving commandline arguments
             with open('commandline_args_dock.txt', 'w') as f:
-                f.write('\n'.join(sys.argv[1:]))
+                f.write(sys.argv[1:]))
 
             print("Extracting clusters from MD")
             if not os.path.exists(ANALISIS_FOLDER):
@@ -102,7 +102,7 @@ def main(traj, resname, active=None, inactive=None, top=None, glide_files="*dock
         with hp.cd(direct):
             #Saving commandline arguments
             with open('commandline_args_assemble.txt', 'w') as f:
-                f.write('\n'.join(sys.argv[1:]))
+                f.write(sys.argv[1:]))
             print("Build input fingerprints from docking terms")
             inp_files = glob.glob(os.path.join(DOCKING_FOLDER, glide_files))
             gl.analyze(inp_files, best=best, csv=csv, active=active, inactive=inactive, debug=debug)
