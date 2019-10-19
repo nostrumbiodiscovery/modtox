@@ -1,4 +1,5 @@
 import matplotlib.cm as cm
+import shap  # package used to calculate Shap values
 import operator
 from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import precision_recall_curve
@@ -272,7 +273,7 @@ class GenericModel(object):
 
         self.saving_model(scaler) #and also saving thresholds
 
-    def postprocessing(self, print_most_important=False, output_conf="conf.png"):
+    def postprocessing(self, print_most_important=False, output_conf="conf.png", test=False):
         ##Dimensionallity reduction##
         dim_reduct_folders = ["dimensionallity_reduction", "dimensionallity_reduction/umap",
            "dimensionallity_reduction/tsne", "dimensionallity_reduction/pca"]
@@ -298,11 +299,18 @@ class GenericModel(object):
                 vs.tsne_plot(self.x_train_trans, self.results, output="tsne/{}_tsne.png".format("result"), title="result")
 
         ##Feature importance##
-        feature_folders = ["features"]
+        feature_folders = ["features", "features/shap"] if test else ["features"]
         for folder in feature_folders:
             if not os.path.exists(folder):
                 os.mkdir(folder)
         with hp.cd(feature_folders[0]):
+            if test:
+                #evaluating important features on prediction
+                x_train = [x[0] for x in self.xy_from_train] #first component
+                y_train = [x[1] for x in self.xy_from_train] #second component
+                clf = RandomForestClassifier(random_state=213).fit(x_train, y_train)
+                self.shap_analysis(clf=clf, output_folder="shap")
+
             #correlation matrice
             correlations = self.correlation_heatmap()
 
@@ -350,6 +358,26 @@ class GenericModel(object):
             #np.savetxt("mistaken_samples.txt", errors)
             #np.savetxt("uncertanties.txt", uncertanties_errors)
             print(errors)
+
+    def shap_analysis(self, clf=None, output_folder="."):
+
+        clf = clf if clf else self.clf
+
+        df = pd.DataFrame(self.x_train_trans, columns=self.headers)
+        data_for_prediction_array = df.values
+        clf.predict_proba(data_for_prediction_array)
+
+        # Create object that can calculate shap values
+        explainer = shap.TreeExplainer(clf)
+        # Calculate Shap values
+        shap_values = explainer.shap_values(data_for_prediction_array)[0]
+            
+        for row, name in enumerate(self.mol_names):
+            shap.force_plot(explainer.expected_value[1], shap_values[row,:], df.iloc[row,:], matplotlib=True, show=False, text_rotation=90, figsize=(40, 10))
+            plt.savefig(os.path.join(output_folder, '{}_shap.png'.format(name)))
+        fig, axs = plt.subplots()
+        shap.summary_plot(shap_values, df, plot_type="bar", show=False, auto_size_plot=True)
+        fig.savefig(os.path.join(output_folder, 'feature_importance_shap') )
 
     def is_stack_model(self):
         return type(self.clf) is list and len(self.clf) > 0
@@ -577,18 +605,18 @@ class GenericModel(object):
         imputer = SimpleImputer(strategy="constant")
         self.x_test_trans = scaler.transform(imputer.fit_transform(self.x_test_trans))
 
-
+        
         #evaluating applicability domains and credibilities
-        self.insiders = dom.evaluating_domain(self.xy_from_train, self.x_test_trans, self.labels, self.threshold_from_train, self.mol_names, self.debug)   
+        #self.insiders = dom.evaluating_domain(self.xy_from_train, self.x_test_trans, self.labels, self.threshold_from_train, self.mol_names, self.debug)   
          
         if self.is_stack_model():
             self.premodels = loaded_models[:-2]
             #predicting with the individual clasifiers
             predictions = np.array([ model.predict(self.x_test_trans) for model in self.premodels]) 
             #finally aggregate prediction        
-            X = np.hstack( [self.x_test_trans, predictions.T] )
-            self.prediction = loaded_models[-2].predict(X)
-            self.prediction_prob = loaded_models[-2].predict_proba(X)
+            self.results_ensemble_test = np.hstack( [self.x_test_trans, predictions.T] )
+            self.prediction = loaded_models[-2].predict(self.results_ensemble_test)
+            self.prediction_prob = loaded_models[-2].predict_proba(self.results_ensemble_test)
             clf_result = np.vstack([predictions, self.prediction])
             self.clf_results = [] # All classfiers
             for results in clf_result:
@@ -606,7 +634,7 @@ class GenericModel(object):
         #setting test = train to call postprocessing
         self.x_train_trans = self.x_test_trans  
         if not self.debug:
-            self.postprocessing()
+            self.postprocessing(test=True)
 
 def parse_args(parser):
     parser.add_argument('--active', type=str,
