@@ -299,18 +299,11 @@ class GenericModel(object):
                 vs.tsne_plot(self.x_train_trans, self.results, output="tsne/{}_tsne.png".format("result"), title="result")
 
         ##Feature importance##
-        feature_folders = ["features", "features/shap"] if test else ["features"]
+        feature_folders = ["features"]
         for folder in feature_folders:
             if not os.path.exists(folder):
                 os.mkdir(folder)
         with hp.cd(feature_folders[0]):
-            if test:
-                #evaluating important features on prediction
-                x_train = [x[0] for x in self.xy_from_train] #first component
-                y_train = [x[1] for x in self.xy_from_train] #second component
-                clf = RandomForestClassifier(random_state=213).fit(x_train, y_train)
-                self.shap_analysis(clf=clf, output_folder="shap")
-
             #correlation matrice
             correlations = self.correlation_heatmap()
 
@@ -361,9 +354,12 @@ class GenericModel(object):
 
     def shap_analysis(self, clf=None, output_folder="."):
 
+        if not os.path.exists(output_folder):
+            os.makedirs(output_folder)
+        samples = self.mol_names[0:1] if self.debug else self.mol_names
         clf = clf if clf else self.clf
 
-        df = pd.DataFrame(self.x_train_trans, columns=self.headers)
+        df = pd.DataFrame(self.x_test_trans, columns=self.headers)
         data_for_prediction_array = df.values
         clf.predict_proba(data_for_prediction_array)
 
@@ -372,7 +368,7 @@ class GenericModel(object):
         # Calculate Shap values
         shap_values = explainer.shap_values(data_for_prediction_array)[0]
             
-        for row, name in enumerate(self.mol_names):
+        for row, name in enumerate(samples):
             shap.force_plot(explainer.expected_value[1], shap_values[row,:], df.iloc[row,:], matplotlib=True, show=False, text_rotation=90, figsize=(40, 10))
             plt.savefig(os.path.join(output_folder, '{}_shap.png'.format(name)))
         fig, axs = plt.subplots()
@@ -630,6 +626,11 @@ class GenericModel(object):
             #Obtain results
             self.results = [ pred == true for pred, true in zip(self.prediction, self.labels)]
 
+        #evaluating important features on prediction
+        x_train = [x[0] for x in self.xy_from_train] #first component
+        y_train = [x[1] for x in self.xy_from_train] #second component
+        clf = RandomForestClassifier(random_state=213).fit(x_train, y_train)
+        self.shap_analysis(clf=clf, output_folder="features/shap")
 
         #setting test = train to call postprocessing
         self.x_train_trans = self.x_test_trans  
