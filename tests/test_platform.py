@@ -93,7 +93,7 @@ def test_model_normal_tpot(traj, resname, top, active, inactive, filename_model)
 def test_predict_normal(traj, resname, top, active, inactive, filename_model):
      initial_dir = os.getcwd()
      os.chdir(os.path.join(DATA_PATH, "analysis"))
-     mn.main(traj, resname, active, inactive, top=top,filename_model = filename_model, predict=True, train=False, test=True, debug=False)
+     mn.main(traj, resname, active, inactive, top=top,filename_model = filename_model, predict=True, train=False, test=True, debug=True)
      os.chdir(initial_dir)
 
 @pytest.mark.parametrize("traj, resname, top, active, inactive, filename_model", [
