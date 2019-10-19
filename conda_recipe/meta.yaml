@@ -42,6 +42,7 @@ requirements:
     - gevent==1.2.2
     - pubchempy
     - tpot
+    - shap
 
 test:
  imports:
