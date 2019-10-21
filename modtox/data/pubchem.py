@@ -58,7 +58,7 @@ class PubChem():
             self.inactive_names = names
             #removing from training repeated instances
             if not self.production: self.cleaning()
-
+        print('Assigning stereochemistry...')
         for inchy, name in tqdm(zip(iks, names), total=len(names)-1):
             try:
                 m = Chem.inchi.MolFromInchi(str(inchy))
@@ -71,7 +71,6 @@ class PubChem():
                 print("Molecules {} not found".format(name))
         for m in molecules_rdkit:             
             w.write(m)
-
         return output, len(names)
 
 
@@ -120,7 +119,7 @@ class PubChem():
                 for i in range(len(fps_test_active)):
                     sim_i = similarities_active[i*len(fps_train):(i+1)*len(fps_train)]
                     if len([s for s in sim_i if s<=0.7]) > 0 : to_keep.append(i) 
-
+                print('Active before cleaning: {}, after: {}'.format(len(active_inchi), len(to_keep)))
                 self.active_inchi = [active_inchi[i] for i in to_keep]
 
                 to_keep = []
@@ -128,12 +127,13 @@ class PubChem():
                     sim_i = similarities_inactive[i*len(fps_train):(i+1)*len(fps_train)]
                     if len([s for s in sim_i if s<=0.7]) > 0 : to_keep.append(i) 
 
+                print('Inactive before cleaning: {}, after: {}'.format(len(inactive_inchi), len(to_keep)))
+
                 self.inactive_inchi = [inactive_inchi[i] for i in to_keep]
 
         return 
 
     def reading_from_pubchem(self):
-
         data = pd.read_csv(self.csv_filename)
         cols = data.columns.values
         active_cols = [col for col in cols if 'Activity Outcome' in col]
@@ -144,15 +144,13 @@ class PubChem():
             print('Label found')
             label = self.substrate + ' ' + 'Activity Outcome'
             useful_col = active_cols[activity_labels.index(label)]
-            if self.n_molecules_to_read: end = self.n_molecules_to_read + 8
+            if self.n_molecules_to_read: end = self.n_molecules_to_read + 7
             else: end = len(data)
             useful_activities = data.ix[8:end, useful_col] # we add 8 because of the initial lines without information
             useful_names = data.ix[8:end, 'PUBCHEM_CID']
         activities = {int(name):activity for name, activity in zip(useful_names, useful_activities)}
-    
         with open(self.outputfile, 'wb') as op:
             pickle.dump(activities, op)
-
         return activities
 
     def reading_from_file(self): 
