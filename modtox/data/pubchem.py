@@ -1,4 +1,5 @@
 import os
+import pandas as pd
 import numpy as np
 import csv
 import uuid
@@ -63,7 +64,7 @@ class PubChem():
                 m = Chem.inchi.MolFromInchi(str(inchy))
                 Chem.AssignStereochemistry(m)
                 AllChem.EmbedMolecule(m)
-                m.SetProp("_Name", name)
+                m.SetProp("_Name", str(name))
                 m.SetProp("_MolFileChiralFlag", "1")
                 molecules_rdkit.append(m)
             except IndexError:
@@ -131,30 +132,27 @@ class PubChem():
 
         return 
 
+    def reading_from_pubchem(self):
 
-
-    def reading_from_pubchem(self, trash_lines = 9):
-
-        with open(self.csv_filename, 'r') as csvfile:
-            spamreader = csv.reader(csvfile, delimiter=',')
-            idx = None; activities = {}; i = 0
-            for row in spamreader:
-                if not self.n_molecules_to_read:
-                    try: idx = row.index(self.substrate + ' ' + 'Activity Outcome')        
-                    except ValueError: pass
-                    if idx != None and i > trash_lines: 
-                        name = row[1]
-                        activities[name] = row[idx]
-                    i += 1
-                elif i < self.n_molecules_to_read + trash_lines:
-                    try: idx = row.index(self.substrate + ' ' + 'Activity Outcome')        
-                    except ValueError: pass
-                    if idx != None and i > trash_lines: 
-                        name = row[1]
-                        activities[name] = row[idx]
-                    i += 1
+        data = pd.read_csv(self.csv_filename)
+        cols = data.columns.values
+        active_cols = [col for col in cols if 'Activity Outcome' in col]
+        activity_labels = [data.loc[1,lab] for lab in active_cols]
+        split_labels = [ac.split() for ac in activity_labels]
+        if self.substrate not in [ac.split()[0] for ac in activity_labels]: print('Not present in', activity_labels)
+        else:
+            print('Label found')
+            label = self.substrate + ' ' + 'Activity Outcome'
+            useful_col = active_cols[activity_labels.index(label)]
+            if self.n_molecules_to_read: end = self.n_molecules_to_read + 8
+            else: end = len(data)
+            useful_activities = data.ix[8:end, useful_col] # we add 8 because of the initial lines without information
+            useful_names = data.ix[8:end, 'PUBCHEM_CID']
+        activities = {int(name):activity for name, activity in zip(useful_names, useful_activities)}
+    
         with open(self.outputfile, 'wb') as op:
             pickle.dump(activities, op)
+
         return activities
 
     def reading_from_file(self): 

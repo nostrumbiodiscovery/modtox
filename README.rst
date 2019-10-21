@@ -2,7 +2,12 @@ ModTox
 ================
 
 Platform to check for toxicological effects based on
-apo and holo simulations of the HROT dataset
+apo and holo simulations of the HROT dataset from:
+
+Liu, T, et al. “Estimation of Maximum Recommended 
+Therapeutic Dose Using Predicted Promiscuity and Potency.” 
+Clinical and Translational Science, vol. 9, no. 6, 
+2016, pp. 311–320., doi:10.1111/cts.12422.
 
 .. image:: https://travis-ci.org/NostrumBioDiscovery/modtox.svg?branch=master
        :target: https://travis-ci.org/NostrumBioDiscovery/modtox
