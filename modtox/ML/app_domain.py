@@ -8,7 +8,7 @@ from tqdm import tqdm
 
 def threshold(x_train, y_train, debug):
 
-#as a first approach we set k = sqrt(N/2), being N the number of samples
+#as a first approach we set k = N**(1/3), being N the number of samples
 #iterate over the full training set
 # compute n-1 distances.
     distances = np.array([distance.cdist([x], x_train) for x in x_train])
