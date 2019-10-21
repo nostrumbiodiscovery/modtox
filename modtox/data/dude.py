@@ -43,7 +43,7 @@ class DUDE(object):
         return self.inactive_names
 
     def retrieve_inchi_from_chembl(self, ids):
-        return [str(struct["standardinchi"]) for name in ids for struct in unichem.structure(name,1)]
+        return [str(struct["standardinchi"]) for name in ids for struct in unichem.structure(name,1,2)]
     
     def retrieve_inchi_from_sdf(self, sdf):
         mols = Chem.SDMolSupplier(sdf)
@@ -159,7 +159,7 @@ def process_dude(dude_folder, train, test, output="cyp_actives.sdf", debug=False
         pass
     else:
         dude_folder = os.path.join("..", dude_folder)
-
+    
     #If input zip is present decompress
     inputzip = os.path.join(dude_folder, "*.gz")
     if os.path.exists(inputzip):
@@ -170,7 +170,6 @@ def process_dude(dude_folder, train, test, output="cyp_actives.sdf", debug=False
 
     #Retrieve active inchies
     active_names = dud_e.get_active_names()
-    inchi_active = dud_e.retrieve_inchi_from_chembl(active_names)
 	
     dud_e.n_actives = len(active_names)
     inchi_active = dud_e.retrieve_inchi_from_chembl(active_names)   

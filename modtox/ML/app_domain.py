@@ -80,7 +80,7 @@ def evaluating_domain(xy_from_train, x_from_test, y_from_test, threshold, names,
     #plotting results 
     if not debug:
         
-        with open(os.path.join("model", "threshold_analysis.txt")) as f:
+        with open(os.path.join("model", "threshold_analysis.txt"), "w") as f:
             f.write(df.to_string()) 
 
         for j in tqdm(range(len(names))):
