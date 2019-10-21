@@ -125,11 +125,6 @@ class GenericModel(object):
     def __fit_transform__(self, X, predict=False, exclude=COLUMNS_TO_EXCLUDE):
         molecular_data = [ TITLE_MOL, ]
         
-        numeric_transformer = Pipeline(steps=[
-            ('imputer', SimpleImputer(strategy="constant")),
-            ('scaler', StandardScaler())
-                ])
-        
         numeric_features = []
         features = []
         if self.pb:
@@ -628,7 +623,7 @@ def parse_args(parser):
     parser.add_argument('--features_cv', type=int,
                         help='KFold when calculating important features', default=1)
     parser.add_argument('--descriptors', nargs="+", help="descriptors to plot", default=[])
-    parser.add_argument('--classifier', type=str, help="classifier to use", default="svm")
+    parser.add_argument('--classifier', type=str, help="classifier to use", default="stack")
     parser.add_argument('--test_importance', nargs="+", help="Name of Molecules to include on testing feature importance", default=[])
     parser.add_argument('--print_most_important', action="store_true", help="Print most important features name to screen to use them as command lina arguments with --columns_to_keep")
     parser.add_argument('--build_model', action="store_true", help='Compute crossvalidation over active and inactives')

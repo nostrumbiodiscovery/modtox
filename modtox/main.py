@@ -120,8 +120,8 @@ def main(traj, resname, active=None, inactive=None, top=None, glide_files="*dock
      
     if predict:
         if dude or pubchem:
-            active = "active_test.sdf"
-            inactive = "inactive_test.sdf"
+            active = "dataset/active_test.sdf"
+            inactive = "dataset/inactive_test.sdf"
 
         with hp.cd(direct):
             print(direct)
