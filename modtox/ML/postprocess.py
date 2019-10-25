@@ -4,12 +4,12 @@ import os
 import operator
 import numpy as np
 import pandas as pd
-from tqdm import tqdm
 import seaborn as sns
+import modtox.ML.classifiers as cl
+from tqdm import tqdm
 from sklearn.metrics import roc_auc_score, roc_curve, precision_recall_curve, average_precision_score
 from sklearn.ensemble import RandomForestClassifier as RF
-
-import modtox.ML.classifiers as cl
+from scipy.spatial import distance
 
 class PostProcessor():
 
@@ -127,6 +127,102 @@ class PostProcessor():
         features_name = [ feat[0] for feat in important_features_name ]
 
         return features_name
+
+
+    def domain_analysis(self, output_densities="thresholds_vs_density.png", output_thresholds="threshold_analysis.txt", output_distplots="displot", debug=False, names=None):
+
+        assert self.x_train.any() and self.y_true_train.any(), "Needed train and test datasets. Specify with x_train=X, ytrain=Y"
+
+        names= ["sample_{}".format(i) for i in range(self.x_test.shape[0])] if not names else names
+ 
+        ##### computing thresholds #######
+        print("Computing applicability domains")
+
+        distances = np.array([distance.cdist([x], self.x_train) for x in self.x_train])
+        distances_sorted = [np.sort(d[0]) for d in distances]
+        d_no_ii = [ d[1:] for d in distances_sorted] #discard 0 for the ii
+        k = int(round(pow(len(self.x_train), 1/3)))
+
+        d_means = [np.mean(d[:k][0]) for d in d_no_ii] #medium values
+        Q1 = np.quantile(d_means, .25)
+        Q3 = np.quantile(d_means, .75)
+        IQR = Q3 - Q1
+        d_ref = Q3 + 1.5*(Q3-Q1) #setting the refference value
+        n_allowed =  []
+        all_allowed = []
+        for i in d_no_ii:
+            d_allowed = [d for d in i if d <= d_ref]
+            all_allowed.append(d_allowed)
+            n_allowed.append(len(d_allowed))
+
+        #selecting minimum value not 0:
+        min_val = [np.sort(n_allowed)[i] for i in range(len(n_allowed)) if np.sort(n_allowed)[i] != 0]
+        #replacing 0's with the min val
+        n_allowed = [n if n!= 0 else min_val[0] for n in n_allowed]
+        all_d = [sum(all_allowed[i]) for i, d in enumerate(d_no_ii)]
+        thresholds = np.divide(all_d, n_allowed) #threshold computation
+        thresholds[np.isinf(thresholds)] = min(thresholds) #setting to the minimum value where infinity
+
+        count_active = []; count_inactive = []
+       
+        #now computing distances from train to test
+   
+        d_train_test = np.array([distance.cdist([x], self.x_train) for x in self.x_test])
+   
+        for i in d_train_test: # for each sample
+            idxs = [j for j,d in enumerate(i[0]) if d <= thresholds[j]] #saving indexes of training with threshold > distance
+            count_active.append(len([self.y_true_train[i] for i in idxs if self.y_true_train[i] == 1]))
+            count_inactive.append(len([self.y_true_train[i] for i in idxs if self.y_true_train[i] == 0]))
+
+        n_insiders = np.array(count_active) + np.array(count_inactive)
+        mean_insiders = np.mean(n_insiders)
+        
+        df = pd.DataFrame()
+        df['Names'] = names
+        df['Thresholds'] = n_insiders
+        df['Active thresholds'] = count_active
+        df['Inactive thresholds'] = count_inactive
+        df['True labels'] = self.y_true_test
+        df['Prediction'] = self.y_pred_test
+        df['Prediction probability'] = np.array([pred_1[1] for pred_1 in self.y_proba_test])
+        df = df.sort_values(by=['Thresholds'], ascending = False) 
+
+        with open(os.path.join(self.folder, output_thresholds), "w") as f:
+            f.write(df.to_string())
+
+
+        #####   plotting results ######
+
+
+        if not debug:
+
+            print('Plotting')
+            plt.scatter(n_allowed, thresholds, c=self.y_true_train)
+            plt.xlabel('Density')
+            plt.ylabel('Threshold')
+            plt.savefig(output_densities)
+            plt.close()
+        
+            for j in tqdm(range(len(names))):
+                #plotting 
+                fig, ax1 = plt.subplots()
+                sns.distplot(distances[j], label = 'Distances to train molecules', ax=ax1)
+                sns.distplot(thresholds, label = 'Thresholds of train molecules', ax=ax1)
+                ax1.set_xlabel('Euclidean distances')
+                ax1.set_ylabel('Normalized counts')
+                ax1.legend()
+
+                ax2 = ax1.twinx()
+
+                ax2.axhline(mean_insiders, ls='--', color = 'r', label = 'Mean App. Domain Membership')
+                ax2.axhline(n_insiders[j], ls = '-', color = 'g', label = 'App. Domain Membership')
+                ax2.set_ylim(min(n_insiders), max(n_insiders))
+                ax2.set_ylabel('App.Domain counts')
+                fig.tight_layout()
+                ax2.legend(loc = 'center right')
+                plt.title('{}'.format(names[j]))
+                plt.savefig(os.path.join(self.folder, '{}_{}.png'.format(output_distplots, names[j])))
+                plt.close()
 
    # def tree_image():
 
