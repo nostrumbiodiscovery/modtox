@@ -1,0 +1,41 @@
+channels:
+    - bioconda
+    - conda-forge
+    - rdkit
+    - josan_bcn
+    - nostrumbiodiscovery
+    - ambermd
+
+depencendies:
+    # Base dependencies
+    - python 3.6
+    - tqdm
+    - prody
+    - umap-learn
+    - rdkit
+    - scikit-learn
+    - urllib3
+    - pytraj 
+    - biopython
+    - seaborn
+    - mordred
+    - nltk
+    - xgboost
+    - requests
+    - chembl_webresource_client
+    - pytest
+    - greenlet==0.4.12
+    - gevent==1.2.2
+    - pubchempy
+    - tpot
+    - shap
+
+test:
+ imports:
+    - modtox
+ commands:
+    - python -m pytest tests/ -k 'test_docking or test_dude'
+ source_files:
+    - tests
+ requires:
+    - pytest
