@@ -18,6 +18,8 @@ Clinical and Translational Science, vol. 9, no. 6,
        :alt: PyPI version
 .. image:: https://codecov.io/gh/NostrumBioDiscovery/modtox/branch/master/graph/badge.svg
        :target: https://pypi.org/project/modtox/
+.. image:: https://mybinder.org/badge_logo.svg
+ :target: https://mybinder.org/v2/gh/NostrumBioDiscovery/modtox/restructuration
 
 Installation
 =================
