@@ -6,6 +6,7 @@ import os
 class ExternalData():
 
     def __init__(self, csv, mol_names, exclude=[]):
+        if not os.path.exists("descriptors"): os.mkdir("descriptors")
         self.csv = os.path.join("descriptors",  csv)
         self.mol_names = mol_names       
         self.exclude = exclude
@@ -15,6 +16,16 @@ class ExternalData():
 
     def fit_transform(self, molecules, labels): 
         return self.transform(self.fit(molecules))
+
+    def retrieve_mols_not_docked(self, molecules):
+        df = pd.read_csv(self.csv) 
+        molecules_not_docked = []
+        for i, title in enumerate(self.mol_names):
+            if title not in df["Title"].values.astype(str):
+                #null_line = pd.DataFrame.from_records([values], columns=headers, index=[i])
+                #df = pd.concat([df.ix[:i-1], null_line, df.ix[i:]]).reset_index(drop=True)
+                molecules_not_docked.append(title)
+        return molecules_not_docked
 
     def transform(self, molecules):
         print("\tIncorporating external data")
@@ -28,17 +39,19 @@ class ExternalData():
                 n_drop += 1
         headers = list(df)
         values = (None,) * len(headers)
-        #If not present on your glide discard
+        #If not present on your glide 
         for i, title in enumerate(self.mol_names):
             if title not in df["Title"].values.astype(str):
                 null_line = pd.DataFrame.from_records([values], columns=headers, index=[i])
                 df = pd.concat([df.ix[:i-1], null_line, df.ix[i:]]).reset_index(drop=True)
         #Drop features
         df = df.replace("--",  np.nan)
+        
         features_to_drop = [feature for field in self.exclude for feature in headers if field in feature ]
         df.drop(features_to_drop, axis=1, inplace=True)
         df.to_csv(os.path.join("descriptors", "model_features.txt"))
         return df
+        #return df
 
     def retrieve_molecule_names(self):
         df = pd.read_csv(self.csv) 

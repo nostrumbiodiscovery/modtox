@@ -4,6 +4,39 @@ import glob
 import test_config as tc
 
 
+DATA_PATH=os.path.join(os.path.dirname(__file__), "data")
+ACTIVE=os.path.join(DATA_PATH, "actives.sdf")
+INACTIVE=os.path.join(DATA_PATH, "inactives.sdf")
+GLIDE_FEATURES=os.path.join(DATA_PATH, "glide_features.csv")
+
+
+########## PREPROCESS TESTS  #####################
+@pytest.mark.parametrize("sdf_active, sdf_inactive", [
+                         (ACTIVE, INACTIVE),
+                         ])
+def test_preprocess_fit_transform(sdf_active, sdf_inactive):
+    pre = tc.retrieve_preprocessor()
+    pre.fit_transform(sdf_active=sdf_active, sdf_inactive=sdf_inactive)
+
+@pytest.mark.parametrize("sdf_active, sdf_inactive, glide_features", [
+                         (ACTIVE, INACTIVE, GLIDE_FEATURES),
+                         ]) 
+def test_preprocess_sanitize(sdf_active, sdf_inactive, glide_features):
+ 
+    pre = tc.retrieve_preprocessor(csv=glide_features)
+    X,y = pre.fit_transform(sdf_active=sdf_active, sdf_inactive=sdf_inactive)
+    pre.sanitize(X, y)
+
+@pytest.mark.parametrize("sdf_active, sdf_inactive, glide_features", [
+                         (ACTIVE, INACTIVE, GLIDE_FEATURES),
+                         ]) 
+def test_preprocess_filter_features(sdf_active, sdf_inactive, glide_features):
+
+    pre = tc.retrieve_preprocessor(csv=glide_features, columns=['rdkit_fingerprintMACS_5', 'rdkit_fingerprintMACS_50'])
+    X, y = pre.fit_transform(sdf_active=sdf_active, sdf_inactive=sdf_inactive)
+    pre.sanitize(X, y)
+    pre.filter_features(X)
+
 ########## MODEL TESTS #####################
 
 def test_model_fit_stack():
