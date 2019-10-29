@@ -1,0 +1,29 @@
+name: ModTox
+channels:
+  - bioconda
+  - conda-forge
+  - rdkit
+  - josan_bcn
+  - nostrumbiodiscovery
+  - ambermd
+dependencies:
+  - tqdm
+  - prody
+  - umap-learn
+  - rdkit
+  - scikit-learn
+  - urllib3
+  - pytraj 
+  - biopython
+  - seaborn
+  - mordred
+  - nltk
+  - xgboost
+  - requests
+  - chembl_webresource_client
+  - pytest
+  - greenlet==0.4.12
+  - gevent==1.2.2
+  - pubchempy
+  - tpot
+  - shap
