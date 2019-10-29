@@ -14,3 +14,10 @@ dependencies:
   - shap
   - umap-learn
   - scikit-learn
+  - urllib3
+  - biopython
+  - seaborn
+  - mordred
+  - nltk
+  - xgboost
+  - requests
