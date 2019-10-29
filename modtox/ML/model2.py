@@ -142,9 +142,8 @@ class GenericModel(object):
             return np.hstack( [X, pred.T])
 
     def _stack_final_results(self, y_indiv, y_final, Y_true):
-
         clf_result = np.vstack([y_indiv, y_final])
-        self.clf_results =  [([pred == true for pred, true  in zip(result, Y_true)]) for result in clf_result]
+        return [([pred == true for pred, true  in zip(result, Y_true.tolist())]) for result in clf_result]
 
     def _last_fit(self, X, y, f=None):
 
@@ -164,25 +163,25 @@ class GenericModel(object):
        return prediction, prediction_proba
 
     def _last_predict(self, X):
-
         prediction = self.last_model.predict(X)
-        prediction_prob = self.last_model.predict_proba(X)
+        proba = self.last_model.predict_proba(X)
 
         return prediction, proba
+
 
     def _pipeline_fit(self, X, Y, f):
 
         self.indiv_preds, self.proba =  self._extract_pred_proba(X, Y, f=f, models=self.clf[:-1 ])
         self.X_stack = self._stack(X, self.indiv_preds, self.proba)
-        self.prediction, self.prediction_proba = self._last_fit(X, Y, f)
+        self.prediction, self.prediction_proba = self._last_fit(self.X_stack, Y, f)
         self.clf_results = self._stack_final_results(self.indiv_preds, self.prediction, Y)
 
     def _pipeline_predict(self, X, Y):
   
         self.indiv_preds, self.proba = self._extract_pred_proba(X, Y, models=self.loaded_models[:-1])
         X_pred_stack = self._stack(X, self.indiv_preds, self.proba)
-        self.prediction, self.predictions_proba = self._last_predict(X_pred_stack)
-        self.clf_results =  self._stack_final_results(self.indiv_preds, self.predictions, Y)
+        self.prediction_test, self.predictions_proba_test = self._last_predict(X_pred_stack)
+      #  self.clf_results =  self._stack_final_results(self.indiv_preds, self.prediction, Y)
 
     def load_models(self):
         print("Loading models")
@@ -220,19 +219,19 @@ class GenericModel(object):
         
         self.X_test = X_test
         self.Y_test = Y_test
-        self.X_test_trans = self.scaler.fit_transform(self.imputer.fit_transform(self.X_test))
-
+        self.X_test_trans = self.scaler.transform(self.imputer.transform(self.X_test))
         self.loaded_models = self.load_models()
 
         if self.stack:
-            self.last_model = self.loaded_models[len(self.loaded_models)]
+            self.last_model = self.loaded_models[-1]
             self._pipeline_predict(self.X_test_trans, self.Y_test)
 
         else:
             self.last_model = self.loaded_models
-            self.prediction, self.predictions_proba = self._last_predict(self.X_test_trans)
+            self.prediction_test, self.predictions_proba_test = self._last_predict(self.X_test_trans)
 
-        self.results = [ pred == true for pred, true in zip(self.prediction, self.Y)] #last classifier
+        self.results = [ pred == true for pred, true in zip(self.prediction_test, self.Y_test)] #last classifier
 
-        return self.result
+        return self.results
+
 

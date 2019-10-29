@@ -2,15 +2,21 @@ import os
 from sklearn.model_selection import train_test_split
 from sklearn import datasets
 from sklearn import ensemble
+import modtox.ML.preprocess as Pre
 import modtox.ML.postprocess as Post
 import modtox.ML.model2 as model
 
-def retrieve_data():
+def retrieve_data(size=1500, split=True):
+    X, y = datasets.make_blobs(n_samples=size, random_state=170, centers=2)
+    if split==True:
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
+        return X_train, X_test, y_train, y_test   
+    else:
+        return X,y
 
-    X, y = datasets.make_blobs(n_samples=1500, random_state=170, centers=2)
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.3, random_state=42)
-    return X_train, X_test, y_train, y_test   
- 
+def retrieve_preprocessor(csv=None, fp=False, descriptors=False, MACCS=True, columns=None, app_domain=False):
+    return Pre.ProcessorSDF(csv=csv, fp=fp, descriptors=descriptors, MACCS=MACCS, columns=columns, app_domain=app_domain)
+
 def retrieve_model(clf, tpot=None):
     return model.GenericModel(clf=clf, tpot=tpot)
 
