@@ -20,3 +20,8 @@ dependencies:
   - nltk
   - xgboost
   - requests
+  - pytest
+  - greenlet
+  - gevent
+  - rdkit
+  - pytraj 
