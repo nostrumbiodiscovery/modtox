@@ -21,6 +21,3 @@ dependencies:
   - xgboost
   - requests
   - chembl_webresource_client
-  - pytest
-  - greenlet
-  - gevent
