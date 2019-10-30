@@ -11,12 +11,20 @@ GLIDE_FEATURES=os.path.join(DATA_PATH, "glide_features.csv")
 
 
 ########## PREPROCESS TESTS  #####################
-@pytest.mark.parametrize("sdf_active, sdf_inactive", [
-                         (ACTIVE, INACTIVE),
+@pytest.mark.parametrize("sdf_active, sdf_inactive, glide_features", [
+                         (ACTIVE, INACTIVE, GLIDE_FEATURES),
                          ])
-def test_preprocess_fit_transform(sdf_active, sdf_inactive):
-    pre = tc.retrieve_preprocessor()
+def test_preprocess_fit_transform_all(sdf_active, sdf_inactive, glide_features):
+    pre = tc.retrieve_preprocessor(csv=glide_features, fp=True, descriptors=True, MACCS=True, columns=None)
     pre.fit_transform(sdf_active=sdf_active, sdf_inactive=sdf_inactive)
+
+@pytest.mark.parametrize("sdf_active, sdf_inactive, glide_features", [
+                         (ACTIVE, INACTIVE, GLIDE_FEATURES),
+                         ])
+def test_preprocess_fit_transform_glide(sdf_active, sdf_inactive, glide_features):
+    pre = tc.retrieve_preprocessor(csv=glide_features, fp=False, descriptors=False, MACCS=False, columns=None)
+    pre.fit_transform(sdf_active=sdf_active, sdf_inactive=sdf_inactive)
+
 
 @pytest.mark.parametrize("sdf_active, sdf_inactive, glide_features", [
                          (ACTIVE, INACTIVE, GLIDE_FEATURES),
@@ -105,4 +113,32 @@ def test_domain_analysis(output_densities="thresholds_vs_density.png", output_th
     pp = tc.retrieve_processor(train_data=True)
     DA = pp.domain_analysis(output_densities=output_densities, output_thresholds=output_thresholds, output_distplots=output_distplots, debug=True)
     assert any(output)
+
+def test_confusion_matrix(output="confusion_matrix.png"):
+    tc.clean(output)
+    pp = tc.retrieve_processor()
+    DA = pp.conf_matrix(output_conf=output)
+    assert any(output)
+
+def test_uncertainties():
+    pp = tc.retrieve_processor(train_data=True, clf_stacked=True)
+    UN = pp.calculate_uncertanties()
+
+def test_umap(output_umap="umap.png" ):
+    tc.clean(output_umap)
+    pp = tc.retrieve_processor()
+    pp.UMAP_plot(output_umap=output_umap)
+    assert any(output_umap)
+
+def test_pca(output_pca="pca.png" ):
+    tc.clean(output_pca)
+    pp = tc.retrieve_processor()
+    pp.PCA_plot(output_pca=output_pca)
+    assert any(output_pca)
+
+def test_tsne(output_tsne="tsne.png" ):
+    tc.clean(output_tsne)
+    pp = tc.retrieve_processor()
+    pp.tsne_plot(output_tsne=output_tsne)
+    assert any(output_tsne)
 
