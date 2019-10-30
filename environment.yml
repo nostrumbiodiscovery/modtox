@@ -17,7 +17,6 @@ dependencies:
   - urllib3
   - biopython
   - seaborn
-  - mordred
   - nltk
   - xgboost
   - requests
