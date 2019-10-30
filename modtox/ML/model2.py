@@ -71,8 +71,7 @@ class ImputerForSample(object):
             n_clusters = self.n_clusters
             
             assert isinstance(n_clusters, int) , "Must provide the number of clusters used"
-
-            self.X_sep = np.array([np.split(x, n_clusters) for x in np.array(X)]) #splitting for cluster
+            self.X_sep = np.array([np.split(x, self.n_clusters) for x in np.array(X)]) #splitting for cluster
             self.xmeans = np.array([np.nanmean(x_sep , axis=0) for x_sep in self.X_sep]) # mean without nan
 
             return self 
@@ -111,6 +110,7 @@ class GenericModel(object):
         self.stack = self._is_stack_model()   
 
         self.scaler = StandardScaler()
+        #self.imputer = Imputer(imputer_type='cluster_based', n_clusters=10)
         self.imputer = Imputer(imputer_type='simple')
         self.debug = debug
 
@@ -134,7 +134,7 @@ class GenericModel(object):
 
         return pred,proba
  
-    def _stack(self, X, pred, proba, stack_type='label'):
+    def _stack(self, X, pred, proba, stack_type='proba'):
 
         if stack_type=='proba':
             return np.hstack( [X, np.transpose([z[:,0] for z in proba])])
@@ -170,18 +170,17 @@ class GenericModel(object):
 
 
     def _pipeline_fit(self, X, Y, f):
-
-        self.indiv_preds, self.proba =  self._extract_pred_proba(X, Y, f=f, models=self.clf[:-1 ])
-        self.X_stack = self._stack(X, self.indiv_preds, self.proba)
-        self.prediction, self.prediction_proba = self._last_fit(self.X_stack, Y, f)
-        self.clf_results = self._stack_final_results(self.indiv_preds, self.prediction, Y)
+        self.indiv_fit, proba =  self._extract_pred_proba(X, Y, f=f, models=self.clf[:-1 ])
+        X_stack = self._stack(X, self.indiv_fit, proba)
+        self.prediction_fit, self.prediction_proba_fit = self._last_fit(X_stack, Y, f)
+        self.clf_results = self._stack_final_results(self.indiv_fit, self.prediction_fit, Y)
 
     def _pipeline_predict(self, X, Y):
   
-        self.indiv_preds, self.proba = self._extract_pred_proba(X, Y, models=self.loaded_models[:-1])
-        X_pred_stack = self._stack(X, self.indiv_preds, self.proba)
+        self.indiv_pred, proba = self._extract_pred_proba(X, Y, models=self.loaded_models[:-1])
+        X_pred_stack = self._stack(X, self.indiv_pred, proba)
         self.prediction_test, self.predictions_proba_test = self._last_predict(X_pred_stack)
-      #  self.clf_results =  self._stack_final_results(self.indiv_preds, self.prediction, Y)
+        self.clf_results =  self._stack_final_results(self.indiv_pred, self.prediction_test, Y)
 
     def load_models(self):
         print("Loading models")
@@ -208,7 +207,7 @@ class GenericModel(object):
             self._pipeline_fit(self.X_trans, self.Y, f)
         else:
             self.last_clf = self.clf
-            self.prediction, self.prediction_proba = self._last_fit(self.X_trans, self.Y, f=f)
+            self.prediction_fit, self.prediction_proba_fit = self._last_fit(self.X_trans, self.Y, f=f)
         
         self.fitted = True
         f.close()    
