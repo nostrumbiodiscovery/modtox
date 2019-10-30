@@ -20,3 +20,9 @@ dependencies:
   - nltk
   - xgboost
   - requests
+  - chembl_webresource_client
+  - pytest
+  - greenlet==0.4.12
+  - gevent==1.2.2
+  - rdkit
+  - pytraj 
