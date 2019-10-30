@@ -2,18 +2,24 @@ import matplotlib.pyplot as plt
 import shap  # package used to calculate Shap values
 import os
 import operator
+import umap
 import numpy as np
 import pandas as pd
 import seaborn as sns
 import modtox.ML.classifiers as cl
 from tqdm import tqdm
-from sklearn.metrics import roc_auc_score, roc_curve, precision_recall_curve, average_precision_score
+from sklearn.preprocessing import normalize
+from sklearn.metrics import roc_auc_score, roc_curve, precision_recall_curve, average_precision_score, confusion_matrix
 from sklearn.ensemble import RandomForestClassifier as RF
 from scipy.spatial import distance
+from sklearn.manifold import TSNE
+from sklearn.decomposition import PCA
+from matplotlib.patches import Ellipse
+from matplotlib.offsetbox import AnchoredText
 
 class PostProcessor():
 
-    def __init__(self, x_test, y_true_test, y_pred_test, y_proba_test, x_train=None, y_true_train=None, folder='.'):
+    def __init__(self, x_test, y_true_test, y_pred_test, y_proba_test, y_pred_test_clfs=None, x_train=None, y_true_train=None, folder='.'):
         
         self.x_train = x_train
         self.y_true_train = y_true_train
@@ -22,8 +28,10 @@ class PostProcessor():
         self.y_true_test = y_true_test
         self.y_pred_test = y_pred_test
         self.y_proba_test = y_proba_test
+        self.y_pred_test_clfs = y_pred_test_clfs
 
         self.folder = folder
+        if not os.path.exists(self.folder): os.mkdir(self.folder)
 
     def ROC(self, output_ROC="ROC_curve.png"):
         roc_score = roc_auc_score(self.y_true_test, self.y_proba_test[:,1])
@@ -65,11 +73,10 @@ class PostProcessor():
 
     def shap_values(self, output_shap='feature_importance_shap.png', names=None, debug=False, features=None):
 
-        assert self.x_train.any() and self.y_true_train.any(), "Needed train and test datasets. Specify with x_train=X, ytrain=Y"
-
+        assert self.x_train.any() and self.y_true_train.any(), "Needed train and test datasets. Specify with x_train=X, y_train=Y"
         names= ["sample_{}".format(i) for i in range(self.x_train.shape[0])] if not names else names
         features= ["feature_{}".format(i) for i in range(self.x_train.shape[1])] if not features else features
-
+        
         clf = RF(random_state=213).fit(self.x_train, self.y_true_train) #now randomforest
         df = pd.DataFrame(self.x_test, columns = features)
         data_for_prediction_array = df.values
@@ -82,7 +89,7 @@ class PostProcessor():
 
         samples = names[0:1] if debug else names
 
-        for row, name in enumerate(samples):
+        for row, name in enumerate(tqdm(samples)):
             shap.force_plot(explainer.expected_value[1], shap_values[row,:], df.iloc[row,:], matplotlib=True, show=False, text_rotation=90, figsize=(40, 10))
             plt.savefig(os.path.join(self.folder,'{}_shap.png'.format(name)))
         fig, axs = plt.subplots()
@@ -90,7 +97,7 @@ class PostProcessor():
         fig.savefig(os.path.join(self.folder, output_shap) )
      
 
-    def distributions(self, output_distributions = "distributions", features=None):
+    def distributions(self, output_distributions = "distributions", features=None, debug=False):
 
         assert self.x_train.any() and self.y_true_train.any(), "Needed train and test datasets. Specify with x_train=X, ytrain=Y"
 
@@ -102,7 +109,9 @@ class PostProcessor():
         x_test_inactive = self.x_test[np.where(self.y_true_test == 0)]
     
         for x1, x2, name in [(self.x_train, self.x_test, 'dataset'), (x_train_active, x_test_active, 'active'), (x_train_inactive, x_test_inactive, 'inactive')]:
-            for i in tqdm(range(len(x1[0]))):
+            if debug: end = range(3)
+            else: end = range(len(x1[0]))
+            for i in tqdm(end):
                 fig, ax1 = plt.subplots()
                 sns.distplot(x1[:,i], label = 'Train set', ax=ax1)
                 sns.distplot(x2[:,i], label = 'Test set', ax=ax1)
@@ -130,7 +139,6 @@ class PostProcessor():
 
 
     def domain_analysis(self, output_densities="thresholds_vs_density.png", output_thresholds="threshold_analysis.txt", output_distplots="displot", debug=False, names=None):
-
         assert self.x_train.any() and self.y_true_train.any(), "Needed train and test datasets. Specify with x_train=X, ytrain=Y"
 
         names= ["sample_{}".format(i) for i in range(self.x_test.shape[0])] if not names else names
@@ -171,8 +179,8 @@ class PostProcessor():
    
         for i in d_train_test: # for each sample
             idxs = [j for j,d in enumerate(i[0]) if d <= thresholds[j]] #saving indexes of training with threshold > distance
-            count_active.append(len([self.y_true_train[i] for i in idxs if self.y_true_train[i] == 1]))
-            count_inactive.append(len([self.y_true_train[i] for i in idxs if self.y_true_train[i] == 0]))
+            count_active.append(len([self.y_true_train.tolist()[i] for i in idxs if self.y_true_train[i] == 1]))
+            count_inactive.append(len([self.y_true_train.tolist()[i] for i in idxs if self.y_true_train[i] == 0]))
 
         n_insiders = np.array(count_active) + np.array(count_inactive)
         mean_insiders = np.mean(n_insiders)
@@ -200,7 +208,7 @@ class PostProcessor():
             plt.scatter(n_allowed, thresholds, c=self.y_true_train)
             plt.xlabel('Density')
             plt.ylabel('Threshold')
-            plt.savefig(output_densities)
+            plt.savefig(os.path.join(self.folder, output_densities))
             plt.close()
         
             for j in tqdm(range(len(names))):
@@ -224,5 +232,135 @@ class PostProcessor():
                 plt.savefig(os.path.join(self.folder, '{}_{}.png'.format(output_distplots, names[j])))
                 plt.close()
 
-   # def tree_image():
+    def conf_matrix(self, output_conf="confusion_matrix.png"):
+
+        self.n_initial_active = len([np.where(self.y_true_test == 1)])
+        self.n_initial_inactive = len([np.where(self.y_true_test == 0)]) #should be computed over the original set
+        self.n_final_active = len([np.where(self.y_true_test == 1)]) 
+        self.n_final_inactive = len([np.where(self.y_true_test == 0)])
+
+        # Confusion Matrix
+        conf = confusion_matrix(self.y_true_test, self.y_pred_test)
+        conf[1][0] += (self.n_initial_active - self.n_final_active)
+        conf[0][0] += (self.n_initial_inactive - self.n_final_inactive)
+        df_cm = pd.DataFrame([[conf[1][1], conf[0][1]], [conf[1][0], conf[0][0]]], index = [i for i in "PN"],
+                      columns = [i for i in "PN"])
+        print(df_cm)
+        plt.figure()
+        heatmap = sns.heatmap(df_cm, annot=True, fmt='d')
+        plt.tight_layout()
+        plt.savefig(os.path.join(self.folder, output_conf))
+
+    def ellipse_plot(self, position, width, height, angle, ax = None, dmin = 0.1, dmax = 0.5, n_ellipses=3, alpha=0.1, color=None):
+
+        #ellipsoidal representation allow us to visualize 5-D data
+        ax = ax or plt.gca()
+        angle = (angle / np.pi) * 180
+        # Draw the Ellipse
+        for n in np.linspace(dmin, dmax, n_ellipses):
+            ax.add_patch(Ellipse(position, n * width, n * height,
+                                 angle, alpha=alpha, lw=0, color=color))
+
+    def UMAP_plot(self, title="UMAP projection", fontsize=24, output_umap="UMAP_proj.png"):
+        colors = plt.get_cmap('Spectral')(np.linspace(0, 1, 2))
+        reducer = umap.UMAP(n_neighbors=5, min_dist=0.2, n_components = 5)
+        embedding = reducer.fit_transform(self.x_test)
+        fig, ax = plt.subplots()
+        for i in range(embedding.shape[0]):
+            pos = embedding[i, :2]
+            Y = list(map(lambda x: int(x), self.y_true_test)) # trues --> 1, falses ---> 0
+            self.ellipse_plot(pos, embedding[i, 2],embedding[i, 3], embedding[i, 4], ax, dmin=0.2, dmax=1.0, alpha=0.03, color = colors[np.array(Y)[i]])
+        ax.scatter(embedding[:, 0], embedding[:, 1], c = Y, cmap = 'Spectral')
+        fig.gca().set_aspect('equal', 'datalim')
+        ax.set_title(title)
+        fig.savefig(os.path.join(self.folder, output_umap))
+
+    def biplot_pca(self, score, coeff, headers=None, labels=None):
+        fig, ax = plt.subplots()
+        xs = score[:,0]
+        ys = score[:,1]
+        n = coeff.shape[0]
+        scalex = 1.0/(xs.max() - xs.min())
+        scaley = 1.0/(ys.max() - ys.min())
+        plt.scatter(xs * scalex,ys * scaley, c=labels)
+        importance = [x+y for x, y in zip(coeff[:,0], coeff[:,1])]
+        indexes = np.argsort(importance)[::-1]
+        headers = headers if headers else range(5)
+        colors = ["r", "b", "y", "g", "m"]
+        legend = []; custom_lines = []
+        for i, c in zip(indexes[0:5], colors):
+            plt.arrow(0, 0, coeff[i,0]*100, coeff[i,1]*100, color=c, alpha=0.5, width=0.005)
+            legend.append(headers[i])
+            custom_lines.append(Line2D([0], [0], color=c, lw=4))
+        ax.set_xlabel("PC{}".format(1))
+        ax.set_ylabel("PC{}".format(2))
+        ax.legend(custom_lines, legend, loc="upper_left")
+        fig.savefig(os.path.join(folder, "biplot.png"))
+
+
+    def variance_plot(self):
+        pca_tot = PCA()
+        trans_X = pca_tot.fit_transform(self.x_test)
+        variance_contributions = pca_tot.explained_variance_ratio_
+        singular_values = normalize(pca_tot.singular_values_.reshape(1, -1), norm='l2').ravel()
+        variance_explained = 0; j = 0; variance_vect = []; singular_values_chosen = []
+        with open(os.path.join(self.folder, "Variances_values.txt"), 'w') as r:
+            while variance_explained < 0.99:
+                variance_explained +=  variance_contributions[j]
+                variance_vect.append(variance_explained)
+                singular_values_chosen.append(singular_values[j])
+                r.write('{} component ---> Variance ratio: {} \n'.format(j+1, variance_explained))
+                j+=1
+    
+        res = [x for x, val in enumerate(variance_vect) if val > 0.9] #list of indixes upper-90
+        fig, ax = plt.subplots()
+        ax.plot(range(j), variance_vect, c="y")
+        ax.bar(range(j), singular_values_chosen)
+        ax.axvline(x = res[0], ls = '--', c = 'r')
+        ax.set_title('Variance vs Dimension')
+        ax.set_xlabel('Dimensions')
+        ax.set_ylabel('Variance ratio')
+        fig.savefig(os.path.join(self.folder, 'Variance.png'))
+
+
+    def PCA_plot(self, title="PCA projection", output_pca="PCA_proj.png", biplot=False):
+    
+        self.variance_plot()
+        pca = PCA(n_components=2)
+        embedding = pca.fit_transform(self.x_test)
+        if biplot:
+            biplot_pca(embedding[:,0:2], np.transpose(pca.components_[0:2, :]), biplot, labels=self.y_true_test)
+        variance_ratio = pca.explained_variance_ratio_
+        variance_total = sum(variance_ratio)
+        fig, ax = plt.subplots()
+        ax.scatter(embedding[:, 0], embedding[:, 1], c=[sns.color_palette()[y] for y in np.array(self.y_true_test)])
+        anchored_text = AnchoredText('Ratio of variance explained: {}'.format(round(variance_total,2)), loc=2) # adding a box
+        ax.add_artist(anchored_text)
+        fig.gca().set_aspect('equal', 'datalim')
+        ax.set_title(title)
+        fig.savefig(os.path.join(self.folder, output_pca))
+
+    def tsne_plot(self, title="TSNE_projection", output_tsne="TSNE_proj.png"):
+        embedding = TSNE(n_components=2).fit_transform(self.x_test)
+        fig, ax = plt.subplots()
+        ax.scatter(embedding[:, 0], embedding[:, 1], c=[sns.color_palette()[y] for y in np.array(self.y_true_test)])
+        fig.gca().set_aspect('equal', 'datalim')
+        ax.set_title(title)
+        fig.savefig(os.path.join(self.folder, output_tsne))
+
+    def calculate_uncertanties(self):
+        assert self.y_pred_test_clfs.any(), "Need to provide the predictions of each classfifier"
+ 
+        n_samples = len(self.y_pred_test_clfs[0])
+        n_class_predicting_active = [0] * n_samples
+        for pred in self.y_pred_test_clfs:
+            for i, sample in enumerate(pred):
+                if sample == 1:
+                    n_class_predicting_active[i] += 1
+        n_classifiers = len(self.y_pred_test_clfs)
+        uncertanties = [u/n_classifiers for u in n_class_predicting_active]
+        return uncertanties
+
+
+    def tree_image(): pass
 

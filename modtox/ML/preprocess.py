@@ -10,11 +10,10 @@ LABELS = "labels"
 
 class ProcessorSDF():
 
-    def __init__(self, fp, descriptors, MACCS, app_domain, csv, columns, debug=False):
+    def __init__(self, fp, descriptors, MACCS, csv, columns, debug=False):
         self.fp = fp
         self.descriptors = descriptors
         self.MACCS = MACCS
-        self.app_domain = app_domain
         self.external_data = csv
         self.columns = columns
         self.fitted = False
@@ -113,7 +112,7 @@ class ProcessorSDF():
         assert self.fitted, "Please fit the processor"
         # Excluding labels
         X = self.data.iloc[:, :-1]
-        y = self.data.iloc[:,-1]
+        y = np.array(self.data.iloc[:,-1])
         molecular_data = [ TITLE_MOL, ]; numeric_features = []; features = []
         if self.fp:
             numeric_features.extend('fingerprint')
@@ -127,16 +126,12 @@ class ProcessorSDF():
         if self.external_data:
             numeric_features.extend(['external_descriptors'])
             features.extend([('external_descriptors', ExternalData(self.external_data, self.mol_names, exclude=exclude))])
-        if self.app_domain:
-            #Look at the ExternalData or others to have a sense on how to do it
-            numeric_features.extend(['app_domain'])
-            features.extend([('app_domain', AppDomain(self.external_data, self.mol_names, exclude=exclude))])
         
         transformer = FeatureUnion(features)
         preprocessor = ColumnTransformer(transformers=[('mol', transformer, molecular_data)])
         pre = Pipeline(steps=[('transformer', preprocessor)])
         X_trans = pre.fit_transform(X)
-        return X_trans, y
+        return X_trans[:,1:], y
 
     def fit_transform(self, sdf_active, sdf_inactive):
 
@@ -148,7 +143,6 @@ class ProcessorSDF():
         assert feature_to_check, "Need to provide external data path"
         self.headers, self.headers_pb, self.headers_ext = self._retrieve_header()
         molecules_to_remove = []
-
         if feature_to_check == 'external_descriptors':
             assert self.external_data, "Need to read external data"
             indices_to_check = [i for i, j in enumerate(self.headers) if j in self.headers_ext] 
@@ -162,6 +156,7 @@ class ProcessorSDF():
             indxs_to_maintain = [np.where(np.array(self.mol_names) == mol)[0] for mol in mols_to_maintain]
             labels = np.array(y)[indxs_to_maintain]
             self.y = pd.Series(np.stack(labels, axis=1)[0])
+            self.y = np.array(y)
             self.X = np.array(X)[indxs_to_maintain, :]
             self.mol_names = mols_to_maintain
             n_active_corrected = len([label for label in self.y if label==1])
