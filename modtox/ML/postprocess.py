@@ -349,7 +349,7 @@ class PostProcessor():
         fig.savefig(os.path.join(self.folder, output_tsne))
 
     def calculate_uncertanties(self):
-        assert self.y_pred_test_clfs, "Need to provide the predictions of each classfifier"
+        assert self.y_pred_test_clfs.any(), "Need to provide the predictions of each classfifier"
  
         n_samples = len(self.y_pred_test_clfs[0])
         n_class_predicting_active = [0] * n_samples
