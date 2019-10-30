@@ -20,4 +20,3 @@ dependencies:
   - nltk
   - xgboost
   - requests
-  - chembl_webresource_client
