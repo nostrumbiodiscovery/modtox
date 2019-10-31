@@ -17,6 +17,7 @@ dependencies:
   - umap-learn
   - scikit-learn
   - urllib3
+  - mordred
   - biopython
   - seaborn
   - nltk
