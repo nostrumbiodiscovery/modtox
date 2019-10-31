@@ -19,7 +19,7 @@ from matplotlib.offsetbox import AnchoredText
 
 class PostProcessor():
 
-    def __init__(self, x_test, y_true_test, y_pred_test, y_proba_test, y_pred_test_clfs=None, x_train=None, y_true_train=None, folder='.'):
+    def __init__(self, x_test, y_true_test, y_pred_test, y_proba_test, y_pred_test_clfs=None, x_train=None, y_true_train=None, folder='metrics'):
         
         self.x_train = x_train
         self.y_true_train = y_true_train
@@ -145,7 +145,6 @@ class PostProcessor():
  
         ##### computing thresholds #######
         print("Computing applicability domains")
-
         distances = np.array([distance.cdist([x], self.x_train) for x in self.x_train])
         distances_sorted = [np.sort(d[0]) for d in distances]
         d_no_ii = [ d[1:] for d in distances_sorted] #discard 0 for the ii

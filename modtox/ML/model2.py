@@ -98,7 +98,7 @@ class ImputerForSample(object):
 
 class GenericModel(object):
 
-    def __init__(self, clf, filename_model='opt_model.pkl', folder='.', tpot=False, cv=5, debug=False):
+    def __init__(self, clf, filename_model='opt_model.pkl', folder='.',  tpot=False, cv=5, debug=False):
         self.X = None
         self.Y = None
         self.fitted = False
@@ -110,7 +110,6 @@ class GenericModel(object):
         self.stack = self._is_stack_model()   
 
         self.scaler = StandardScaler()
-        #self.imputer = Imputer(imputer_type='cluster_based', n_clusters=10)
         self.imputer = Imputer(imputer_type='simple')
         self.debug = debug
 
@@ -185,7 +184,7 @@ class GenericModel(object):
     def load_models(self):
         print("Loading models")
         data = []
-        with open(os.path.join(self.folder, self.filename_model), 'rb') as rf:
+        with open(os.path.join(self.folder, self.train_folder, self.filename_model), 'rb') as rf:
             try:
                 while True:
                     data.append(pickle.load(rf))
@@ -213,11 +212,14 @@ class GenericModel(object):
         f.close()    
         return self 
 
-    def predict(self, X_test, Y_test):
+    def predict(self, X_test, Y_test, scaler=None, imputer=None, train_folder="../from_train"):
         assert self.fitted, "Please fit the model first"
         
         self.X_test = X_test
         self.Y_test = Y_test
+        self.train_folder = train_folder
+        if scaler != None: self.scaler = scaler
+        if imputer != None: self.imputer = imputer
         self.X_test_trans = self.scaler.transform(self.imputer.transform(self.X_test))
         self.loaded_models = self.load_models()
 

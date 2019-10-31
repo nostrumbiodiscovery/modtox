@@ -6,8 +6,7 @@ import os
 class ExternalData():
 
     def __init__(self, csv, mol_names, exclude=[]):
-        if not os.path.exists("descriptors"): os.mkdir("descriptors")
-        self.csv = os.path.join("descriptors",  csv)
+        self.csv =  csv
         self.mol_names = mol_names       
         self.exclude = exclude
 
