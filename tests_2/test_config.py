@@ -32,12 +32,15 @@ def retrieve_processor(train_data=False, clf_stacked=False):
     y_pred = clf.predict(X_test)
     y_proba = clf.predict_proba(X_test)
     if clf_stacked: 
+        clf = 'stack'
         y_pred_clfs = np.array([y_pred, y_pred])
-        return Post.PostProcessor(X_test, y_test, y_pred, y_proba, y_pred_test_clfs=y_pred_clfs, x_train=X_train, y_true_train=y_train)
+        return Post.PostProcessor(clf, X_test, y_test, y_pred, y_proba, y_pred_test_clfs=y_pred_clfs, x_train=X_train, y_true_train=y_train)
     if train_data:
-        return Post.PostProcessor(X_test, y_test, y_pred, y_proba, x_train=X_train, y_true_train=y_train)
+        clf = 'single'
+        return Post.PostProcessor(clf, X_test, y_test, y_pred, y_proba, x_train=X_train, y_true_train=y_train)
     else:
-        return Post.PostProcessor(X_test, y_test, y_pred, y_proba)
+        clf = 'single'
+        return Post.PostProcessor(clf, X_test, y_test, y_pred, y_proba)
 
 
 def clean(data):
