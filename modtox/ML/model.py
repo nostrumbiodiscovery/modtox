@@ -12,7 +12,6 @@ from sklearn.metrics import confusion_matrix, average_precision_score
 import sklearn.metrics as metrics
 from sklearn import svm
 import sys
-import pandas as pd
 from rdkit import Chem
 from sklearn.model_selection import cross_val_predict, cross_val_score
 from sklearn.pipeline import Pipeline, FeatureUnion
@@ -21,11 +20,12 @@ from sklearn.preprocessing import StandardScaler
 from modtox.ML.descriptors_2D_ligand import *
 from modtox.ML.external_descriptors import *
 from modtox.docking.glide import analyse as md
+from modtox.ML.imputer import NewImputer
 import modtox.ML.classifiers as cl
 import modtox.ML.visualization as vs
 import modtox.Helpers.helpers as hp
 import modtox.ML.app_domain as dom
-
+import modtox.ML.distributions as distributions
 
 TITLE_MOL = "molecules"
 COLUMNS_TO_EXCLUDE = [ "Lig#", "Title", "Rank", "Conf#", "Pose#"]
@@ -50,15 +50,11 @@ class GenericModel(object):
         self.filename_model = filename_model
         self.tpot = tpot
         self.cv = self.n_final_active if not cv else cv
-        self.clf = cl.retrieve_classifier(clf, self.tpot, cv=self.cv)
+        self.clf = cl.retrieve_classifier(clf, self.tpot, cv=self.cv, fast=True)
+        self.imputer = 'column_based'
         self.debug = debug
 
 
-    def _load_test(self):
-        test_molecules = [ mol for mol in Chem.SDMolSupplier(self.test) if mol ]
-        test_df = pd.DataFrame({TITLE_MOL: test_molecules })
-        return test_df
-    
     def _load_training_set(self):
         """
         Separate between train and test dataframe
@@ -92,7 +88,7 @@ class GenericModel(object):
         #Do not handle tautomers with same molecule Name
         self.mol_names = []
         actives_non_repited = [] 
-        inactives_non_repited = [] 
+        inactives_non_repited = []
         for mol in actives:
             mol_name = mol.GetProp("_Name")
             if mol_name not in self.mol_names:
@@ -144,15 +140,18 @@ class GenericModel(object):
             features.extend([('external_descriptors', ExternalData(self.external_data, self.mol_names, exclude=exclude))])
 
         molec_transformer = FeatureUnion(features)
-
+       
         preprocessor = ColumnTransformer(
             transformers=[
                     ('mol', molec_transformer, molecular_data)])
         
         pre = Pipeline(steps=[('transformer', preprocessor)])
-
-        return pre.fit_transform(X)
-            
+        X_trans = pre.fit_transform(X)
+        #extracting molecules not docked 
+        tmp = ExternalData(self.external_data, self.mol_names, exclude=exclude)
+        mols_not_docked = tmp.retrieve_mols_not_docked(self.mol_names)
+        return X_trans, mols_not_docked 
+ 
     def saving_model(self, scaler):
         f = open(os.path.join("model", self.filename_model), 'wb')
 
@@ -167,7 +166,10 @@ class GenericModel(object):
                     pickle.dump(clf, f)
                     #and for the last model
                 preds_train = np.array([ cross_val_predict(c, self.x_train_trans, self.labels, cv=self.cv) for c in self.clf[:-1 ]])
-                X = np.hstack( [self.x_train_trans, preds_train.T] )
+                preds_proba_train = np.array([ cross_val_predict(c, self.x_train_trans, self.labels, cv=self.cv, method='predict_proba') for c in self.clf[:-1 ]])
+                #X = np.hstack( [self.x_train_trans, np.transpose([x[:,0] for x in preds_proba_train])])
+                X = np.hstack( [self.x_train_trans, preds_train.T])
+                
                 last_model = self.clf[-1].fit(X, self.labels)
                 pickle.dump(last_model, f)
                 pickle.dump(scaler, f)
@@ -187,8 +189,6 @@ class GenericModel(object):
         with open("thresholds.txt", "wb") as fp:
             pickle.dump(self.thresholds, fp)
 
-        self.xy_train_trans = [[x,y] for x,y in zip(self.x_train_trans, self.labels)]
-
         with open("xy_from_train.txt", "wb") as fp:
             pickle.dump(self.xy_train_trans, fp)
         
@@ -196,28 +196,65 @@ class GenericModel(object):
     def build_model(self, load=False, grid_search=False, output_conf=None, save=False, cv=None):
          
         ##Preprocess data##
-        self.x_train_trans = self.__fit_transform__(self.features)
-        scaler = StandardScaler()
-        imputer = SimpleImputer(strategy="constant")
-        self.x_train_trans = scaler.fit_transform(imputer.fit_transform(self.x_train_trans))
-        self.headers = self.retrieve_header()
+        x_train_trans, mol_not_docked = self.__fit_transform__(self.features)
+        self.x_train_trans = np.array(x_train_trans[:,1:]) #DEFUALT 
+
+        #keeping only docked molecules
+        if not self.debug: 
+            mols_to_maintain = [mol for mol in self.mol_names if mol not in mol_not_docked]
+            indxs_to_maintain = [np.where(np.array(self.mol_names) == mol)[0] for mol in mols_to_maintain]
+            labels = np.array(self.labels)[indxs_to_maintain]
+            self.labels = pd.Series(np.stack(labels, axis=1)[0])
+            self.mol_names = mols_to_maintain
+            self.n_active_corrected = len([label for label in self.labels if label==1])
+            self.n_inactive_corrected = len([label for label in self.labels if label==0])
+            if self.cv > self.n_inactive_corrected  or self.cv > self.n_active_corrected:
+                 self.cv = min([self.n_active_corrected, self.n_inactive_corrected])
+             
+
+        self.headers = self.retrieve_header()[1:]
         if self.columns:
             user_indexes = np.array([self.headers.index(column) for column in self.columns], dtype=int)
             self.x_train_trans = self.x_train_trans[:, user_indexes]        
-            self.headers = np.array(self.headers)[user_indexes].tolist()       
-
-        self.thresholds = dom.threshold(self.x_train_trans, self.labels, self.debug)
+            self.headers = np.array(self.headers)[user_indexes].tolist()      
         
+        if self.imputer == 'column_based':
+            imputer = SimpleImputer(strategy='constant')
+        if self.imputer == 'sample_based':
+            imputer = NewImputer(strategy = 'mean')
+       
+        self.x_train_trans = imputer.fit_transform(self.x_train_trans)
+ 
+        self.xy_train_trans = [[x,y] for x,y in zip(self.x_train_trans, self.labels)]
+
+        #computing thresholds and adding membership information to the original x
+        self.thresholds = dom.threshold(self.x_train_trans, self.labels, self.debug) #computing thresholds
+
+        self.insiders, self.count_active, self.count_inactive, self.distances = dom.evaluating_domain(self.xy_train_trans, self.x_train_trans, self.labels, self.thresholds, self.debug)
+
+        #self.x_train_trans = np.column_stack((self.x_train_trans, np.column_stack((self.insiders,self.count_active,self.count_inactive))))
+
+        #self.headers.append('Total_thresholds')
+        #self.headers.append('Active_thresholds')
+        #self.headers.append('Inactive_thresholds')
+        
+        #finally scaling
+
+        scaler = StandardScaler()
+        self.x_train_trans = scaler.fit_transform(self.x_train_trans)
+       
         ##Classification##
         np.random.seed(7)
         if self.is_stack_model():
             print('Stack model')
             if self.tpot:
                 print('Tpot')
-                for c in self.clf[:-1 ]:
-                    c.fit(self.x_train_trans, self.labels)
-                preds = np.array([ c.predict(self.x_train_trans) for c in self.clf[:-1 ]])
-                X = np.hstack( [self.x_train_trans, preds.T] )
+                for cl in self.clf[:-1 ]:
+                    cl.fit(self.x_train_trans, self.labels)
+                preds = np.array([ cl.predict(self.x_train_trans) for cl in self.clf[:-1 ]])
+                preds_proba = np.array([ cl.predict_proba(self.x_train_trans) for cl in self.clf[:-1 ]])
+                #X = np.hstack( [self.x_train_trans, np.transpose([x[:,0] for x in preds_proba])])
+                X = np.hstack( [self.x_train_trans, preds.T])
                 #Stack all classifiers in a final one
                 last_clf = self.clf[-1]
                 last_clf.fit(X, self.labels)
@@ -236,8 +273,9 @@ class GenericModel(object):
                 last_clf = self.clf[-1]
                 #Predict with 5 classfiers
                 preds = np.array([ cross_val_predict(c, self.x_train_trans, self.labels, cv=self.cv) for c in self.clf[:-1 ]])
-                print(self.x_train_trans.shape, preds.T.shape)
-                X = np.hstack( [self.x_train_trans, preds.T] )
+                preds_proba = np.array([ cross_val_predict(c, self.x_train_trans, self.labels, cv=self.cv, method='predict_proba') for c in self.clf[:-1 ]])
+                #X = np.hstack( [self.x_train_trans, np.transpose([x[:,0] for x in preds_proba])])
+                X = np.hstack( [self.x_train_trans, preds.T])
                 #Stack all classifiers in a final one
                 self.prediction = cross_val_predict(last_clf, X, self.labels, cv=self.cv)
                 self.prediction_prob = cross_val_predict(last_clf, X, self.labels, cv=self.cv, method='predict_proba')
@@ -255,6 +293,8 @@ class GenericModel(object):
                 self.clf.fit(self.x_train_trans, self.labels)
                 self.prediction = self.clf.predict(self.x_train_trans)
                 self.prediction_prob = self.clf.predict_proba(self.x_train_trans)
+                #Obtain results
+                self.results = [ pred == true for pred, true in zip(self.prediction, self.labels)]
             else:
                 self.prediction = cross_val_predict(self.clf, self.x_train_trans, self.labels, cv=self.cv)
                 self.prediction_prob = cross_val_predict(self.clf, self.x_train_trans, self.labels, cv=self.cv, method='predict_proba')
@@ -455,7 +495,6 @@ class GenericModel(object):
             self.threshold_from_train = pickle.load(fp)
         with open(os.path.join("../from_train/xy_from_train.txt"), "rb") as fp:
             self.xy_from_train = pickle.load(fp)
-            
         return data
 
     def save(self, output):
@@ -478,7 +517,7 @@ class GenericModel(object):
                 train.append(m)
                 label_train.append(label)
 
-        X_train = self.__fit_transform__(pd.DataFrame({"molecules": np.hstack([train, test])}))
+        X_train, mols_not_docked = self.__fit_transform__(pd.DataFrame({"molecules": np.hstack([train, test])}))
         X_train_pos = QuantileTransformer(output_distribution='uniform').fit_transform(X_train)
         X_test = X_train_pos[-2:, :]
         model = clf.fit(X_test, label_test)
@@ -567,10 +606,10 @@ class GenericModel(object):
         cv = self.n_final_active
         scaler = StandardScaler()
         #Preprocess data
-        self.x_train_trans = self.__fit_transform__(self.features)
+        self.x_train_trans, mols_not_docked = self.__fit_transform__(self.features)
         print(self.x_train_trans)
         print("Size train", self.x_train_trans.shape)
-        self.x_test_trans = self.__fit_transform__(self.data_test) 
+        self.x_test_trans, mols_not_docked = self.__fit_transform__(self.data_test) 
         print(self.x_test_trans)
         print("Size test", self.x_test_trans.shape)
         # Fit pre-models
@@ -589,23 +628,47 @@ class GenericModel(object):
 
     def external_prediction(self):
         print('Predicting over the new dataset....')
-        self.headers = self.retrieve_header()
+        self.headers = self.retrieve_header()[1:]
         loaded_models = self.load_model() #loaded model and also thresholds from training set
         scaler = loaded_models[-1]
-        self.x_test_trans = self.__fit_transform__(self.features)
-        imputer = SimpleImputer(strategy="constant")
-        self.x_test_trans = scaler.transform(imputer.fit_transform(self.x_test_trans))
+        x_test_trans, mol_not_docked = self.__fit_transform__(self.features)
+        self.x_test_trans = x_test_trans[:,1:]
 
+        mols_to_maintain = [mol for mol in self.mol_names if mol not in mol_not_docked]
+        indxs_to_maintain = [np.where(np.array(self.mol_names) == mol)[0] for mol in mols_to_maintain]
+        labels = np.array(self.labels)[indxs_to_maintain]
+        #to pandas
+        self.labels = pd.Series(np.stack(labels, axis=1)[0])
+        self.mol_names = mols_to_maintain
         
+        if self.imputer == 'column_based':
+            imputer = SimpleImputer(strategy='constant')
+        elif self.imputer == 'sample_based':
+            imputer = NewImputer(strategy = 'mean')
+       
+        import pdb; pdb.set_trace()
+        self.x_test_trans = imputer.fit_transform(self.x_test_trans)
+
         #evaluating applicability domains and credibilities
-        #self.insiders = dom.evaluating_domain(self.xy_from_train, self.x_test_trans, self.labels, self.threshold_from_train, self.mol_names, self.debug)   
-         
+        self.insiders, self.count_active, self.count_inactive, self.distances = dom.evaluating_domain(self.xy_from_train, self.x_test_trans, self.labels, self.threshold_from_train, self.debug)
+        #adding threshold membership information to the x
+
+        #self.x_test_trans = np.column_stack((self.x_test_trans,np.column_stack((self.insiders,self.count_active,self.count_inactive))))
+        #self.headers.append('Total_thresholds')
+        #self.headers.append('Active_thresholds')
+        #self.headers.append('Inactive_thresholds')
+        
+        self.x_test_trans = scaler.transform(imputer.fit_transform(self.x_test_trans))
+  
+ 
         if self.is_stack_model():
             self.premodels = loaded_models[:-2]
             #predicting with the individual clasifiers
             predictions = np.array([ model.predict(self.x_test_trans) for model in self.premodels]) 
+            predictions_proba = np.array([ model.predict_proba(self.x_test_trans) for model in self.premodels]) 
             #finally aggregate prediction        
-            self.results_ensemble_test = np.hstack( [self.x_test_trans, predictions.T] )
+            #self.results_ensemble_test = np.hstack( [self.x_test_trans, np.transpose([x[:,0] for x in predictions_proba])])
+            self.results_ensemble_test = np.hstack( [self.x_test_trans, predictions.T])
             self.prediction = loaded_models[-2].predict(self.results_ensemble_test)
             self.prediction_prob = loaded_models[-2].predict_proba(self.results_ensemble_test)
             clf_result = np.vstack([predictions, self.prediction])
@@ -621,12 +684,18 @@ class GenericModel(object):
             #Obtain results
             self.results = [ pred == true for pred, true in zip(self.prediction, self.labels)]
 
+
+
         #evaluating important features on prediction
         x_train = [x[0] for x in self.xy_from_train] #first component
         y_train = [x[1] for x in self.xy_from_train] #second component
-        clf = RandomForestClassifier(random_state=213).fit(x_train, y_train)
-        self.shap_analysis(clf=clf, output_folder="features/shap")
-
+#        clf = RandomForestClassifier(random_state=213).fit(x_train, y_train)
+#        self.shap_analysis(clf=clf, output_folder="features/shap")
+ 
+        #plotting distributions for dataset and actives/inactives
+        x_test_trans_red = [x[:-3] for x in self.x_test_trans]
+#        distributions.evaluating_distributions(x_train, y_train, x_test_trans_red, self.labels)
+        dom.analysis_domain(self.mol_names, self.insiders, self.count_active, self.count_inactive, self.distances, self.labels, self.prediction, self.prediction_prob,self.threshold_from_train,self.debug)
         #setting test = train to call postprocessing
         self.x_train_trans = self.x_test_trans  
         if not self.debug:

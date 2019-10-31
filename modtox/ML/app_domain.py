@@ -46,14 +46,17 @@ def threshold(x_train, y_train, debug):
     return thres
 
 
-def evaluating_domain(xy_from_train, x_from_test, y_from_test, threshold, names, debug):
+def evaluating_domain(xy_from_train, x1, y1, threshold, debug):
  
-    #splitting x and from train:
+    #when running over the training set, we compute the domains internally;
+    #whereas for the testing set is from test to train
+
+    #splitting x and y from train:
 
     x_from_train = [x[0] for x in xy_from_train] #first component
     y_from_train = [x[1] for x in xy_from_train] #second component
  
-    distances = np.array([distance.cdist([x], x_from_train) for x in x_from_test]) #d between each test and training set
+    distances = np.array([distance.cdist([x], x_from_train) for x in x1]) #d between each test and training set
     n_insiders = []
     count_active = []
     count_inactive = []
@@ -66,6 +69,10 @@ def evaluating_domain(xy_from_train, x_from_test, y_from_test, threshold, names,
         count_active.append(how_many_from_active)
         count_inactive.append(how_many_from_inactive)
 
+    return n_insiders, count_active, count_inactive, distances
+
+def analysis_domain(names, n_insiders, count_active, count_inactive, distances, labels, prediction, prediction_prob, threshold, debug):
+
     mean_insiders = np.mean(n_insiders)
   
     df = pd.DataFrame()
@@ -73,16 +80,18 @@ def evaluating_domain(xy_from_train, x_from_test, y_from_test, threshold, names,
     df['Thresholds'] = n_insiders 
     df['Active thresholds'] = count_active
     df['Inactive thresholds'] = count_inactive
-    df['True labels'] = y_from_test.values
+    df['True labels'] = labels
+    df['Prediction'] = prediction
+    df['Prediction probability'] = np.array([pred_1[1] for pred_1 in prediction_prob])
+    
  
-    df.sort_values(by=['Thresholds'], ascending = False)
+    df = df.sort_values(by=['Thresholds'], ascending = False)
   
     #plotting results 
     if not debug:
-        
-        with open(os.path.join("model", "threshold_analysis.txt"), "w") as f:
+        if not os.path.exists("thresholds"): os.mkdir("thresholds")
+        with open(os.path.join("thresholds", "threshold_analysis.txt"), "w") as f:
             f.write(df.to_string()) 
-
         for j in tqdm(range(len(names))):
             #plotting 
             fig, ax1 = plt.subplots()
@@ -101,7 +110,8 @@ def evaluating_domain(xy_from_train, x_from_test, y_from_test, threshold, names,
             fig.tight_layout()
             ax2.legend(loc = 'center right')
             plt.title('{}'.format(names[j]))
-            plt.savefig('distplot_{}.png'.format(names[j]))
-    return n_insiders
+            plt.savefig('thresholds/distplot_{}.png'.format(names[j]))
+            plt.close()
+    return 
 
 
