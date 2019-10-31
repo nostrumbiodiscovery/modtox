@@ -55,6 +55,7 @@ def docking(sdf_active, sdf_inactive, traj, resname, top, RMSD, cluster, last, c
    #     if not debug: docking_obj.dock(precision=precision, maxkeep=maxkeep, maxref=maxref, grid_mol=grid_mol)
         print("Docking in process...")
     inp_files = glob.glob(os.path.join(DOCKING_FOLDER, glide_files))
+    if not os.path.exists(DESCRIPTORS_FOLDER): os.mkdir(DESCRIPTORS_FOLDER)
     glide_csv = gl.analyze(inp_files, glide_dir=DESCRIPTORS_FOLDER, best=best, csv=csv, active=sdf_active, inactive=sdf_inactive, debug=debug)    
     
     return glide_csv
@@ -78,6 +79,7 @@ def build_model(sdf_active_train, sdf_inactive_train, csv_train, debug):
     
     #postprocessing
     print("Postprocess for training ...")
+    if not os.path.exists(METRICS_FOLDER): os.mkdir(METRICS_FOLDER)
     post = Post.PostProcessor(Model.X_trans, Model.Y, Model.prediction_fit, Model.prediction_proba_fit, y_pred_test_clfs=Model.indiv_fit, folder=METRICS_FOLDER) 
     uncertainties = post.calculate_uncertanties()
     print(uncertainties)
@@ -108,6 +110,7 @@ def predict_model(Model, sdf_active_test, sdf_inactive_test, csv_test, debug):
     
     #postprocessing
     print("Postprocess for test ...")
+    if not os.path.exists(METRICS_FOLDER): os.mkdir(METRICS_FOLDER)
     post = Post.PostProcessor(Model.X_test_trans, Model.Y_test, Model.prediction_test, Model.predictions_proba_test, y_pred_test_clfs=Model.indiv_pred, x_train=Model.X_trans, y_true_train=Model.Y, folder=METRICS_FOLDER) 
     uncertainties = post.calculate_uncertanties()
     print(uncertainties)
