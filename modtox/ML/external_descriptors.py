@@ -5,10 +5,11 @@ import os
 
 class ExternalData():
 
-    def __init__(self, csv, mol_names, exclude=[]):
+    def __init__(self, csv, mol_names, folder = '.', exclude=[]):
         self.csv =  csv
         self.mol_names = mol_names       
         self.exclude = exclude
+        self.folder = folder
 
     def fit(self, molecules):
         return molecules
@@ -48,9 +49,8 @@ class ExternalData():
         
         features_to_drop = [feature for field in self.exclude for feature in headers if field in feature ]
         df.drop(features_to_drop, axis=1, inplace=True)
-        df.to_csv(os.path.join("descriptors", "model_features.txt"))
+        df.to_csv(os.path.join(self.folder, "model_features.txt"))
         return df
-        #return df
 
     def retrieve_molecule_names(self):
         df = pd.read_csv(self.csv) 

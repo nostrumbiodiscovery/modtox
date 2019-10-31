@@ -19,7 +19,7 @@ from matplotlib.offsetbox import AnchoredText
 
 class PostProcessor():
 
-    def __init__(self, x_test, y_true_test, y_pred_test, y_proba_test, y_pred_test_clfs=None, x_train=None, y_true_train=None, folder='metrics'):
+    def __init__(self, clf, x_test, y_true_test, y_pred_test, y_proba_test, y_pred_test_clfs=None, x_train=None, y_true_train=None, folder='.'):
         
         self.x_train = x_train
         self.y_true_train = y_true_train
@@ -29,7 +29,7 @@ class PostProcessor():
         self.y_pred_test = y_pred_test
         self.y_proba_test = y_proba_test
         self.y_pred_test_clfs = y_pred_test_clfs
-
+        self.clf = clf
         self.folder = folder
         if not os.path.exists(self.folder): os.mkdir(self.folder)
 
@@ -348,18 +348,17 @@ class PostProcessor():
         fig.savefig(os.path.join(self.folder, output_tsne))
 
     def calculate_uncertanties(self):
-        assert self.y_pred_test_clfs.any(), "Need to provide the predictions of each classfifier"
- 
-        n_samples = len(self.y_pred_test_clfs[0])
-        n_class_predicting_active = [0] * n_samples
-        for pred in self.y_pred_test_clfs:
-            for i, sample in enumerate(pred):
-                if sample == 1:
-                    n_class_predicting_active[i] += 1
-        n_classifiers = len(self.y_pred_test_clfs)
-        uncertanties = [u/n_classifiers for u in n_class_predicting_active]
-        return uncertanties
-
+        if self.clf == 'stack':
+            n_samples = len(self.y_pred_test_clfs[0])
+            n_class_predicting_active = [0] * n_samples
+            for pred in self.y_pred_test_clfs:
+                for i, sample in enumerate(pred):
+                    if sample == 1:
+                        n_class_predicting_active[i] += 1
+            n_classifiers = len(self.y_pred_test_clfs)
+            uncertanties = [u/n_classifiers for u in n_class_predicting_active]
+            return uncertanties
+        else: print("uncertainties can't be computed in single model")
 
     def tree_image(): pass
 
