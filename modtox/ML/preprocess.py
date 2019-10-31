@@ -109,7 +109,7 @@ class ProcessorSDF():
         self.fitted = True
         return self
 
-    def transform(self, exclude=COLUMNS_TO_EXCLUDE):
+    def transform(self, folder, exclude=COLUMNS_TO_EXCLUDE):
         assert self.fitted, "Please fit the processor"
         # Excluding labels
         X = self.data.iloc[:, :-1]
@@ -126,7 +126,7 @@ class ProcessorSDF():
             features.extend([('fingerprintMACCS', Fingerprints_MACS())])
         if self.external_data:
             numeric_features.extend(['external_descriptors'])
-            features.extend([('external_descriptors', ExternalData(self.external_data, self.mol_names, exclude=exclude))])
+            features.extend([('external_descriptors', ExternalData(self.external_data, self.mol_names, exclude=exclude, folder=folder))])
         
         transformer = FeatureUnion(features)
         preprocessor = ColumnTransformer(transformers=[('mol', transformer, molecular_data)])
@@ -134,9 +134,9 @@ class ProcessorSDF():
         X_trans = pre.fit_transform(X)
         return X_trans, y
 
-    def fit_transform(self, sdf_active, sdf_inactive):
+    def fit_transform(self, sdf_active, sdf_inactive, folder='.'):
 
-        return self.fit(sdf_active, sdf_inactive).transform()
+        return self.fit(sdf_active, sdf_inactive).transform(folder)
         
     def sanitize(self, X, y, cv=5, feature_to_check='external_descriptors'):
   

@@ -30,7 +30,7 @@ top = "/data/ModTox/5_CYPs/HROT_1r9o/1r9o_holo/1r9o_holo.top"
 traj = "/data/ModTox/5_CYPs/HROT_1r9o/1r9o_holo/1R9O_*.x"
 resname = "FLP"
 
-clf='single'
+clf='stack'
 tpot=True
 cv=10
 
@@ -67,7 +67,7 @@ def docking(sdf_active, sdf_inactive, traj, resname, top, RMSD, cluster, last, c
 def build_model(sdf_active_train, sdf_inactive_train, csv_train, clf, tpot, cv, debug):
 
     #preprocess
-    pre = Pre.ProcessorSDF(csv=csv_train, fp=False, descriptors=False, MACCS=True, columns=None)
+    pre = Pre.ProcessorSDF(csv=csv_train, fp=False, descriptors=False, MACCS=False, columns=None)
     print("Fit and tranform for preprocessor..")
     X_train, y_train = pre.fit_transform(sdf_active=sdf_active_train, sdf_inactive=sdf_inactive_train, folder=DESCRIPTORS_FOLDER)
     print("Sanitazing...")
@@ -98,7 +98,7 @@ def predict_model(Model, sdf_active_test, sdf_inactive_test, csv_test, clf, tpot
     
     #preprocess test
     
-    pre = Pre.ProcessorSDF(csv=csv_test, fp=False, descriptors=False, MACCS=True, columns=None)
+    pre = Pre.ProcessorSDF(csv=csv_test, fp=False, descriptors=False, MACCS=False, columns=None)
     print("Fit and tranform for preprocessor..")
     X_test, y_test = pre.fit_transform(sdf_active=sdf_active_test, sdf_inactive=sdf_inactive_test, folder=DESCRIPTORS_FOLDER)
     print("Sanitazing...")

@@ -150,7 +150,6 @@ def parse_args(parser):
 
 def analise(output_dir, traj, resname, top, RMSD, cluster, last, clust_type, rmsd_type, sieve):
     if not os.path.exists(output_dir): os.makedirs(output_dir)
-
     trajectory = CpptajBuilder(traj, top, output_dir)
     if RMSD:
         trajectory.strip(trajectory.traj, autoimage=True)
