@@ -50,11 +50,11 @@ def main(sdf_active_train, sdf_inactive_train, sdf_active_test, sdf_inactive_tes
 def docking(sdf_active, sdf_inactive, traj, resname, top, RMSD, cluster, last, clust_type, rmsd_type, sieve, precision, maxkeep, maxref, grid_mol, csv, glide_files, best, debug=True):
     
     print("Extracting clusters from MD")
+    if not os.path.exists(DESCRIPTORS_FOLDER): os.mkdir(DESCRIPTORS_FOLDER)
     if not os.path.exists(ANALYSIS_FOLDER): 
         an.analise(ANALYSIS_FOLDER, traj, resname, top, RMSD, cluster, last, clust_type, rmsd_type, sieve)
 
     if not os.path.exists(DOCKING_FOLDER): os.mkdir(DOCKING_FOLDER)
-    if not os.path.exists(DESCRIPTORS_FOLDER): os.mkdir(DESCRIPTORS_FOLDER)
     docking_obj = dk.Glide_Docker(glob.glob(os.path.join(ANALYSIS_FOLDER, "*clust*.pdb")), [sdf_active, sdf_inactive], debug=debug)
     with hp.cd(DOCKING_FOLDER):
    #     if not debug: docking_obj.dock(precision=precision, maxkeep=maxkeep, maxref=maxref, grid_mol=grid_mol)
@@ -67,10 +67,9 @@ def docking(sdf_active, sdf_inactive, traj, resname, top, RMSD, cluster, last, c
 def build_model(sdf_active_train, sdf_inactive_train, csv_train, clf, tpot, cv, debug):
 
     #preprocess
-    
     pre = Pre.ProcessorSDF(csv=csv_train, fp=False, descriptors=False, MACCS=True, columns=None)
     print("Fit and tranform for preprocessor..")
-    X_train, y_train = pre.fit_transform(sdf_active=sdf_active_train, sdf_inactive=sdf_inactive_train)
+    X_train, y_train = pre.fit_transform(sdf_active=sdf_active_train, sdf_inactive=sdf_inactive_train, folder=DESCRIPTORS_FOLDER)
     print("Sanitazing...")
     X_train, y_train, mol_names = pre.sanitize(X_train, y_train)
     print("Filtering features...")
@@ -101,7 +100,7 @@ def predict_model(Model, sdf_active_test, sdf_inactive_test, csv_test, clf, tpot
     
     pre = Pre.ProcessorSDF(csv=csv_test, fp=False, descriptors=False, MACCS=True, columns=None)
     print("Fit and tranform for preprocessor..")
-    X_test, y_test = pre.fit_transform(sdf_active=sdf_active_test, sdf_inactive=sdf_inactive_test)
+    X_test, y_test = pre.fit_transform(sdf_active=sdf_active_test, sdf_inactive=sdf_inactive_test, folder=DESCRIPTORS_FOLDER)
     print("Sanitazing...")
     X_test, y_test, mol_names = pre.sanitize(X_test, y_test)
     print("Filtering features...")

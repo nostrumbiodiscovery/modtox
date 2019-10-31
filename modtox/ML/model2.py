@@ -207,12 +207,13 @@ class GenericModel(object):
         else:
             self.last_clf = self.clf
             self.prediction_fit, self.prediction_proba_fit = self._last_fit(self.X_trans, self.Y, f=f)
-        
+            self.indiv_fit=None
+ 
         self.fitted = True
         f.close()    
         return self 
 
-    def predict(self, X_test, Y_test, scaler=None, imputer=None, train_folder="../from_train"):
+    def predict(self, X_test, Y_test, scaler=None, imputer=None, train_folder="."):
         assert self.fitted, "Please fit the model first"
         
         self.X_test = X_test
@@ -226,11 +227,11 @@ class GenericModel(object):
         if self.stack:
             self.last_model = self.loaded_models[-1]
             self._pipeline_predict(self.X_test_trans, self.Y_test)
-
+            
         else:
-            self.last_model = self.loaded_models
+            self.last_model = self.loaded_models[0]
             self.prediction_test, self.predictions_proba_test = self._last_predict(self.X_test_trans)
-
+            self.indiv_pred = None
         self.results = [ pred == true for pred, true in zip(self.prediction_test, self.Y_test)] #last classifier
 
         return self.results
