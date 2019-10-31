@@ -7,7 +7,7 @@ channels:
   - nostrumbiodiscovery
   - ambermd
 dependencies:
-  - deap==1.0
+  - deap
   - tqdm
   - prody
   - pubchempy
