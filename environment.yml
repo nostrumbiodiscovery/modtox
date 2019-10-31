@@ -7,6 +7,8 @@ channels:
   - nostrumbiodiscovery
   - ambermd
 dependencies:
+  - python=3.6
+  - deap==1.3.0
   - tqdm
   - prody
   - pubchempy
@@ -15,6 +17,7 @@ dependencies:
   - umap-learn
   - scikit-learn
   - urllib3
+  - mordred
   - biopython
   - seaborn
   - nltk
