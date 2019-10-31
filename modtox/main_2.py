@@ -30,17 +30,21 @@ top = "/data/ModTox/5_CYPs/HROT_1r9o/1r9o_holo/1r9o_holo.top"
 traj = "/data/ModTox/5_CYPs/HROT_1r9o/1r9o_holo/1R9O_*.x"
 resname = "FLP"
 
-def main(sdf_active_train, sdf_inactive_train, sdf_active_test, sdf_inactive_test, traj, resname, top, RMSD=True, cluster=True, last=True, clust_type="BS", rmsd_type="BS", sieve=10, precision="SP", maxkeep=500, maxref=400, grid_mol=2, csv=False, best=False, glide_files="*dock_lib.maegz", debug=False):
+clf='single'
+tpot=True
+cv=10
+
+def main(sdf_active_train, sdf_inactive_train, sdf_active_test, sdf_inactive_test, traj, resname, top, clf, tpot, cv, RMSD=True, cluster=True, last=True, clust_type="BS", rmsd_type="BS", sieve=10, precision="SP", maxkeep=500, maxref=400, grid_mol=2, csv=False, best=False, glide_files="*dock_lib.maegz", debug=False):
 
     if not os.path.exists(TRAIN_FOLDER): os.mkdir(TRAIN_FOLDER)
     with hp.cd(TRAIN_FOLDER):
         csv_train = docking(sdf_active_train, sdf_inactive_train, traj, resname, top, RMSD, cluster, last, clust_type, rmsd_type, sieve, precision, maxkeep, maxref, grid_mol, csv, glide_files, best, debug)
-        model = build_model(sdf_active_train, sdf_inactive_train, csv_train, debug)
+        model = build_model(sdf_active_train, sdf_inactive_train, csv_train, clf, tpot, cv, debug)
  
     if not os.path.exists(TEST_FOLDER): os.mkdir(TEST_FOLDER)
     with hp.cd(TEST_FOLDER):
         csv_test = docking(sdf_active_test, sdf_inactive_test,  traj, resname, top, RMSD, cluster, last, clust_type, rmsd_type, sieve, precision, maxkeep, maxref, grid_mol, csv, glide_files, best ,debug)
-        predict_model(model, sdf_active_test, sdf_inactive_test, csv_test, debug)
+        predict_model(model, sdf_active_test, sdf_inactive_test, csv_test, clf, tpot, cv, debug)
 
 
 def docking(sdf_active, sdf_inactive, traj, resname, top, RMSD, cluster, last, clust_type, rmsd_type, sieve, precision, maxkeep, maxref, grid_mol, csv, glide_files, best, debug=True):
@@ -49,18 +53,18 @@ def docking(sdf_active, sdf_inactive, traj, resname, top, RMSD, cluster, last, c
     if not os.path.exists(ANALYSIS_FOLDER): 
         an.analise(ANALYSIS_FOLDER, traj, resname, top, RMSD, cluster, last, clust_type, rmsd_type, sieve)
 
-    docking_obj = dk.Glide_Docker(glob.glob(os.path.join(ANALYSIS_FOLDER, "*clust*.pdb")), [sdf_active, sdf_inactive], debug=debug)
     if not os.path.exists(DOCKING_FOLDER): os.mkdir(DOCKING_FOLDER)
+    if not os.path.exists(DESCRIPTORS_FOLDER): os.mkdir(DESCRIPTORS_FOLDER)
+    docking_obj = dk.Glide_Docker(glob.glob(os.path.join(ANALYSIS_FOLDER, "*clust*.pdb")), [sdf_active, sdf_inactive], debug=debug)
     with hp.cd(DOCKING_FOLDER):
    #     if not debug: docking_obj.dock(precision=precision, maxkeep=maxkeep, maxref=maxref, grid_mol=grid_mol)
         print("Docking in process...")
     inp_files = glob.glob(os.path.join(DOCKING_FOLDER, glide_files))
-    if not os.path.exists(DESCRIPTORS_FOLDER): os.mkdir(DESCRIPTORS_FOLDER)
     glide_csv = gl.analyze(inp_files, glide_dir=DESCRIPTORS_FOLDER, best=best, csv=csv, active=sdf_active, inactive=sdf_inactive, debug=debug)    
     
     return glide_csv
 
-def build_model(sdf_active_train, sdf_inactive_train, csv_train, debug):
+def build_model(sdf_active_train, sdf_inactive_train, csv_train, clf, tpot, cv, debug):
 
     #preprocess
     
@@ -73,16 +77,15 @@ def build_model(sdf_active_train, sdf_inactive_train, csv_train, debug):
     pre.filter_features(X_train)
     
     #fit model
-    Model = model.GenericModel(clf='stack', tpot=True, cv=10)
+    Model = model.GenericModel(clf=clf, tpot=tpot,  cv=cv)
     print("Fitting model...")
     Model.fit(X_train,y_train)
     
     #postprocessing
     print("Postprocess for training ...")
     if not os.path.exists(METRICS_FOLDER): os.mkdir(METRICS_FOLDER)
-    post = Post.PostProcessor(Model.X_trans, Model.Y, Model.prediction_fit, Model.prediction_proba_fit, y_pred_test_clfs=Model.indiv_fit, folder=METRICS_FOLDER) 
+    post = Post.PostProcessor(clf, Model.X_trans, Model.Y, Model.prediction_fit, Model.prediction_proba_fit, y_pred_test_clfs=Model.indiv_fit, folder=METRICS_FOLDER) 
     uncertainties = post.calculate_uncertanties()
-    print(uncertainties)
     post.ROC()
     post.PR()
     post.conf_matrix()
@@ -92,7 +95,7 @@ def build_model(sdf_active_train, sdf_inactive_train, csv_train, debug):
    
     return Model
  
-def predict_model(Model, sdf_active_test, sdf_inactive_test, csv_test, debug): 
+def predict_model(Model, sdf_active_test, sdf_inactive_test, csv_test, clf, tpot, cv, debug): 
     
     #preprocess test
     
@@ -111,9 +114,8 @@ def predict_model(Model, sdf_active_test, sdf_inactive_test, csv_test, debug):
     #postprocessing
     print("Postprocess for test ...")
     if not os.path.exists(METRICS_FOLDER): os.mkdir(METRICS_FOLDER)
-    post = Post.PostProcessor(Model.X_test_trans, Model.Y_test, Model.prediction_test, Model.predictions_proba_test, y_pred_test_clfs=Model.indiv_pred, x_train=Model.X_trans, y_true_train=Model.Y, folder=METRICS_FOLDER) 
+    post = Post.PostProcessor(clf, Model.X_test_trans, Model.Y_test, Model.prediction_test, Model.predictions_proba_test, y_pred_test_clfs=Model.indiv_pred, x_train=Model.X_trans, y_true_train=Model.Y, folder=METRICS_FOLDER) 
     uncertainties = post.calculate_uncertanties()
-    print(uncertainties)
     post.ROC()
     post.PR()
     post.conf_matrix()
@@ -128,5 +130,5 @@ def predict_model(Model, sdf_active_test, sdf_inactive_test, csv_test, debug):
 
 if __name__ == "__main__":
 
-    main(sdf_active_train, sdf_inactive_train, sdf_active_test, sdf_inactive_test, traj, resname, top)
+    main(sdf_active_train, sdf_inactive_train, sdf_active_test, sdf_inactive_test, traj, resname, top, clf, tpot, cv)
 
