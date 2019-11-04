@@ -61,6 +61,8 @@ def main(sdf_active_train, sdf_inactive_train, sdf_active_test, sdf_inactive_tes
 
 def set_preparation(traj, resname, top, RMSD, cluster, last, clust_type, rmsd_type, sieve, database, mol_to_read, debug, train, test, folder_to_get=None):
 
+    if not os.path.exists(DATASET_FOLDER): os.mkdir(DATASET_FOLDER)
+    
     #folder where used molecules during train are stored    
     if train: folder_to_get = os.path.abspath(DATASET_FOLDER)
 
@@ -78,7 +80,6 @@ def docking(sdf_active, sdf_inactive, precision, maxkeep, maxref, grid_mol, csv,
     
     if not os.path.exists(DOCKING_FOLDER): os.mkdir(DOCKING_FOLDER)
     if not os.path.exists(DESCRIPTORS_FOLDER): os.mkdir(DESCRIPTORS_FOLDER)
-    if not os.path.exists(DATASET_FOLDER): os.mkdir(DATASET_FOLDER)
 
     if dock: 
         print("Docking in process...")
