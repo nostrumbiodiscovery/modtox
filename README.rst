@@ -21,6 +21,12 @@ Clinical and Translational Science, vol. 9, no. 6,
 .. image:: https://mybinder.org/badge_logo.svg
  :target: https://mybinder.org/v2/gh/NostrumBioDiscovery/modtox/restructuration
 
+
+Get started online!
+=================================
+
+https://hub.gke.mybinder.org/user/nostrumbiodiscovery-modtox-pvx3qy0i/notebooks/index.ipynb
+
 Installation
 =================
 
