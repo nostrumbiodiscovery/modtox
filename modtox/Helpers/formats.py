@@ -21,6 +21,15 @@ def  sd_to_mae(sdf, schr=cs.SCHR, output=None):
     subprocess.call(command.split())
     return output
 
+def  mae_to_sd(mae, schr=cs.SCHR, output=None):
+    if not output:
+        output = os.path.splitext(os.path.basename(mae))[0]+".sdf"
+    sdconvert = os.path.join(schr, "utilities/sdconvert")
+    command = "{} -imae {}  -osd {}".format(sdconvert, mae, output)
+    print(command)
+    subprocess.call(command.split())
+    return output
+
 def convert_to_mae(list_of_files):
     ligands_to_dock_mae = []
     for ligand in list_of_files:

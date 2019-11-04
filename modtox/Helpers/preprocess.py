@@ -7,9 +7,11 @@ import time
 
 DIR = os.path.dirname(os.path.abspath(__file__))
 
-def ligprep(sdf, template="ligprep.in", input_file="ligprep.in", schr=cs.SCHR, output="ligands_proc.mae"):
+def ligprep(sdf, folder='.', template="ligprep.in", input_file="ligprep.in", schr=cs.SCHR, output="ligands_proc.mae"):
     template = os.path.join(DIR, template)
     ligprep_bin = os.path.join(schr, "ligprep")
+    input_file = os.path.join(folder, input_file)
+    output = os.path.join(folder, output)
     command = "{} -inp {}".format(ligprep_bin, input_file)
 
     # Templetize grid
@@ -27,6 +29,6 @@ def ligprep(sdf, template="ligprep.in", input_file="ligprep.in", schr=cs.SCHR, o
         time.sleep(60)
 
 
-    return os.path.abspath(output)
+    return output
 
     
