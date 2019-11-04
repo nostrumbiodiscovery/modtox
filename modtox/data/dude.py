@@ -15,6 +15,7 @@ import os
 from chembl_webresource_client.unichem import unichem_client as unichem
 from chembl_webresource_client.new_client import new_client
 import modtox.Helpers.preprocess as pr
+import modtox.Helpers.formats as ft
 
 
 URL = "https://www.ebi.ac.uk/chembl/api/data/molecule/{}.sdf"
@@ -22,15 +23,16 @@ URL = "https://www.ebi.ac.uk/chembl/api/data/molecule/{}.sdf"
 
 class DUDE(object):
     
-    def __init__(self, dude_folder, train, test):
+    def __init__(self, dude_folder, folder_output, train, test):
         self.dude_folder = os.path.abspath(dude_folder)
         self.actives_ism = os.path.join(self.dude_folder, "actives_final.ism")
         self.decoys_ism = os.path.join(self.dude_folder, "decoys_final.ism")
         self.actives_sdf = os.path.join(self.dude_folder, "actives_final.sdf")
         self.decoys_sdf = os.path.join(self.dude_folder, "decoys_final.sdf")
+        self.used_mols = 'used_mols.txt'
         self.train = train
         self.test = test
-        self.used_mols = 'used_mols.txt'
+        self.folder_output = folder_output
           
     def get_active_names(self):
         with open(self.actives_ism, "r") as f:
@@ -55,10 +57,7 @@ class DUDE(object):
     def to_sdf(self, inchies, mol_names=None, output="actives.sdf"):
         # Prepare output
         mol_names = mol_names if mol_names else range(len(inchies))
-        if self.train: where = "train"
-        if self.test : where = "test"
-        filename = output.split('.')[0] + "_" + where + ".sdf"
-        outputfile = os.path.join("dataset", filename)
+        outputfile = os.path.join(self.folder_output, output)
         # Convert to sdf
         molecules_rdkit = [] ;w = Chem.SDWriter(outputfile)
         for inchy, name in tqdm(zip(inchies, mol_names)):
@@ -84,26 +83,23 @@ class DUDE(object):
         similarity = np.array([DataStructs.FingerprintSimilarity(ref, fp) for fp in fps[1:]])
         idx = np.round(np.linspace(0, len(similarity) - 1, n_output_mols)).astype(int)
         molecules_out = mols[idx]
-        if self.train: where = "train" 
-        if self.test: where = "test"
-        filename = output_sdf.split('.')[0] + "_{}.sdf".format(where)
-        if not os.path.exists("dataset"): os.makedirs("dataset")
-        out = os.path.join("dataset", filename)
+        if not os.path.exists(self.folder_output): os.makedirs(self.folder_output)
+        out = os.path.join(self.folder_output, output_sdf)
         w = Chem.SDWriter(out) 
         for m in molecules_out: w.write(m)
         return out
 
-    def cleaning(self, inchi_active, active_names, inchi_inactive, inactive_names):
+    def cleaning(self, inchi_active, active_names, inchi_inactive, inactive_names, folder_to_get):
                 # recording instances from the training data
         
         if self.train:
-            with open(os.path.join("dataset", self.used_mols), 'w') as r: 
+            with open(os.path.join(self.folder_output, self.used_mols), 'w') as r: 
                 for item in inchi_active + inchi_inactive:
                     r.write("{}\n".format(item))
        
         # extracting molecules from test already present in train
         if self.test:
-            with open(os.path.join("dataset", self.used_mols), 'r') as r:
+            with open(os.path.join(folder_to_get, self.used_mols), 'r') as r:
                 data = r.readlines()
                 datalines = [x.split('\n')[0] for x in data]
                 active_inchi_name = {inchi:name for inchi, name in zip(inchi_active, active_names)}
@@ -149,7 +145,7 @@ def parse_args(parser):
     parser.add_argument("--dude",  type=str, help='DUD-E dataset folder')
     parser.add_argument("--output", type=str, help='sdf output', default="output.sdf")
 
-def process_dude(dude_folder, train, test, output="cyp_actives.sdf", debug=False, production=False):
+def process_dude(dude_folder, train, test, folder_output='.', folder_to_get = '.', output="cyp_actives.sdf", debug=False, production=False):
     """
     Separate a dataset from dude into active/inactive
     having into account stereochemistry and tautomers
@@ -166,7 +162,7 @@ def process_dude(dude_folder, train, test, output="cyp_actives.sdf", debug=False
         os.system("gunzip {}".format(inputzip))
     
     #Initializing class
-    dud_e = DUDE(dude_folder, train, test)
+    dud_e = DUDE(dude_folder, folder_output, train, test)
 
     #Retrieve active inchies
     active_names = dud_e.get_active_names()
@@ -187,16 +183,16 @@ def process_dude(dude_folder, train, test, output="cyp_actives.sdf", debug=False
 
     #Filter inchies
     if not production: 
-        inchi_active, active_names, inchi_inactive, inactive_names = dud_e.cleaning(inchi_active, active_names, inchi_inactive, inactive_names)
+        inchi_active, active_names, inchi_inactive, inactive_names = dud_e.cleaning(inchi_active, active_names, inchi_inactive, inactive_names,  folder_to_get)
         print('Filter done')
-
     #Rewriting sdf for inactives
-    inactive_output = dud_e.to_sdf(inchi_inactive, mol_names = inactive_names, output = 'decoys.sdf')
+    inactive_output = dud_e.to_sdf(inchi_inactive, mol_names = inactive_names, output = 'inactives.sdf')
 
     #sdf generation for actives
     active_output = dud_e.to_sdf(inchi_active, mol_names=active_names)
     if not debug:
-        active_output_proc = pr.ligprep(active_output)
+        active_output_proc = pr.ligprep(active_output, folder_output)
+        active_output_proc = ft.mae_to_sd(active_output_proc, output=os.path.join(dud_e.folder_output, 'actives.sdf'))
     else:
         active_output_proc = active_output
 
@@ -205,7 +201,7 @@ def process_dude(dude_folder, train, test, output="cyp_actives.sdf", debug=False
     #Retrieve inactive inchi
     inactive_names = dud_e.get_inactive_names()
     inchi_inactive = dud_e.retrieve_inchi_from_sdf(inactive_output)
-
+    print("Dude reading done!")
     return active_output_proc, inactive_output
 
 if __name__ == "__main__":

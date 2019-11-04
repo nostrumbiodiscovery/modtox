@@ -43,8 +43,8 @@ class PubChem():
         if self.train: where = "train"
         if self.test: where = "test"
         outputname = actype + '_' + where +'.sdf'
-        if not os.path.exists("dataset"): os.mkdir("dataset")
-        output = os.path.join("dataset", outputname)
+        if not os.path.exists(folder_output): os.mkdir(folder_output)
+        output = os.path.join(folder_output, outputname)
         w = Chem.SDWriter(output)
         print('Filter and inchikey identification in process ... for {}'.format(actype))
         if actype == 'active':
@@ -91,7 +91,7 @@ class PubChem():
     def cleaning(self):
                 # recording instances from the training data
         if self.train:
-            with open(os.path.join("dataset", self.used_mols), 'w') as r:
+            with open(os.path.join(folder_output, self.used_mols), 'w') as r:
                 for item in self.active_inchi + self.inactive_inchi:
                     r.write("{}\n".format(item))
 
