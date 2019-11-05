@@ -34,7 +34,7 @@ traj = "/data/ModTox/5_CYPs/HROT_1r9o/1r9o_holo/1R9O_*.x"
 resname = "FLP"
 
 clf='stack'
-tpot=True
+tpot=False
 cv=10
 mol_to_read = 100
 dude = '/home/moruiz/cyp/dude/cp2c9'
@@ -47,7 +47,6 @@ def main(sdf_active_train, sdf_inactive_train, sdf_active_test, sdf_inactive_tes
          
         if set_prepare:
             sdf_active_train, sdf_inactive_train, folder_to_get = set_preparation(traj, resname, top, RMSD, cluster, last, clust_type, rmsd_type, sieve, database_train, mol_to_read, debug, train=True, test=False)
-
         csv_train = docking(sdf_active_train, sdf_inactive_train, precision, maxkeep, maxref, grid_mol, csv, glide_files, best, mol_to_read, debug, dock=False)
         model = build_model(sdf_active_train, sdf_inactive_train, csv_train, clf, tpot, cv, debug)
  
@@ -65,13 +64,17 @@ def set_preparation(traj, resname, top, RMSD, cluster, last, clust_type, rmsd_ty
     
     #folder where used molecules during train are stored    
     if train: folder_to_get = os.path.abspath(DATASET_FOLDER)
-
+    
     print("Extracting clusters from MD...")
     an.analise(ANALYSIS_FOLDER, traj, resname, top, RMSD, cluster, last, clust_type, rmsd_type, sieve)
 
     print("Reading files....")
-    if database == 'dude': sdf_active, sdf_inactive = dd.process_dude(dude, train, test, folder_output=DATASET_FOLDER, folder_to_get=folder_to_get, debug=debug)
-    if database == 'pubchem': sdf_active, sdf_inactive = pchm.process_pubchem(pubchem, train, test, substrate, folder_output=DATASET_FOLDER, folder_to_get=folder_to_get, mol_to_read=mol_to_read, debug=debug)
+    if database == 'pubchem': 
+        DBase = pchm.PubChem(pubchem, train, test, outputfile, substrate, folder_output=DATASET_FOLDER, folder_to_get=folder_to_get, production, debug=debug)
+        sdf_active, sdf_inactive = DBase.process_pubchem()
+    if database == 'dude': 
+        DBase = dd.DUDE(dude, train, test, folder_output=DATASET_FOLDER, folder_to_get=folder_to_get, debug=debug)
+        sdf_active, sdf_inactive = pchm.process_dude()
 
     return sdf_active, sdf_inactive, folder_to_get
 

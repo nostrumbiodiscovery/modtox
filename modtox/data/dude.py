@@ -21,10 +21,16 @@ import modtox.Helpers.formats as ft
 URL = "https://www.ebi.ac.uk/chembl/api/data/molecule/{}.sdf"
 
 
-class DUDE(object):
+class DUDE():
     
-    def __init__(self, dude_folder, folder_output, train, test):
+    def __init__(self, dude_folder, train, test, folder_output='.', folder_to_get = '.', output="cyp_actives.sdf", debug=False, production=False):
+
         self.dude_folder = os.path.abspath(dude_folder)
+        #If relative path move one down
+        if os.path.abspath(self.dude_folder) == self.dude_folder:
+            pass
+        else:
+            self.dude_folder = os.path.join("..", self.dude_folder)
         self.actives_ism = os.path.join(self.dude_folder, "actives_final.ism")
         self.decoys_ism = os.path.join(self.dude_folder, "decoys_final.ism")
         self.actives_sdf = os.path.join(self.dude_folder, "actives_final.sdf")
@@ -32,8 +38,13 @@ class DUDE(object):
         self.used_mols = 'used_mols.txt'
         self.train = train
         self.test = test
+        self.folder_to_get = folder_to_get
+        self.output = output
         self.folder_output = folder_output
-          
+        self.debug = debug
+        self.production = production
+
+
     def get_active_names(self):
         with open(self.actives_ism, "r") as f:
             self.active_names = [line.split()[-1] for line in f if line ]
@@ -140,69 +151,63 @@ class DUDE(object):
 
 
         return inchi_active, active_names, inchi_inactive, inactive_names
+
+    def process_dude(self):
+        """
+        Separate a dataset from dude into active/inactive
+        having into account stereochemistry and tautomers
+        """
+        
+        #If input zip is present decompress
+        inputzip = os.path.join(self.dude_folder, "*.gz")
+        if os.path.exists(inputzip):
+            os.system("gunzip {}".format(inputzip))
+        
+    
+        #Retrieve active inchies
+        active_names = self.get_active_names()
+    	
+        self.n_actives = len(active_names)
+        inchi_active = self.retrieve_inchi_from_chembl(active_names)   
+        
+        #Retrieve inactive sdf
+        if self.production:
+            #What will we do in production??
+            pass
+        else:
+            inactive_output = self.filter_for_similarity(self.decoys_sdf, self.n_actives)
+    
+        #Retrieve inactive inchi
+        inactive_names = self.get_inactive_names()
+        inchi_inactive = self.retrieve_inchi_from_sdf(inactive_output)
+    
+        #Filter inchies
+        if not self.production: 
+            inchi_active, active_names, inchi_inactive, inactive_names = self.cleaning(inchi_active, active_names, inchi_inactive, inactive_names,  self.folder_to_get)
+            print('Filter done')
+        #Rewriting sdf for inactives
+        inactive_output = self.to_sdf(inchi_inactive, mol_names = inactive_names, output = 'inactives.sdf')
+    
+        #sdf generation for actives
+        active_output = self.to_sdf(inchi_active, mol_names=active_names)
+        if not self.debug:
+            active_output_proc = pr.ligprep(active_output, self.folder_output)
+            active_output_proc = ft.mae_to_sd(active_output_proc, output=os.path.join(self.folder_output, 'actives.sdf'))
+        else:
+            active_output_proc = active_output
+    
+        print("Files {}, {} created with chembl curated compounds".format(active_output_proc, inactive_output))
+    
+        #Retrieve inactive inchi
+        inactive_names = self.get_inactive_names()
+        inchi_inactive = self.retrieve_inchi_from_sdf(inactive_output)
+        print("Dude reading done!")
+        return active_output_proc, inactive_output
+
         
 def parse_args(parser):
     parser.add_argument("--dude",  type=str, help='DUD-E dataset folder')
     parser.add_argument("--output", type=str, help='sdf output', default="output.sdf")
-
-def process_dude(dude_folder, train, test, folder_output='.', folder_to_get = '.', output="cyp_actives.sdf", debug=False, production=False):
-    """
-    Separate a dataset from dude into active/inactive
-    having into account stereochemistry and tautomers
-    """
-    #If relative path move one down
-    if os.path.abspath(dude_folder) == dude_folder:
-        pass
-    else:
-        dude_folder = os.path.join("..", dude_folder)
-    
-    #If input zip is present decompress
-    inputzip = os.path.join(dude_folder, "*.gz")
-    if os.path.exists(inputzip):
-        os.system("gunzip {}".format(inputzip))
-    
-    #Initializing class
-    dud_e = DUDE(dude_folder, folder_output, train, test)
-
-    #Retrieve active inchies
-    active_names = dud_e.get_active_names()
-	
-    dud_e.n_actives = len(active_names)
-    inchi_active = dud_e.retrieve_inchi_from_chembl(active_names)   
-    
-    #Retrieve inactive sdf
-    if production:
-        #What will we do in production??
-        pass
-    else:
-        inactive_output = dud_e.filter_for_similarity(dud_e.decoys_sdf, dud_e.n_actives)
-
-    #Retrieve inactive inchi
-    inactive_names = dud_e.get_inactive_names()
-    inchi_inactive = dud_e.retrieve_inchi_from_sdf(inactive_output)
-
-    #Filter inchies
-    if not production: 
-        inchi_active, active_names, inchi_inactive, inactive_names = dud_e.cleaning(inchi_active, active_names, inchi_inactive, inactive_names,  folder_to_get)
-        print('Filter done')
-    #Rewriting sdf for inactives
-    inactive_output = dud_e.to_sdf(inchi_inactive, mol_names = inactive_names, output = 'inactives.sdf')
-
-    #sdf generation for actives
-    active_output = dud_e.to_sdf(inchi_active, mol_names=active_names)
-    if not debug:
-        active_output_proc = pr.ligprep(active_output, folder_output)
-        active_output_proc = ft.mae_to_sd(active_output_proc, output=os.path.join(dud_e.folder_output, 'actives.sdf'))
-    else:
-        active_output_proc = active_output
-
-    print("Files {}, {} created with chembl curated compounds".format(active_output_proc, inactive_output))
-
-    #Retrieve inactive inchi
-    inactive_names = dud_e.get_inactive_names()
-    inchi_inactive = dud_e.retrieve_inchi_from_sdf(inactive_output)
-    print("Dude reading done!")
-    return active_output_proc, inactive_output
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Preprocess dataset from chembl by using ligprep over the actives having  \

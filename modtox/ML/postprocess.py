@@ -119,7 +119,7 @@ class PostProcessor():
                 plt.savefig('{}/{}_{}_{}.png'.format(self.folder, output_distributions, name, i))
                 plt.close()
  
-    def feature_importance(self, clf=None, cv=1, number_feat=5, output_features="important_fatures.txt", features=None):
+    def feature_importance(self, clf=None, cv=1, number_feat=5, output_features="important_features.txt", features=None):
         
         print("Extracting most importance features")
 
@@ -132,7 +132,7 @@ class PostProcessor():
         important_features = model.get_booster().get_score(importance_type='gain')
         important_features_sorted = sorted(important_features.items(), key=operator.itemgetter(1), reverse=True)
         important_features_name = [[features[int(feature[0].strip("f"))], feature[1]] for feature in important_features_sorted]
-        np.savetxt(output_features, important_features_name, fmt='%s')
+        np.savetxt(os.path.join(self.folder, output_features), important_features_name, fmt='%s')
         features_name = [ feat[0] for feat in important_features_name ]
 
         return features_name

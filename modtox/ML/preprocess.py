@@ -80,18 +80,18 @@ class ProcessorSDF():
 
         return molecules
 
-    def _retrieve_header(self, exclude=COLUMNS_TO_EXCLUDE):
+    def _retrieve_header(self, folder='.', exclude=COLUMNS_TO_EXCLUDE):
         headers = []
         #Return training headers
         headers_fp = []; headers_de = []; headers_maccs = []; headers_ext = []
         if self.fp:
-            headers_fp = np.loadtxt("daylight_descriptors.txt", dtype=np.str)
+            headers_fp = np.loadtxt(os.path.join(folder, "daylight_descriptors.txt"), dtype=np.str)
             headers.extend(headers_fp)
         if self.descriptors:
-            headers_de = np.loadtxt("2D_descriptors.txt", dtype=np.str)
+            headers_de = np.loadtxt(os.path.join(folder, "2D_descriptors.txt"), dtype=np.str)
             headers.extend(headers_de)
         if self.MACCS:
-            headers_maccs = np.loadtxt("MAC_descriptors.txt", dtype=np.str)
+            headers_maccs = np.loadtxt(os.path.join(folder, "MAC_descriptors.txt"), dtype=np.str)
             headers.extend(headers_maccs)
         if self.external_data:
             headers_ext = list(pd.read_csv(self.external_data))[1:]
@@ -112,37 +112,42 @@ class ProcessorSDF():
     def transform(self, folder, exclude=COLUMNS_TO_EXCLUDE):
         assert self.fitted, "Please fit the processor"
         # Excluding labels
-        X = self.data.iloc[:, :-1]
-        y = np.array(self.data.iloc[:,-1])
+        if not self.debug:
+            X = self.data.iloc[:, :-1]
+            y = np.array(self.data.iloc[:,-1])
+        else: 
+            X = self.data.iloc[:2,:-1]
+            y = np.array(self.data.iloc[:2,-1])
         molecular_data = [ TITLE_MOL, ]; numeric_features = []; features = []
         if self.fp:
             numeric_features.extend('fingerprint')
-            features.extend([('fingerprint', Fingerprints())])
+            features.extend([('fingerprint', Fingerprints(folder))])
         if self.descriptors:
             numeric_features.extend('descriptors')
-            features.extend([('descriptors', Descriptors())])
+            features.extend([('descriptors', Descriptors(folder))])
         if self.MACCS:
             numeric_features.extend('fingerprintMACCS')
-            features.extend([('fingerprintMACCS', Fingerprints_MACS())])
+            features.extend([('fingerprintMACCS', Fingerprints_MACS(folder))])
         if self.external_data:
             numeric_features.extend(['external_descriptors'])
             features.extend([('external_descriptors', ExternalData(self.external_data, self.mol_names, exclude=exclude, folder=folder))])
         
         transformer = FeatureUnion(features)
         preprocessor = ColumnTransformer(transformers=[('mol', transformer, molecular_data)])
-        pre = Pipeline(steps=[('transformer', preprocessor)])
+        pre = Pipeline(steps=[('transformer', preprocessor)], verbose=True)
         X_trans = pre.fit_transform(X)
         return X_trans, y
 
     def fit_transform(self, sdf_active, sdf_inactive, folder='.'):
-
         return self.fit(sdf_active, sdf_inactive).transform(folder)
         
-    def sanitize(self, X, y, cv=5, feature_to_check='external_descriptors'):
+    def sanitize(self, X, y, cv=5, feature_to_check='external_descriptors', folder='.'):
   
         # function to remove non-docked instances and prepare datasets to model
         assert feature_to_check, "Need to provide external data path"
-        self.headers, self.headers_fp, self.headers_ext, self.headers_de, self.headers_maccs = self._retrieve_header()
+
+        self.headers, self.headers_fp, self.headers_ext, self.headers_de, self.headers_maccs = self._retrieve_header(folder=folder)
+        if self.debug: self.mol_names = self.mol_names[:2]
         molecules_to_remove = []
         if feature_to_check == 'external_descriptors':
             assert self.external_data, "Need to read external data"
@@ -161,19 +166,17 @@ class ProcessorSDF():
         #we have to remove the first value of the headers_ext descriptors since is the index of the molecule (1,2,3,4,5...)
         to_remove_index = len(self.headers_de) + len(self.headers_maccs) + len(self.headers_fp) 
         X = np.delete(X, to_remove_index, axis=1)
-
-        if not self.debug:
-            mols_to_maintain = [mol for mol in self.mol_names if mol not in molecules_to_remove]
-            indxs_to_maintain = [np.where(np.array(self.mol_names) == mol)[0] for mol in mols_to_maintain]
-            labels = np.array(y)[indxs_to_maintain]
-            self.y = pd.Series(np.stack(labels, axis=1)[0])
-            self.y = np.array(self.y)
-            self.X = X[indxs_to_maintain, :][:,0]
-            self.mol_names = mols_to_maintain
-            n_active_corrected = len([label for label in self.y if label==1])
-            n_inactive_corrected = len([label for label in self.y if label==0])
-            if cv > n_inactive_corrected  or cv > n_active_corrected:
-                 cv = min([n_active_corrected, n_inactive_corrected])
+        mols_to_maintain = [mol for mol in self.mol_names if mol not in molecules_to_remove]
+        indxs_to_maintain = [np.where(np.array(self.mol_names) == mol)[0][0] for mol in mols_to_maintain]
+        labels = np.array(y)[indxs_to_maintain]
+        self.y = pd.Series(labels)
+        self.y = np.array(self.y)
+        self.X = X[indxs_to_maintain, :]
+        self.mol_names = mols_to_maintain
+        n_active_corrected = len([label for label in self.y if label==1])
+        n_inactive_corrected = len([label for label in self.y if label==0])
+        if cv > n_inactive_corrected  or cv > n_active_corrected:
+             cv = min([n_active_corrected, n_inactive_corrected])
         
         return self.X, self.y, self.mol_names 
 
