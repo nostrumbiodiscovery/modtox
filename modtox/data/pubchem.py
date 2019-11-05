@@ -15,13 +15,16 @@ import modtox.Helpers.preprocess as pr
 
 class PubChem():
      
-    def __init__(self, pubchem, train, test, outputfile, substrate, n_molecules_to_read, production):
+    def __init__(self, pubchem, train, test, substrate, folder_to_get='.', n_molecules_to_read=None, folder_output='.', production=False, debug=False):
         self.production = production
         self.csv_filename = os.path.abspath(pubchem)
         self.used_mols = 'used_mols.txt'
         self.test = test
+        self.debug = debug
+        self.production = production
         self.train = train
-        self.outputfile = outputfile
+        self.folder_output = folder_output
+        self.folder_to_get = folder_to_get
         self.substrate = substrate
         self.n_molecules_to_read = n_molecules_to_read
         self.splitting()
@@ -43,8 +46,8 @@ class PubChem():
         if self.train: where = "train"
         if self.test: where = "test"
         outputname = actype + '_' + where +'.sdf'
-        if not os.path.exists(folder_output): os.mkdir(folder_output)
-        output = os.path.join(folder_output, outputname)
+        if not os.path.exists(self.folder_output): os.mkdir(self.folder_output)
+        output = os.path.join(self.folder_output, outputname)
         w = Chem.SDWriter(output)
         print('Filter and inchikey identification in process ... for {}'.format(actype))
         if actype == 'active':
@@ -91,14 +94,14 @@ class PubChem():
     def cleaning(self):
                 # recording instances from the training data
         if self.train:
-            with open(os.path.join(folder_output, self.used_mols), 'w') as r:
+            with open(os.path.join(self.folder_output, self.used_mols), 'w') as r:
                 for item in self.active_inchi + self.inactive_inchi:
                     r.write("{}\n".format(item))
 
         # extracting molecules from test already present in train
         if self.test:
-            folder_to_get = "../from_train/dataset"
-            with open(os.path.join(folder_to_get, self.used_mols), 'r') as r:
+            self.folder_to_get = "../from_train/dataset"
+            with open(os.path.join(self.folder_to_get, self.used_mols), 'r') as r:
                 data = r.readlines()
                 datalines = [x.split('\n')[0] for x in data]
                 #filtering by exact inchikey
@@ -149,29 +152,19 @@ class PubChem():
             useful_activities = data.ix[8:end, useful_col] # we add 8 because of the initial lines without information
             useful_names = data.ix[8:end, 'PUBCHEM_CID']
         activities = {int(name):activity for name, activity in zip(useful_names, useful_activities)}
-        with open(self.outputfile, 'wb') as op:
-            pickle.dump(activities, op)
         return activities
 
-    def reading_from_file(self): 
+    def process_pubchem(self):
+        active_output, n_actives = self.to_sdf(actype = 'active')
+        inactive_output, n_inactives = self.to_sdf(actype = 'inactive') 
+        if not self.debug: 
+            output_active_proc = pr.ligprep(active_output, output="active_processed.mae")
+            output_inactive_proc = pr.ligprep(inactive_output, output="inactive_processed.mae")
+        else:
+            output_active_proc = active_output
+            output_inactive_proc = inactive_output
     
-        with open(self.stored_files, 'rb') as f:
-            data = pickle.load(f)
-        return data
-
-def process_pubchem(pubchem, train, test, substrate, outputfile = 'inchi_all.pkl', debug=False, mol_to_read=None, production=False):
-    pub_chem = PubChem(pubchem, train, test, outputfile, substrate, mol_to_read, production)
-    active_output, n_actives = pub_chem.to_sdf(actype = 'active')
-    inactive_output, n_inactives = pub_chem.to_sdf(actype = 'inactive') 
-     
-    if not debug: 
-        output_active_proc = pr.ligprep(active_output, output="active_processed.mae")
-        output_inactive_proc = pr.ligprep(inactive_output, output="inactive_processed.mae")
-    else:
-        output_active_proc = active_output
-        output_inactive_proc = inactive_output
-
-    return output_active_proc, output_inactive_proc
+        return output_active_proc, output_inactive_proc
 
 def parse_args(parser):
     parser.add_argument("--pubchem",  type=str, help='Pubchem file (e.g. AID_1851_datatable_all.csv)')

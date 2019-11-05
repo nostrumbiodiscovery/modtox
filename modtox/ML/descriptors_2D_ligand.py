@@ -88,20 +88,23 @@ class Similarity_decomp():
 
 class Fingerprints_MACS():
 
+    def __init__(self, folder='.'): 
+        self.folder = folder
+
     def fit(self, molecules):
         return molecules
 
-    def fit_transform(self, molecules, labels): 
-        return self.transform(self.fit(molecules))
+    def fit_transform(self, molecules, labels, folder='.'): 
+        return self.transform(self.fit(molecules), folder)
 
-    def transform(self, molecules):
+    def transform(self, molecules, folder = '.'):
         print("\tBuilding MACS Fingerprints")
         df = pd.DataFrame()
         molecules = molecules["molecules"].tolist()
         fingerprints = [MACCSkeys.GenMACCSKeys(mol).ToBitString() for mol in molecules]
         for i, fingerprint in enumerate(fingerprints):
             df = df.append(pd.Series({"rdkit_fingerprintMACS_{}".format(j):element for j, element in enumerate(fingerprint)}), ignore_index=True)
-        np.savetxt("MAC_descriptors.txt", list(df), fmt="%s")
+        np.savetxt(os.path.join(self.folder, "MAC_descriptors.txt"), list(df), fmt="%s")
         return df.astype(float)
     
 class Fingerprints_Morgan():
@@ -121,35 +124,39 @@ class Fingerprints_Morgan():
     
 class Fingerprints():
 
+    def __init__(self, folder='.'): 
+        self.folder = folder
+
+
     def fit(self, molecules):
         return molecules
 
-    def fit_transform(self, molecules, labels): 
-        return self.transform(self.fit(molecules))
+    def fit_transform(self, molecules, labels, folder='.'): 
+        return self.transform(self.fit(molecules), folder)
 
-    def transform(self, molecules):
+    def transform(self, molecules, folder='.'):
         print("\tBuilding Daylight Fingerprints")
         df = pd.DataFrame()
         molecules = molecules["molecules"].tolist()
         fingerprints = [FingerprintMols.FingerprintMol(mol).ToBitString() for mol in molecules]
         for i, fingerprint in enumerate(fingerprints):
             df = df.append(pd.Series({"rdkit_fingerprint_{}".format(j):element for j, element in enumerate(fingerprint)}), ignore_index=True)   
-        np.savetxt("daylight_descriptors.txt", list(df), fmt="%s")
+        np.savetxt(os.path.join(self.folder, "daylight_descriptors.txt"), list(df), fmt="%s")
         return df.astype(float)
 
 class Descriptors():
     
-    def __init__(self, features=None, headers=None):
+    def __init__(self, folder = '.', features=None, headers=None):
         self.descriptors = features
         self.headers = headers
-    
+        self.folder = folder 
     def fit(self, molecules):
         return molecules
 
-    def fit_transform(self, molecules, labels): 
-        return self.transform(self.fit(molecules))
+    def fit_transform(self, molecules, labels, folder='.'): 
+        return self.transform(self.fit(molecules), folder)
 
-    def transform(self, molecules):
+    def transform(self, molecules, folder='.'):
         print("\tBuilding Descriptors")
         df = pd.DataFrame()
         molecules = molecules["molecules"].tolist()
@@ -165,7 +172,7 @@ class Descriptors():
         descriptors_df = pd.concat([df, calcs.pandas(molecules)], axis=1)
         if self.headers:
             descriptors_df["headers"] = [list(descriptors_df)]*descriptors_df.shape[0]
-        np.savetxt("2D_descriptors.txt", list(descriptors_df), fmt="%s")
+        np.savetxt(os.path.join(self.folder, "2D_descriptors.txt"), list(descriptors_df), fmt="%s")
         return  descriptors_df.astype(float)
     
 class Descriptors_Schordinger():

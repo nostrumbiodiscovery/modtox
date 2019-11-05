@@ -10,7 +10,7 @@ import modtox.constants.constants as cs
 from itertools import chain
 
 
-def analyze(glide_files, glide_dir="descriptors", active=False, inactive=False, best=False, csv=[], filter=None, debug=False):
+def analyze(glide_files, glide_dir=".", active=False, inactive=False, best=False, csv=[], filter=None, debug=False):
     if not os.path.exists(glide_dir):
         os.makedirs(glide_dir)
     glide_results = []
