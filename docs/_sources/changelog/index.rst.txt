@@ -5,7 +5,7 @@ ChangeLog
 Versions
 -----------
 
-Here we report all changes thorugh all different releases on: `MSM github <https://github.com/danielSoler93/modtox/releases>`_
+Here we report all changes thorugh all different releases on: `modtox github <https://github.com/danielSoler93/modtox/releases>`_
 
 1.0.0 - not yet there
 ``````````````````````````
