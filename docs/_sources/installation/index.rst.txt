@@ -21,9 +21,9 @@ From Source Code
  
  cd modtox
 
- python setup.py install
-
  conda install -c rdkit rdkit
+
+ python setup.py install
 
 
 From PyPi
