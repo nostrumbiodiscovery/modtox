@@ -1,4 +1,7 @@
 import matplotlib.pyplot as plt
+import matplotlib
+matplotlib.use('Agg')
+import pylab as pl
 import shap  # package used to calculate Shap values
 import os
 import operator
@@ -237,17 +240,16 @@ class PostProcessor():
         self.n_initial_inactive = len([np.where(self.y_true_test == 0)]) #should be computed over the original set
         self.n_final_active = len([np.where(self.y_true_test == 1)]) 
         self.n_final_inactive = len([np.where(self.y_true_test == 0)])
-
         # Confusion Matrix
-        conf = confusion_matrix(self.y_true_test, self.y_pred_test)
+        conf = confusion_matrix(np.array(self.y_true_test), np.array(self.y_pred_test))
         conf[1][0] += (self.n_initial_active - self.n_final_active)
         conf[0][0] += (self.n_initial_inactive - self.n_final_inactive)
-        df_cm = pd.DataFrame([[conf[1][1], conf[0][1]], [conf[1][0], conf[0][0]]], index = [i for i in "PN"],
-                      columns = [i for i in "PN"])
+        df_cm = pd.DataFrame(conf, columns=np.unique(self.y_true_test), index = np.unique(self.y_true_test))
+        df_cm.index.name = 'Actual'
+        df_cm.columns.name = 'Predicted'
         print(df_cm)
-        plt.figure()
-        heatmap = sns.heatmap(df_cm, annot=True, fmt='d')
-        plt.tight_layout()
+
+        ax = sns.heatmap(data=df_cm, annot=True, cmap="Blues")
         plt.savefig(os.path.join(self.folder, output_conf))
 
     def ellipse_plot(self, position, width, height, angle, ax = None, dmin = 0.1, dmax = 0.5, n_ellipses=3, alpha=0.1, color=None):
@@ -259,20 +261,6 @@ class PostProcessor():
         for n in np.linspace(dmin, dmax, n_ellipses):
             ax.add_patch(Ellipse(position, n * width, n * height,
                                  angle, alpha=alpha, lw=0, color=color))
-
-    def UMAP_plot(self, title="UMAP projection", fontsize=24, output_umap="UMAP_proj.png"):
-        colors = plt.get_cmap('Spectral')(np.linspace(0, 1, 2))
-        reducer = umap.UMAP(n_neighbors=5, min_dist=0.2, n_components = 5)
-        embedding = reducer.fit_transform(self.x_test)
-        fig, ax = plt.subplots()
-        for i in range(embedding.shape[0]):
-            pos = embedding[i, :2]
-            Y = list(map(lambda x: int(x), self.y_true_test)) # trues --> 1, falses ---> 0
-            self.ellipse_plot(pos, embedding[i, 2],embedding[i, 3], embedding[i, 4], ax, dmin=0.2, dmax=1.0, alpha=0.03, color = colors[np.array(Y)[i]])
-        ax.scatter(embedding[:, 0], embedding[:, 1], c = Y, cmap = 'Spectral')
-        fig.gca().set_aspect('equal', 'datalim')
-        ax.set_title(title)
-        fig.savefig(os.path.join(self.folder, output_umap))
 
     def biplot_pca(self, score, coeff, headers=None, labels=None):
         fig, ax = plt.subplots()
@@ -360,5 +348,167 @@ class PostProcessor():
             return uncertanties
         else: print("uncertainties can't be computed in single model")
 
+
+    def UMAP_plot(self, title="UMAP projection", fontsize=24, output_umap="UMAP_proj", single=False, wrong=False, wrongall=False, traintest=False, wrongsingle=False):
+
+       reducer = umap.UMAP(n_neighbors=5, min_dist=0.2, n_components = 5)
+
+       #getting the embedding
+       if wrong or wrongall or traintest:  
+           X = np.concatenate((self.x_train, self.x_test))
+           embedding1 = reducer.fit_transform(X)
+       if single: 
+           X = self.x_test
+           embedding2 = reducer.fit_transform(X)
+
+       if traintest:
+           # train and test separation
+           embedding = embedding1
+           colors = plt.get_cmap('Spectral')(np.linspace(0, 1, 2))
+           fig, ax = plt.subplots()
+           Y1 = list(map(lambda x: 0, self.y_true_train)) #setting 0 the train
+           Y2 = list(map(lambda x: 1, self.y_true_test)) # setting 1 the test
+           Y = np.concatenate((Y1,Y2))
+           Y, idx = self._UMAP_sorting(X,Y)
+           embedding = embedding[idx]
+           for i in range(embedding.shape[0]):
+               pos = embedding[i, :2]
+               self.ellipse_plot(pos, embedding[i, 2],embedding[i, 3], embedding[i, 4], ax, dmin=0.2, dmax=1.0, alpha=0.01, color = colors[np.array(Y)[i]])
+           end = self.x_train.shape[0]
+           ax.scatter(embedding[:end, 0], embedding[:end, 1], c = 'b', cmap = 'Spectral', label= 'train')
+           ax.scatter(embedding[end:, 0], embedding[end:, 1], c = 'r', cmap = 'Spectral', label= 'test')
+           fig.gca().set_aspect('equal', 'datalim')
+           plt.legend()
+           ax.set_title(title)
+           fig.savefig(os.path.join(self.folder, '{}_traintest.png'.format(output_umap)))
+       if single: 
+           # train and test reparation
+           embedding = embedding2
+           colors = plt.get_cmap('Spectral')(np.linspace(0, 1, 2))
+           fig, ax = plt.subplots()
+           Y = list(map(lambda x: int(x), self.y_true_test)) # trues --> 1, falses ---> 0
+           Y, idx = self._UMAP_sorting(X,Y)
+           embedding = embedding[idx]
+           for i in range(embedding.shape[0]):
+               pos = embedding[i, :2]
+               self.ellipse_plot(pos, embedding[i, 2],embedding[i, 3], embedding[i, 4], ax, dmin=0.2, dmax=1.0, alpha=0.01, color = colors[np.array(Y)[i]])
+           end = np.where(np.array(Y) == 0)[0][0]
+           ax.scatter(embedding[:end, 0], embedding[:end, 1], c = 'g', cmap = 'Spectral', label='Active')
+           ax.scatter(embedding[end:, 0], embedding[end:, 1], c = 'r', cmap = 'Spectral', label='Inactive')
+           fig.gca().set_aspect('equal', 'datalim')
+           plt.legend()
+           ax.set_title(title)
+           fig.savefig(os.path.join(self.folder, '{}_single.png'.format(output_umap)))
+       if wrongsingle: 
+           # train and test reparation
+           embedding = embedding2
+           colors = plt.get_cmap('Spectral')(np.linspace(0, 1, 2))
+           fig, ax = plt.subplots()
+           Y = list(map(lambda x: int(x), self.y_true_test)) # trues --> 1, falses ---> 0
+           Yp = list(map(lambda x: int(x), self.y_pred_test)) # trues --> 1, falses ---> 0
+           Y, idx = self._UMAP_sorting(X,Y)
+           embedding = embedding[idx]
+           Yp = np.array(Yp)[idx]
+           for i in range(embedding.shape[0]):
+               pos = embedding[i, :2]
+               self.ellipse_plot(pos, embedding[i, 2],embedding[i, 3], embedding[i, 4], ax, dmin=0.2, dmax=1.0, alpha=0.01, color = colors[np.array(Y)[i]])
+           end = np.where(np.array(Y) == 0)[0][0]
+           ax.scatter(embedding[:end, 0], embedding[:end, 1], c = 'g', cmap = 'Spectral', label='Active')
+           ax.scatter(embedding[end:, 0], embedding[end:, 1], c = 'r', cmap = 'Spectral', label='Inactive')
+           mm = [ x == y for x,y in zip(Yp, Y)]
+           indxs = np.array([ j for j, i in enumerate(mm) if i==False])
+           indxs0 = [i for i in indxs if Yp[i] == 0]
+           indxs1 = [i for i in indxs if Yp[i] == 1]
+           if len(indxs0) >= 1:
+               ax.scatter(embedding[indxs0, 0], embedding[indxs0, 1], c = 'y', cmap = 'Spectral', label= 'wrong as 0')
+           if len(indxs1) >= 1:
+               ax.scatter(embedding[indxs1, 0], embedding[indxs1, 1], c = 'y', marker='^', cmap = 'Spectral', label= 'wrong as 1')
+           fig.gca().set_aspect('equal', 'datalim')
+           plt.legend()
+           ax.set_title(title)
+           fig.savefig(os.path.join(self.folder, '{}_wrong_original.png'.format(output_umap)))
+       if wrong:
+           # train and test reparation
+           embedding = embedding1
+           colors = plt.get_cmap('Spectral')(np.linspace(0, 1, 4))
+           fig, ax = plt.subplots()
+           Y1 = list(map(lambda x: int(x) + 2, self.y_true_train))
+           Y2 = list(map(lambda x: int(x), self.y_true_test))
+           Y = np.concatenate((Y1,Y2))
+           Y, idx = self._UMAP_sorting(X,Y)
+           embedding = embedding[idx]
+
+           # we need to reorder the test to choose the correct molecules
+
+           Yp2 = list(map(lambda x: int(x), self.y_pred_test))
+           Yp = np.concatenate((Y1,Yp2))
+           Yp = Yp[idx]
+
+           for i in range(embedding.shape[0]):
+               pos = embedding[i, :2]
+               self.ellipse_plot(pos, embedding[i, 2],embedding[i, 3], embedding[i, 4], ax, dmin=0.2, dmax=1.0, alpha=0.01, color = colors[np.array(Y)[i]])
+           end = np.where(np.array(Y) == 2)[0][0]
+           end1 = np.where(np.array(Y) == 1)[0][0]
+           ax.scatter(embedding[:end, 0], embedding[:end, 1], c = 'b', cmap = 'Spectral', label= 'train active')
+           ax.scatter(embedding[end:end1, 0], embedding[end:end1, 1], c = 'r', cmap = 'Spectral', label= 'train inactive')
+           mm = [ x == y for x,y in zip(Yp, Y)]
+           indxs = np.array([ j for j, i in enumerate(mm) if i==False])
+           indxs0 = [i for i in indxs if Yp[i] == 0]
+           indxs1 = [i for i in indxs if Yp[i] == 1]
+           if len(indxs0) >= 1:
+               ax.scatter(embedding[indxs0, 0], embedding[indxs0, 1], c = 'y', cmap = 'Spectral', label= 'wrong as 0')
+           if len(indxs1) >= 1:
+               ax.scatter(embedding[indxs1, 0], embedding[indxs1, 1], c = 'y', marker='^', cmap = 'Spectral', label= 'wrong as 1')
+           fig.gca().set_aspect('equal', 'datalim')
+           plt.legend()
+           ax.set_title(title)
+           fig.savefig(os.path.join(self.folder, '{}_wrong.png'.format(output_umap)))
+ 
+       if wrongall:
+           # wrong molecules and active/inactive for train and test and wrong mols
+           embedding = embedding1
+           colors = plt.get_cmap('Spectral')(np.linspace(0, 1, 4))
+           fig, ax = plt.subplots()
+           Y1 = list(map(lambda x: int(x) + 2, self.y_true_train))
+           Y2 = list(map(lambda x: int(x), self.y_true_test))
+           Y = np.concatenate((Y1,Y2))
+           Y, idx = self._UMAP_sorting(X,Y)
+
+           # we need to reorder the test to choose the correct molecules
+
+           Yp2 = list(map(lambda x: int(x), self.y_pred_test))
+           Yp = np.concatenate((Y1,Yp2))
+           Yp = Yp[idx]
+           embedding = embedding[idx]
+           for i in range(embedding.shape[0]):
+               pos = embedding[i, :2]
+               self.ellipse_plot(pos, embedding[i, 2],embedding[i, 3], embedding[i, 4], ax, dmin=0.2, dmax=1.0, alpha=0.01, color = colors[np.array(Y)[i]])
+           end = np.where(np.array(Y) == 2)[0][0]
+           end1 = np.where(np.array(Y) == 1)[0][0]
+           end2 = np.where(np.array(Y) == 0)[0][0]
+           ax.scatter(embedding[:end, 0], embedding[:end, 1], c = 'b', cmap = 'Spectral', label= 'train active')
+           ax.scatter(embedding[end:end1, 0], embedding[end:end1, 1], c = 'r', cmap = 'Spectral', label= 'train inactive')
+           ax.scatter(embedding[end1:end2, 0], embedding[end1:end2, 1], c = 'g', cmap = 'Spectral', label= 'test active')
+           ax.scatter(embedding[end2:, 0], embedding[end2:, 1], c = 'm', cmap = 'Spectral', label= 'test inactive')
+           mm = [ x == y for x,y in zip(Yp, Y)]
+           indxs = np.array([ j for j, i in enumerate(mm) if i==False])
+           indxs0 = [i for i in indxs if Yp[i] == 0]
+           indxs1 = [i for i in indxs if Yp[i] == 1]
+           if len(indxs0) >= 1:
+               ax.scatter(embedding[indxs0, 0], embedding[indxs0, 1], c = 'y', cmap = 'Spectral', label= 'wrong as 0')
+           if len(indxs1) >= 1:
+               ax.scatter(embedding[indxs1, 0], embedding[indxs1, 1], c = 'y', marker='^', cmap = 'Spectral', label= 'wrong as 1')
+           fig.gca().set_aspect('equal', 'datalim')
+           plt.legend()
+           ax.set_title(title)
+           fig.savefig(os.path.join(self.folder, '{}_wrong_all.png'.format(output_umap)))
+ 
+    def _UMAP_sorting(self, X, Y):    
+        # here we sort the values
+        idx = list(range(len(Y)))
+        Y, idx = (list(t) for t in zip(*sorted(zip(Y, idx), reverse=True)))
+        return Y, idx
+         
+        
     def tree_image(): pass
 
