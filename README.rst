@@ -25,15 +25,19 @@ Clinical and Translational Science, vol. 9, no. 6,
 Get started online!
 =================================
 
-https://hub.gke.mybinder.org/user/nostrumbiodiscovery-modtox-pvx3qy0i/notebooks/index.ipynb
+https://mybinder.org/v2/gh/NostrumBioDiscovery/modtox/restructuration
 
 Installation
 =================
 
-https://nostrumbiodiscovery.github.io/ModTox/tutorial/index.html
+https://nostrumbiodiscovery.github.io/modtox/tutorial/index.html
 
+Use as an API
+=================
+
+https://nostrumbiodiscovery.github.io/modtox/tutorial/api_tutorial/index.html
 
 Command line commands
 ================================================================
 
-https://nostrumbiodiscovery.github.io/ModTox/tutorial/command_line_tutorial/index.html
+https://nostrumbiodiscovery.github.io/modtox/tutorial/command_line_tutorial/index.html
