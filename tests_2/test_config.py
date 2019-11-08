@@ -1,5 +1,6 @@
 import numpy as np
 import os
+import pandas as pd
 import tempfile
 from sklearn.model_selection import train_test_split
 from sklearn import datasets

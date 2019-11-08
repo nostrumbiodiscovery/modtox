@@ -212,10 +212,10 @@ def test_uncertainties():
     pp = tc.retrieve_processor(train_data=True, clf_stacked=True, folder=TMP)
     UN = pp.calculate_uncertanties()
 
-def test_umap(output_umap="umap.png" ):
-    tc.clean(os.path.join(TMP, output_umap))
-    pp = tc.retrieve_processor(folder=TMP)
-    pp.UMAP_plot(output_umap=output_umap)
+def test_umap(output_umap="umap_proj"):
+    tc.clean(glob.glob(os.path.join(TMP, output_umap) + "*"))
+    pp = tc.retrieve_processor(folder=TMP, train_data=True)
+    pp.UMAP_plot(output_umap=output_umap, single=True, wrong=True, wrongall=True, traintest=True, wrongsingle=True)
     assert any(os.path.join(TMP, output_umap))
 
 def test_pca(output_pca="pca.png" ):

@@ -646,7 +646,6 @@ class GenericModel(object):
         elif self.imputer == 'sample_based':
             imputer = NewImputer(strategy = 'mean')
        
-        import pdb; pdb.set_trace()
         self.x_test_trans = imputer.fit_transform(self.x_test_trans)
 
         #evaluating applicability domains and credibilities
