@@ -46,13 +46,24 @@ class DUDE():
 
 
     def get_active_names(self):
+
+        with open(self.actives_sdf, "r") as f:
+            data = f.readlines()
+            actives = [data[i+1].split('\n')[0] for i, line in enumerate(data[:-1]) if line == '$$$$\n']
+            actives += [data[0].split('\n')[0]]
         with open(self.actives_ism, "r") as f:
             self.active_names = [line.split()[-1] for line in f if line ]
+        assert len(self.active_names) == len(set(actives))
         return self.active_names
 
     def get_inactive_names(self):
+        with open(self.decoys_sdf, "r") as f:
+            data = f.readlines()
+            inactives = [data[i+1].split('\n')[0] for i, line in enumerate(data[:-1]) if line == '$$$$\n']
+            inactives += [data[0].split('\n')[0]]
         with open(self.decoys_ism, "r") as f:
-            self.inactive_names = [line.split()[-1] for line in f if line ]
+            self.inactive_names = set([line.split()[-1] for line in f if line ])
+        assert len(self.inactive_names) == len(set(inactives))
         return self.inactive_names
 
     def retrieve_inchi_from_chembl(self, ids):
@@ -87,7 +98,7 @@ class DUDE():
         return outputfile
 
 
-    def filter_for_similarity(self, sdf_file, n_output_mols=100, output_sdf="inactive.sdf"):
+    def filter_for_similarity(self, sdf_file, n_output_mols=100, output_sdf="inactives.sdf"):
         mols = np.array([m for m in Chem.SDMolSupplier(sdf_file, removeHs=False)])
         fps = [FingerprintMols.FingerprintMol(m) for m in mols]
         ref = fps[0]
@@ -162,7 +173,6 @@ class DUDE():
         if os.path.exists(inputzip):
             os.system("gunzip {}".format(inputzip))
         
-    
         #Retrieve active inchies
         active_names = self.get_active_names()
     	
@@ -178,6 +188,7 @@ class DUDE():
     
         #Retrieve inactive inchi
         inactive_names = self.get_inactive_names()
+
         inchi_inactive = self.retrieve_inchi_from_sdf(inactive_output)
     
         #Filter inchies
