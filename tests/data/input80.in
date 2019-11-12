@@ -1,0 +1,3 @@
+GRIDFILE /home/moruiz/modtox_dir/modtox/tests/tmp/cluster.c4.mae 
+LIGANDFILE /home/moruiz/modtox_dir/modtox/tests/tmp/actives.mae
+PRECISION SP
