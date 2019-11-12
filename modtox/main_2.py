@@ -33,19 +33,36 @@ def main(traj, resname, top, clf, tpot, cv, mol_to_read=None, RMSD=True, cluster
 
     ########################################## PREPARATION OF ACTIVE AND INACTIVE ##################################
     if set_prepare:
-       # with hp.cd(TRAIN_FOLDER):
-       #     sdf_active_train, sdf_inactive_train, folder_to_get = set_preparation(traj, resname, top, RMSD, cluster, last, clust_type, rmsd_type, sieve, database_train, mol_to_read, substrate, debug, train=True, test=False)
-        folder_to_get = os.path.join("../", TRAIN_FOLDER, "dataset")
+        with hp.cd(TRAIN_FOLDER):
+            sdf_active_train, sdf_inactive_train, folder_to_get = set_preparation(traj, resname, top, RMSD, cluster, last, clust_type, rmsd_type, sieve, database_train, mol_to_read, substrate, debug, train=True, test=False)
+
         with hp.cd(TEST_FOLDER):
             sdf_active_test, sdf_inactive_test, _ = set_preparation(traj, resname, top, RMSD, cluster, last, clust_type, rmsd_type, sieve, database_test, mol_to_read, substrate, debug, train=False, test=True, folder_to_get=folder_to_get)
         
     ########################################################## DOCK ###########################################
-
     if dock:
-        #with hp.cd(TRAIN_FOLDER):
-        #    csv_train = docking(sdf_active_train, sdf_inactive_train, precision, maxkeep, maxref, grid_mol, csv, glide_files, best, mol_to_read, debug=True, greasy=greasy)
+
+        with hp.cd(TRAIN_FOLDER):
+  
+     #       sdf_active_train = "dataset/actives.sdf"
+     #       sdf_inactive_train = "dataset/inactives.sdf"
+  
+            docking(sdf_active_train, sdf_inactive_train, precision, maxkeep, maxref, grid_mol,mol_to_read, debug=True, greasy=greasy)
         with hp.cd(TEST_FOLDER):
-            csv_test = docking(sdf_active_test, sdf_inactive_test, precision, maxkeep, maxref, grid_mol, csv, glide_files, best, mol_to_read, debug=True, greasy=greasy)
+
+    #        sdf_active_test = "dataset/actives.sdf"
+    #        sdf_inactive_test = "dataset/inactives.sdf"
+
+            docking(sdf_active_test, sdf_inactive_test, precision, maxkeep, maxref, grid_mol, mol_to_read, debug=True, greasy=greasy)
+
+   ########################################################## GLIDE ANALYSIS  ###########################################
+ 
+    if analysis:
+        with hp.cd(TRAIN_FOLDER):
+            csv_train = glide_analysis(glide_files, best, csv, sdf_active_train, sdf_inactive_train, debug)
+        with hp.cd(TEST_FOLDER):
+            csv_test = glide_analysis(glide_files, best, csv, sdf_active_test, sdf_inactive_test, debug)
+
     
     ########################################################## BUILD MODEL  ###########################################
 
@@ -68,7 +85,6 @@ def set_preparation(traj, resname, top, RMSD, cluster, last, clust_type, rmsd_ty
     if train: folder_to_get = os.path.abspath(DATASET_FOLDER)
     print("Extracting clusters from MD...")
     an.analise(traj, resname, top, RMSD, cluster, last, clust_type, rmsd_type, sieve, output_dir=ANALYSIS_FOLDER)
-
     print("Reading files....")
     if database == 'pubchem': 
         DBase = pchm.PubChem(pubchem, train, test,substrate, folder_output=DATASET_FOLDER, n_molecules_to_read=mol_to_read, folder_to_get=folder_to_get, production=False, debug=debug)
@@ -80,28 +96,35 @@ def set_preparation(traj, resname, top, RMSD, cluster, last, clust_type, rmsd_ty
     return sdf_active, sdf_inactive, folder_to_get
 
 
-def docking(sdf_active, sdf_inactive, precision, maxkeep, maxref, grid_mol, csv, glide_files, best, mol_to_read, debug, greasy):
+def docking(sdf_active, sdf_inactive, precision, maxkeep, maxref, grid_mol, mol_to_read, debug, greasy):
     
     if not os.path.exists(DOCKING_FOLDER): os.mkdir(DOCKING_FOLDER)
     if not os.path.exists(DESCRIPTORS_FOLDER): os.mkdir(DESCRIPTORS_FOLDER)
 
     if greasy:
         print('Greasy preparation')
-        import pdb; pdb.set_trace()
         greas = gre.GreasyObj(folder=DOCKING_FOLDER, active=sdf_active, inactive=sdf_inactive, systems=glob.glob(os.path.join(ANALYSIS_FOLDER, "*clust*.pdb")))
         greas.preparation()
         sys.exit('Waiting for greasy results')
     else:
         print("Docking in process...")
+        folder = os.path.abspath(ANALYSIS_FOLDER)
+        sdf_active = os.path.abspath(sdf_active)
+        sdf_inactive = os.path.abspath(sdf_inactive)
+        docking_obj = dk.Glide_Docker(glob.glob(os.path.join(folder, "*clust*.pdb")), [sdf_active, sdf_inactive], debug=debug)
         with hp.cd(DOCKING_FOLDER):
-                docking_obj = dk.Glide_Docker(glob.glob(os.path.join(ANALYSIS_FOLDER, "*clust*.pdb")), [sdf_active, sdf_inactive], debug=debug)
                 docking_obj.dock(precision=precision, maxkeep=maxkeep, maxref=maxref, grid_mol=grid_mol)
+                if debug == False: sys.exit('Waiting for docking results')
+    return
 
-        print("Analyzing docking...")
-        inp_files = glob.glob(os.path.join(DOCKING_FOLDER, glide_files))
-        glide_csv = gl.analyze(inp_files, glide_dir=DESCRIPTORS_FOLDER, best=best, csv=csv, active=sdf_active, inactive=sdf_inactive, debug=debug)    
+def glide_analysis(glide_files, best, csv, sdf_active, sdf_inactive, debug):
+
+    print("Analyzing docking...")
+    inp_files = glob.glob(os.path.join(DOCKING_FOLDER, glide_files))
+    glide_csv = gl.analyze(inp_files, glide_dir=DESCRIPTORS_FOLDER, best=best, csv=csv, active=sdf_active, inactive=sdf_inactive, debug=debug)    
    
     return glide_csv
+
 
 def build_model(sdf_active_train, sdf_inactive_train, csv_train, clf, tpot, cv, debug):
     
@@ -170,6 +193,7 @@ def parse_args():
     parser = argparse.ArgumentParser()
     parser.add_argument('--set_prepare',  action="store_true", help='Preparation of files from MD')
     parser.add_argument('--dock',  action="store_true", help='Flag for docking')
+    parser.add_argument('--analysis',  action="store_true", help='Extract csv_file from glide results')
     parser.add_argument('--build',  action="store_true", help='Build ML model')
     parser.add_argument('--predict',  action="store_true", help='Predict from ML loaded model')
     parser.add_argument('--greasy',  action="store_true", help='Prepare files to dock with greasy')
@@ -184,11 +208,11 @@ def parse_args():
     parser.add_argument('--dude',  default='/home/moruiz/cyp/dude/cp2c9', type=str, help='Path to dude files')
     parser.add_argument('--pubchem',  default='/home/moruiz/cyp/pubchem/AID_1851_datatable_all.csv', type=str, help='Pubchem file')
     args = parser.parse_args()
-    return args.set_prepare, args.dock, args.build, args.predict, args.greasy, args.top, args.traj, args.resname, args.clf, args.tpot, args.cv, args.mol_to_read, args.substrate, args.dude, args.pubchem
+    return args.set_prepare, args.dock, args.analysis, args.build, args.predict, args.greasy, args.top, args.traj, args.resname, args.clf, args.tpot, args.cv, args.mol_to_read, args.substrate, args.dude, args.pubchem
 
 
 if __name__ == "__main__":
 
-    set_prepare, dock, build, predict, greasy, top, traj, resname, clf, tpot, cv, mol_to_read, substrate, dude, pubchem = parse_args()
+    set_prepare, dock, analysis, build, predict, greasy, top, traj, resname, clf, tpot, cv, mol_to_read, substrate, dude, pubchem = parse_args()
     main(traj=traj, resname=resname, top=top, clf=clf, tpot=tpot, cv=cv, dude=dude, pubchem=pubchem, greasy=greasy, set_prepare=set_prepare, dock=dock, build=build, predict=predict, mol_to_read=mol_to_read, substrate=substrate)
 

@@ -11,6 +11,7 @@ import modtox.ML.model2 as model
 import modtox.data.pubchem as pchm
 import modtox.data.dude as dd
 import modtox.docking.glide.analyse as gl
+import modtox.docking.greasy.greasy_preparation as gre
 
 def create_tmp_dir(tmp):
     if not os.path.exists(tmp): os.mkdir(tmp)
@@ -26,6 +27,10 @@ def retrieve_data(size=1500, split=True):
 def analyze(inp_files, glide_dir, best, csv, active, inactive):
   
     gl.analyze(inp_files, glide_dir=glide_dir, best=best, csv=csv, active=active, inactive=inactive, debug=True)
+
+def greasy(active, inactive, systems, folder):
+
+    return gre.GreasyObj(folder=folder, active=active, inactive=inactive, systems=systems)
 
 def retrieve_preprocessor(csv=None, fp=False, descriptors=False, MACCS=True, columns=None):
     return Pre.ProcessorSDF(csv=csv, fp=fp, descriptors=descriptors, MACCS=MACCS, columns=columns, debug=True)

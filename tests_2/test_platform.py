@@ -14,6 +14,7 @@ GLIDE_FILES = os.path.join(DOCKING, "*dock_lib.maegz")
 INACTIVE=os.path.join(DATA_PATH, "inactives.sdf")
 GLIDE_FEATURES=os.path.join(DATA_PATH, "glide_features.csv")
 PUBCHEM=os.path.join(DATA_PATH, "AID_1851_datatable_all.csv")
+PDBS = glob.glob(os.path.join(DOCKING, "*clust*.pdb"))
 DUDE = os.path.join(DATA_PATH, "cp2c9")
 SUBSTRATE="p450-cyp2c9"
 NMOLS=10
@@ -31,6 +32,18 @@ def test_docking(glide_files, best, csv, active, inactive):
     inp_files = glob.glob(os.path.join(DATA_PATH, glide_files))
     tc.analyze(inp_files=inp_files, glide_dir=DOCKING, best=best, csv=csv, active=active, inactive=inactive)
 
+@pytest.mark.parametrize("active, inactive, pdbs", [
+                         (ACTIVE, INACTIVE, PDBS),
+                         ])
+def test_greasy(active, inactive, pdbs):
+
+    gre = tc.greasy(folder=TMP, active=active, inactive=inactive, systems=pdbs)
+    gre.preparation()
+    outputs = glob.glob(os.path.join(TMP, 'input*.in'))
+    refs = glob.glob(os.path.join(DATA_PATH, 'input*.in'))
+    outputs.sort()
+    refs.sort()
+    assert False not in [filecmp.cmp(output, ou) for output, ou in zip(outputs, refs)]
 
 ########## DATABASE TESTS ###############
 
@@ -57,6 +70,7 @@ def test_preparation_pubchem(substrate, pubchem, nmols, tmp):
                          (ACTIVE, INACTIVE, GLIDE_FEATURES),
                          ])
 def test_preprocess_fit_transform_all(sdf_active, sdf_inactive, glide_features):
+   
     pre = tc.retrieve_preprocessor(csv=glide_features, fp=True, descriptors=True, MACCS=True, columns=None)
     X_trans, _ = pre.fit_transform(sdf_active=sdf_active, sdf_inactive=sdf_inactive, folder=TMP)
     X = np.array(X_trans)
