@@ -148,7 +148,8 @@ def parse_args(parser):
     parser.add_argument('--clust_sieve', type=int, help='Sieve for clustering', default=10)
     parser.add_argument('--rmsd_type', type=str, help='Type of RMSD [BS (default), CA, all]', default="BS")
 
-def analise(output_dir, traj, resname, top, RMSD, cluster, last, clust_type, rmsd_type, sieve):
+def analise(traj, resname, top, RMSD, cluster, last, clust_type, rmsd_type, sieve, output_dir='.'):
+
     if os.path.exists(output_dir): return
     if not os.path.exists(output_dir): os.makedirs(output_dir)
     trajectory = CpptajBuilder(traj, top, output_dir)

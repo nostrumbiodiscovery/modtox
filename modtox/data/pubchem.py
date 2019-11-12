@@ -11,7 +11,7 @@ import rdkit
 from rdkit import Chem
 from rdkit.Chem import AllChem
 import modtox.Helpers.preprocess as pr
-
+import modtox.Helpers.formats as ft
 
 class PubChem():
      
@@ -62,7 +62,7 @@ class PubChem():
             #removing from training repeated instances
             if not self.production: self.cleaning()
         print('Assigning stereochemistry...')
-        for inchy, name in tqdm(zip(iks, names), total=len(names)-1):
+        for inchy, name in tqdm(zip(iks, names)):
             try:
                 m = Chem.inchi.MolFromInchi(str(inchy))
                 Chem.AssignStereochemistry(m)
@@ -100,7 +100,6 @@ class PubChem():
 
         # extracting molecules from test already present in train
         if self.test:
-            self.folder_to_get = "../from_train/dataset"
             with open(os.path.join(self.folder_to_get, self.used_mols), 'r') as r:
                 data = r.readlines()
                 datalines = [x.split('\n')[0] for x in data]
@@ -149,7 +148,7 @@ class PubChem():
             useful_col = active_cols[activity_labels.index(label)]
             if self.n_molecules_to_read: end = self.n_molecules_to_read + 7
             else: end = len(data)
-            useful_activities = data.ix[8:end, useful_col] # we add 8 because of the initial lines without information
+            useful_activities = data.ix[8:end, useful_col] # we add 8 to avoid the initial uninformative lines
             useful_names = data.ix[8:end, 'PUBCHEM_CID']
         activities = {int(name):activity for name, activity in zip(useful_names, useful_activities)}
         return activities
@@ -159,7 +158,9 @@ class PubChem():
         inactive_output, n_inactives = self.to_sdf(actype = 'inactive') 
         if not self.debug: 
             output_active_proc = pr.ligprep(active_output, output="active_processed.mae")
+            output_active_proc = ft.mae_to_sd(output_active_proc, output=os.path.join(self.folder_output, 'actives.sdf'))
             output_inactive_proc = pr.ligprep(inactive_output, output="inactive_processed.mae")
+            output_inactive_proc = ft.mae_to_sd(output_inactive_proc, output=os.path.join(self.folder_output, 'inactives.sdf'))
         else:
             output_active_proc = active_output
             output_inactive_proc = inactive_output

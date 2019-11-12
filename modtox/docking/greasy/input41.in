@@ -1,0 +1,3 @@
+GRIDFILE docking/cluster.c4.mae 
+LIGANDFILE docking/inactives.mae
+PRECISION SP
