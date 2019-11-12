@@ -157,7 +157,6 @@ class DUDE():
         Separate a dataset from dude into active/inactive
         having into account stereochemistry and tautomers
         """
-        
         #If input zip is present decompress
         inputzip = os.path.join(self.dude_folder, "*.gz")
         if os.path.exists(inputzip):
@@ -193,16 +192,18 @@ class DUDE():
         if not self.debug:
             active_output_proc = pr.ligprep(active_output, self.folder_output)
             active_output_proc = ft.mae_to_sd(active_output_proc, output=os.path.join(self.folder_output, 'actives.sdf'))
+            
+            inactive_output_proc = pr.ligprep(inactive_output, self.folder_output)
+            inactive_output_proc = ft.mae_to_sd(inactive_output_proc, output=os.path.join(self.folder_output, 'inactives.sdf'))
         else:
             active_output_proc = active_output
-    
+            inactive_output_proc = inactive_output
+
         print("Files {}, {} created with chembl curated compounds".format(active_output_proc, inactive_output))
-    
-        #Retrieve inactive inchi
-        inactive_names = self.get_inactive_names()
-        inchi_inactive = self.retrieve_inchi_from_sdf(inactive_output)
+   
+ 
         print("Dude reading done!")
-        return active_output_proc, inactive_output
+        return active_output_proc, inactive_output_proc
 
         
 def parse_args(parser):

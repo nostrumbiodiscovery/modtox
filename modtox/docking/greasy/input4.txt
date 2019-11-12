@@ -1,0 +1,4 @@
+GRIDFILE cluster.c4.mae 
+LIGANDFILE actives.mae
+LIGANDFILE inactives.mae
+PRECISION SP
