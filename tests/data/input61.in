@@ -1,3 +1,3 @@
-GRIDFILE /home/moruiz/modtox_dir/modtox/tests/tmp/cluster.c3.mae 
-LIGANDFILE /home/moruiz/modtox_dir/modtox/tests/tmp/inactives.mae
+GRIDFILE cluster.c6.mae 
+LIGANDFILE inactives.mae
 PRECISION SP

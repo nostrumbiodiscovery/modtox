@@ -32,18 +32,18 @@ def test_docking(glide_files, best, csv, active, inactive):
     inp_files = glob.glob(os.path.join(DATA_PATH, glide_files))
     tc.analyze(inp_files=inp_files, glide_dir=DOCKING, best=best, csv=csv, active=active, inactive=inactive)
 
-#@pytest.mark.parametrize("active, inactive, pdbs", [
-#                         (ACTIVE, INACTIVE, PDBS),
-#                         ])
-#def test_greasy(active, inactive, pdbs):
-#
-#    gre = tc.greasy(folder=TMP, active=active, inactive=inactive, systems=pdbs)
-#    gre.preparation()
-#    outputs = glob.glob(os.path.join(TMP, 'input*.in'))
-#    refs = glob.glob(os.path.join(DATA_PATH, 'input*.in'))
-#    outputs.sort()
-#    refs.sort()
-#    assert False not in [filecmp.cmp(output, ou) for output, ou in zip(outputs, refs)]
+@pytest.mark.parametrize("active, inactive, pdbs", [
+                         (ACTIVE, INACTIVE, PDBS),
+                         ])
+def test_greasy(active, inactive, pdbs):
+
+    gre = tc.greasy(folder=TMP, active=active, inactive=inactive, systems=pdbs)
+    gre.preparation()
+    outputs = glob.glob(os.path.join(TMP, 'input*.in'))
+    refs = glob.glob(os.path.join(DATA_PATH, 'input*.in'))
+    outputs.sort()
+    refs.sort()
+    assert False not in [filecmp.cmp(output, ou) for output, ou in zip(outputs, refs)]
 
 ########## DATABASE TESTS ###############
 

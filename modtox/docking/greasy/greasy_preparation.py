@@ -9,9 +9,10 @@ from tqdm import tqdm
 ACCEPTED_FORMATS = ["pdb", "mae", "sdf", "maegz"]
 GRID = "GRIDFILE {}"
 LIGAND = "LIGANDFILE {}"
-greasy_template = '/home/moruiz/modtox_dir/modtox/modtox/docking/greasy/greasy_template.txt'
-input_template = '/home/moruiz/modtox_dir/modtox/modtox/docking/greasy/input_template.txt'
-runjob_greasy_template = '/home/moruiz/modtox_dir/modtox/modtox/docking/greasy/runjob_greasy_template.sh'
+DIR = os.path.dirname(os.path.abspath(__file__))
+greasy_template = os.path.join(DIR, 'greasy_template.txt')
+input_template = os.path.join(DIR, 'input_template.txt')
+runjob_greasy_template = os.path.join(DIR, 'runjob_greasy_template.sh')
 
 class GreasyObj():
 
