@@ -134,7 +134,7 @@ class ProcessorSDF():
         
         transformer = FeatureUnion(features)
         preprocessor = ColumnTransformer(transformers=[('mol', transformer, molecular_data)])
-        pre = Pipeline(steps=[('transformer', preprocessor)], verbose=True)
+        pre = Pipeline(steps=[('transformer', preprocessor)])
         X_trans = pre.fit_transform(X)
         return X_trans, y
 
