@@ -40,8 +40,9 @@ class GreasyObj():
         self.active_to_dock_mae = fm.convert_to_mae(self.active, folder=self.folder)
         self.inactive_to_dock_mae = fm.convert_to_mae(self.inactive, folder=self.folder)
 
-        gridfile = [GRID.format(system) for system in self.systems_mae]
-        ligandfile = [LIGAND.format(ligand) for ligand in self.active_to_dock_mae + self.inactive_to_dock_mae]       
+        gridfile = [GRID.format(os.path.basename(system)) for system in self.systems_mae]
+        ligandfile = [LIGAND.format(os.path.basename(ligand)) for ligand in self.active_to_dock_mae + self.inactive_to_dock_mae]
+
         # Templetize input
         self.input_files = []
         for j,i in enumerate(tqdm(gridfile)):
