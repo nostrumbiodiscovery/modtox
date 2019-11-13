@@ -202,10 +202,12 @@ class DUDE():
         active_output = self.to_sdf(inchi_active, mol_names=active_names)
         if not self.debug:
             active_output_proc = pr.ligprep(active_output, self.folder_output)
-            active_output_proc = ft.mae_to_sd(active_output_proc, output=os.path.join(self.folder_output, 'actives.sdf'))
+            if not debug:
+                active_output_proc = ft.mae_to_sd(active_output_proc, output=os.path.join(self.folder_output, 'actives.sdf'))
             
             inactive_output_proc = pr.ligprep(inactive_output, self.folder_output)
-            inactive_output_proc = ft.mae_to_sd(inactive_output_proc, output=os.path.join(self.folder_output, 'inactives.sdf'))
+            if not debug:
+                inactive_output_proc = ft.mae_to_sd(inactive_output_proc, output=os.path.join(self.folder_output, 'inactives.sdf'))
         else:
             active_output_proc = active_output
             inactive_output_proc = inactive_output
