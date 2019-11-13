@@ -2,9 +2,11 @@ import numpy as np
 import os
 import pandas as pd
 import tempfile
+import pickle
 from sklearn.model_selection import train_test_split
 from sklearn import datasets
 from sklearn import ensemble
+from collections import OrderedDict
 import modtox.ML.preprocess as Pre
 import modtox.ML.postprocess as Post
 import modtox.ML.model2 as model
@@ -23,6 +25,16 @@ def retrieve_data(size=1500, split=True):
         return X_train, X_test, y_train, y_test   
     else:
         return X,y
+
+def compare_models(file1, file2):
+
+    pipe1 = pickle.load(open(file1, 'rb'))
+    pipe2 = pickle.load(open(file2, 'rb'))
+    comp = []
+    for i in pipe1[0].__dict__.keys():
+        x1 = pipe1[0].__dict__[i]
+        x2 = pipe2[0].__dict__[i]
+        assert np.array_equal(x1,x2)
 
 def analyze(inp_files, glide_dir, best, csv, active, inactive):
   
