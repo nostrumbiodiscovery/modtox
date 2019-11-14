@@ -9,9 +9,10 @@ from tqdm import tqdm
 ACCEPTED_FORMATS = ["pdb", "mae", "sdf", "maegz"]
 GRID = "GRIDFILE {}"
 LIGAND = "LIGANDFILE {}"
-greasy_template = '/home/moruiz/modtox_dir/modtox/modtox/docking/greasy/greasy_template.txt'
-input_template = '/home/moruiz/modtox_dir/modtox/modtox/docking/greasy/input_template.txt'
-runjob_greasy_template = '/home/moruiz/modtox_dir/modtox/modtox/docking/greasy/runjob_greasy_template.sh'
+DIR = os.path.dirname(os.path.abspath(__file__))
+greasy_template = os.path.join(DIR, 'greasy_template.txt')
+input_template = os.path.join(DIR, 'input_template.txt')
+runjob_greasy_template = os.path.join(DIR, 'runjob_greasy_template.sh')
 
 class GreasyObj():
 
@@ -31,16 +32,16 @@ class GreasyObj():
         extension_active = self.active[0].split(".")[-1]
         extension_inactive = self.inactive[0].split(".")[-1]
         assert type(self.systems) == list, "receptor must be of list type"
-        assert extension_receptor in ACCEPTED_FORMATS, "receptor must be a pdb, sdf or mae"
-        assert extension_receptor in ACCEPTED_FORMATS, "ligand must be a pdb, sdf or mae at the moment"
+        assert extension_active in ACCEPTED_FORMATS, "receptor must be a pdb, sdf or mae"
+        assert extension_inactive in ACCEPTED_FORMATS, "ligand must be a pdb, sdf or mae at the moment"
+        assert extension_receptor in ['zip'], "receptor must be zip type"
 
     def preparation(self): 
 
-        self.systems_mae = fm.convert_to_mae(self.systems, folder=self.folder)
         self.active_to_dock_mae = fm.convert_to_mae(self.active, folder=self.folder)
         self.inactive_to_dock_mae = fm.convert_to_mae(self.inactive, folder=self.folder)
 
-        gridfile = [GRID.format(os.path.basename(system)) for system in self.systems_mae]
+        gridfile = [GRID.format(os.path.basename(system)) for system in self.systems]
         ligandfile = [LIGAND.format(os.path.basename(ligand)) for ligand in self.active_to_dock_mae + self.inactive_to_dock_mae]
 
         # Templetize input
@@ -66,7 +67,7 @@ class GreasyObj():
         # Templetize runjob
         with open(self.runjob_greasy_template , "r") as f:
             template = Template("".join(f.readlines()))
-            content = template.substitute(ntasks="1", greasy_file="{}".format(self.greasy_file)) #ntasks to be modified when more inputs
+            content = template.substitute(ntasks= len(gridfile)*len(ligandfile), greasy_file="{}".format(self.greasy_file)) #ntasks to be modified when more inputs
         self.runjob_file = os.path.basename(self.runjob_greasy_template).split("_template")[0] + ".sh"
         with open(os.path.join(self.folder, self.runjob_file), "w") as fout:
             fout.write(''.join(content))

@@ -44,8 +44,8 @@ def main(traj, resname, top, clf, tpot, cv, mol_to_read=None, RMSD=True, cluster
 
         with hp.cd(TRAIN_FOLDER):
   
-     #       sdf_active_train = "dataset/actives.sdf"
-     #       sdf_inactive_train = "dataset/inactives.sdf"
+            sdf_active_train = "dataset/actives.sdf"
+            sdf_inactive_train = "dataset/inactives.sdf"
   
             docking(sdf_active_train, sdf_inactive_train, precision, maxkeep, maxref, grid_mol,mol_to_read, debug=True, greasy=greasy)
         with hp.cd(TEST_FOLDER):
@@ -103,7 +103,13 @@ def docking(sdf_active, sdf_inactive, precision, maxkeep, maxref, grid_mol, mol_
 
     if greasy:
         print('Greasy preparation')
-        greas = gre.GreasyObj(folder=DOCKING_FOLDER, active=sdf_active, inactive=sdf_inactive, systems=glob.glob(os.path.join(ANALYSIS_FOLDER, "*clust*.pdb")))
+        folder = os.path.abspath(ANALYSIS_FOLDER)
+        sdf_active = os.path.abspath(sdf_active)
+        sdf_inactive = os.path.abspath(sdf_inactive)
+        docking_obj = dk.Glide_Docker(glob.glob(os.path.join(folder, "*clust*.pdb")), [sdf_active, sdf_inactive], greasy=True, debug=debug)
+        with hp.cd(DOCKING_FOLDER):
+                docking_obj.dock(precision=precision, maxkeep=maxkeep, maxref=maxref, grid_mol=grid_mol)
+        greas = gre.GreasyObj(folder=DOCKING_FOLDER, active=sdf_active, inactive=sdf_inactive, systems=glob.glob(os.path.join(DOCKING_FOLDER, "*grid.zip")))
         greas.preparation()
         sys.exit('Waiting for greasy results')
     else:
