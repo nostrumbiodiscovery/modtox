@@ -4,7 +4,7 @@ import os
 import pickle
 import glob
 import filecmp
-import test_config as tc
+import tests.test_config as tc
 
 TMP=os.path.join(os.path.dirname(__file__), "tmp")
 DATA_PATH=os.path.join(os.path.dirname(__file__), "data")
@@ -74,8 +74,8 @@ def test_preprocess_fit_transform_all(sdf_active, sdf_inactive, glide_features):
     pre = tc.retrieve_preprocessor(csv=glide_features, fp=True, descriptors=True, MACCS=True, columns=None)
     X_trans, _ = pre.fit_transform(sdf_active=sdf_active, sdf_inactive=sdf_inactive, folder=TMP)
     X = np.array(X_trans)
-    np.savetxt(os.path.join(TMP, 'preprocess_all.out'), X, delimiter=',')
-    assert filecmp.cmp(os.path.join(TMP, 'preprocess_all.out'), os.path.join(DATA_PATH, 'preprocess_all.out'))
+    np.save(os.path.join(TMP, 'preprocess_all'), X)
+    assert filecmp.cmp(os.path.join(TMP, 'preprocess_all.npy'), os.path.join(DATA_PATH, 'preprocess_all.npy'))
 
 @pytest.mark.parametrize("sdf_active, sdf_inactive, glide_features", [
                          (ACTIVE, INACTIVE, GLIDE_FEATURES),
@@ -158,14 +158,14 @@ def test_model_fit_stack_tpot():
     X_train, _, y_train , _ = tc.retrieve_data()
     model = tc.retrieve_model(clf="stack", tpot=True, folder=TMP)
     model.fit(X_train, y_train)
-    assert filecmp.cmp(os.path.join(TMP,'opt_model.pkl'), os.path.join(DATA_PATH, 'model_fit_stack_tpot.pkl'))
+    tc.compare_models(os.path.join(TMP,'opt_model.pkl'), os.path.join(DATA_PATH, 'model_fit_stack_tpot.pkl'))
 
 def test_model_fit_single_tpot():
 
     X_train, _, y_train , _ = tc.retrieve_data()
     model = tc.retrieve_model(clf="single", tpot=True, folder=TMP)
     model.fit(X_train, y_train)
-    assert filecmp.cmp(os.path.join(TMP,'opt_model.pkl'), os.path.join(DATA_PATH, 'model_fit_single_tpot.pkl'))
+    tc.compare_models(os.path.join(TMP,'opt_model.pkl'), os.path.join(DATA_PATH, 'model_fit_single_tpot.pkl'))
 
 def test_imputer():
     X_train, _, _ , _ = tc.retrieve_data()
