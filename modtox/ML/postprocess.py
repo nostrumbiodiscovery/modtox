@@ -4,6 +4,7 @@ matplotlib.use('Agg')
 import pylab as pl
 import shap  # package used to calculate Shap values
 import os
+from matplotlib.lines import Line2D
 import operator
 import umap
 import numpy as np
