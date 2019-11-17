@@ -138,8 +138,8 @@ class DUDE():
                 fps_test_inactive = [Chem.Fingerprints.FingerprintMols.FingerprintMol(m) for m in mols_test_inactive]
                 fps_train = [Chem.Fingerprints.FingerprintMols.FingerprintMol(m) for m in mols_train]
 
-                similarities_active = [rdkit.DataStructs.FingerprintSimilarity(fp_train, fp_test) for fp_test in fps_test_active for fp_train in fps_train]
-                similarities_inactive = [rdkit.DataStructs.FingerprintSimilarity(fp_train, fp_test) for fp_test in fps_test_inactive for fp_train in fps_train]
+                similarities_active = [DataStructs.FingerprintSimilarity(fp_train, fp_test) for fp_test in fps_test_active for fp_train in fps_train]
+                similarities_inactive = [DataStructs.FingerprintSimilarity(fp_train, fp_test) for fp_test in fps_test_inactive for fp_train in fps_train]
                 #all similarity-pairs
                 to_keep = []
                 for i in range(len(fps_test_active)):
