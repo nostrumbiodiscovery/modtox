@@ -24,5 +24,3 @@ def filter_noisy_features(X, Y):
     
     print("Inital dimnension {}, Final dimension {}".format(X.shape, X_new.shape))
 
-
-def RFE_selection(X;Y)

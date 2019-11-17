@@ -262,7 +262,7 @@ class PostProcessor():
             ax.add_patch(Ellipse(position, n * width, n * height,
                                  angle, alpha=alpha, lw=0, color=color))
 
-    def biplot_pca(self, score, coeff, headers=None, labels=None):
+    def biplot_pca(self, score, coeff, folder=".", headers=None, labels=None):
         fig, ax = plt.subplots()
         xs = score[:,0]
         ys = score[:,1]
