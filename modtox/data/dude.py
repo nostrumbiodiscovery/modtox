@@ -228,4 +228,3 @@ if __name__ == "__main__":
     into account tautomerization, chirality and protonation of active ligands. Inactive are left as DUDE output them.", formatter_class=RawTextHelpFormatter)
     parse_args(parser)
     args = parser.parse_args()
-    dude_set(args.dataset, args.output)
