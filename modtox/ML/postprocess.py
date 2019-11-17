@@ -317,7 +317,7 @@ class PostProcessor():
         pca = PCA(n_components=2)
         embedding = pca.fit_transform(self.x_test)
         if biplot:
-            biplot_pca(embedding[:,0:2], np.transpose(pca.components_[0:2, :]), biplot, labels=self.y_true_test)
+            self.biplot_pca(embedding[:,0:2], np.transpose(pca.components_[0:2, :]), biplot, labels=self.y_true_test)
         variance_ratio = pca.explained_variance_ratio_
         variance_total = sum(variance_ratio)
         fig, ax = plt.subplots()
