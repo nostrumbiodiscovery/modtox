@@ -26,7 +26,7 @@ DESCRIPTORS_FOLDER = "descriptors"
 METRICS_FOLDER = "metrics"
 
 
-def main(traj, resname, top, clf, tpot, cv, mol_to_read=None, RMSD=True, cluster=True, last=True, clust_type="BS", rmsd_type="BS", sieve=10, precision="SP", maxkeep=500, maxref=400, grid_mol=2, csv=False, substrate=None, best=False, glide_files="*dock_lib.maegz", database_train='dude', database_test='pubchem', dude=None, pubchem=None, set_prepare=True, dock=True, build=True, predict=True, debug=False, greasy=True):
+def main(traj, resname, top, clf, tpot, cv, mol_to_read=None, RMSD=True, cluster=True, last=True, clust_type="BS", rmsd_type="BS", sieve=10, precision="SP", maxkeep=500, maxref=400, grid_mol=2, csv=False, substrate=None, best=False, glide_files="*maegz", database_train='dude', database_test='pubchem', dude=None, pubchem=None, set_prepare=True, dock=True, build=True, predict=True, debug=False, greasy=True):
     
     if not os.path.exists(TRAIN_FOLDER): os.mkdir(TRAIN_FOLDER)
     if not os.path.exists(TEST_FOLDER): os.mkdir(TEST_FOLDER)
@@ -58,10 +58,12 @@ def main(traj, resname, top, clf, tpot, cv, mol_to_read=None, RMSD=True, cluster
    ########################################################## GLIDE ANALYSIS  ###########################################
  
     if analysis:
+        sdf_active_train = "dataset/actives.sdf"
+        sdf_inactive_train = "dataset/inactives.sdf"
         with hp.cd(TRAIN_FOLDER):
             csv_train = glide_analysis(glide_files, best, csv, sdf_active_train, sdf_inactive_train, debug)
-        with hp.cd(TEST_FOLDER):
-            csv_test = glide_analysis(glide_files, best, csv, sdf_active_test, sdf_inactive_test, debug)
+ #       with hp.cd(TEST_FOLDER):
+ #           csv_test = glide_analysis(glide_files, best, csv, sdf_active_test, sdf_inactive_test, debug)
 
     
     ########################################################## BUILD MODEL  ###########################################
@@ -123,9 +125,12 @@ def docking(sdf_active, sdf_inactive, precision, maxkeep, maxref, grid_mol, mol_
                 if debug == False: sys.exit('Waiting for docking results')
     return
 
-def glide_analysis(glide_files, best, csv, sdf_active, sdf_inactive, debug):
+def glide_analysis(glide_files, best, csv, sdf_active, sdf_inactive, debug, greasy):
 
     print("Analyzing docking...")
+    if greasy: 
+       ---->  /opt/schrodinger2019-1/utilities/glide_merge ../docking/input5*.maegz > new.maegz
+    import pdb; pdb.set_trace()
     inp_files = glob.glob(os.path.join(DOCKING_FOLDER, glide_files))
     glide_csv = gl.analyze(inp_files, glide_dir=DESCRIPTORS_FOLDER, best=best, csv=csv, active=sdf_active, inactive=sdf_inactive, debug=debug)    
    
@@ -134,6 +139,8 @@ def glide_analysis(glide_files, best, csv, sdf_active, sdf_inactive, debug):
 
 def build_model(sdf_active_train, sdf_inactive_train, csv_train, clf, tpot, cv, debug):
     
+
+    import pdb; pdb.set_trace()
     #preprocess
     pre = Pre.ProcessorSDF(csv=csv_train, fp=False, descriptors=False, MACCS=False, columns=None)
     print("Fit and tranform for preprocessor..")
