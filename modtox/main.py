@@ -2,6 +2,7 @@ import sys
 import glob
 import os
 import argparse
+import subprocess
 import numpy as np
 import modtox.ML.preprocess as Pre
 import modtox.ML.postprocess as Post
@@ -129,7 +130,12 @@ def glide_analysis(glide_files, best, csv, sdf_active, sdf_inactive, debug, grea
 
     print("Analyzing docking...")
     if greasy: 
-       ---->  /opt/schrodinger2019-1/utilities/glide_merge ../docking/input5*.maegz > new.maegz
+       command_greasy = "/opt/schrodinger2019-1/utilities/glide_merge {}/$ > {}/$".format(DOCKING_FOLDER, DOCKING_FOLDER)
+       #"/opt/schrodinger2019-1/utilities/glide_merge ../docking/input5*.maegz > new.maegz"
+    if not debug:
+        subprocess.call(command_greasy.split())
+
+
     import pdb; pdb.set_trace()
     inp_files = glob.glob(os.path.join(DOCKING_FOLDER, glide_files))
     glide_csv = gl.analyze(inp_files, glide_dir=DESCRIPTORS_FOLDER, best=best, csv=csv, active=sdf_active, inactive=sdf_inactive, debug=debug)    
