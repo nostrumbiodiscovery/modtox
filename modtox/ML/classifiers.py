@@ -45,7 +45,7 @@ def retrieve_classifier(classifier, tpot=False, cv=5, fast=False):
         clf = classifier
     return clf
 
-def get_tpot_classifiers(generations=1, population_size=10, cv=2, fast=False):
+def get_tpot_classifiers(generations=5, population_size=10, cv=2, fast=False):
 
     if fast:
         tpot_conf = "TPOT light"

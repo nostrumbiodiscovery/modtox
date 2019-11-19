@@ -43,13 +43,16 @@ class ExternalData():
         for i, title in enumerate(self.mol_names):
             if title not in df["Title"].values.astype(str):
                 null_line = pd.DataFrame.from_records([values], columns=headers, index=[i])
+                null_line["Title"] = str(title)
                 df = pd.concat([df.ix[:i-1], null_line, df.ix[i:]]).reset_index(drop=True)
         #Drop features
         df = df.replace("--",  np.nan)
-        
+        df['Title'] = df.Title.astype(str)
+        df = df.sort_values("Title")
         features_to_drop = [feature for field in self.exclude for feature in headers if field in feature ]
         df.drop(features_to_drop, axis=1, inplace=True)
         df.to_csv(os.path.join(self.folder, "model_features.txt"))
+
         return df
 
     def retrieve_molecule_names(self):

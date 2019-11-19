@@ -1,155 +1,235 @@
-import matplotlib
-matplotlib.use('Agg')
-import modtox.ML.classifiers as cl
-import modtox.cpptraj.analisis as an
+import sys
 import glob
 import os
-import sys
 import argparse
-import modtox.ML.model as md
-from argparse import RawTextHelpFormatter
-import modtox.docking.glide.glide as dk
-import modtox.docking.glide.analyse as gl
-import modtox.data.dude as dd
+import subprocess
+import numpy as np
+import modtox.ML.preprocess as Pre
+import modtox.ML.postprocess as Post
+import modtox.ML.model2 as model
 import modtox.Helpers.helpers as hp
-import modtox.Helpers.command_check as cc
-import modtox.data.gpcrdb as gpcr
+import modtox.docking.glide.glide as dk
+import modtox.docking.greasy.greasy_preparation as gre
 import modtox.data.pubchem as pchm
+import modtox.data.dude as dd
+import modtox.cpptraj.analisis as an
+import modtox.docking.glide.analyse as gl
+from sklearn.model_selection import train_test_split
 
+
+folder = "/home/moruiz/cyp/new_test"
+TRAIN_FOLDER = "from_train"
+TEST_FOLDER = "from_test"
 DOCKING_FOLDER = "docking"
-ANALISIS_FOLDER = "analisis"
+ANALYSIS_FOLDER = "analysis"
+DATASET_FOLDER = "dataset"
+DESCRIPTORS_FOLDER = "descriptors"
+METRICS_FOLDER = "metrics"
 
 
-MODELS = [{"csv":None, "pb":True, "fingerprint":True, "MACCS":False, "descriptors":False,
-            "output_feat":"fingerprint_important_features.txt", "conf_matrix":"fingerprint_conf_matrix.png"},
-         {"csv":None, "pb":True, "fingerprint":False, "MACCS":True, "descriptors":False,
-            "output_feat":"MACCS_important_features.txt", "conf_matrix":"MACCS_conf_matrix.png"},
-         {"csv":None, "pb":True, "fingerprint":False, "MACCS":False, "descriptors":True,
-            "output_feat":"descriptors_important_features.txt", "conf_matrix":"descriptors_conf_matrix.png"},
-          {"csv":"glide_features.csv", "pb":False, "fingerprint":False, "MACCS":False, "descriptors":False,
-            "output_feat":"glide_important_features.txt", "conf_matrix":"glide_conf_matrix.png"},
-          {"csv":False, "pb":True, "fingerprint":True, "MACCS":True, "descriptors":False,
-            "output_feat":"pb_important_features.txt", "conf_matrix":"pb_conf_matrix.png"}
-         ]
+def main(traj, resname, top, clf, tpot, cv, mol_to_read=None, RMSD=True, cluster=True, last=True, clust_type="BS", rmsd_type="BS", sieve=10, precision="SP", maxkeep=500, maxref=400, grid_mol=2, csv=False, substrate=None, best=False, glide_files="*pv.maegz", database_train='dude', database_test='pubchem', dude=None, pubchem=None, set_prepare=True, dock=True, build=True, predict=True, debug=False, greasy=True):
+    
+    if not os.path.exists(TRAIN_FOLDER): os.mkdir(TRAIN_FOLDER)
+    if not os.path.exists(TEST_FOLDER): os.mkdir(TEST_FOLDER)
 
-MODELS = [          {"csv":"glide_features.csv", "pb":False, "fingerprint":False, "MACCS":False, "descriptors":False,
-               "output_feat":"glide_important_features.txt", "conf_matrix":"glide_conf_matrix.png"}]
+    ########################################## PREPARATION OF ACTIVE AND INACTIVE ##################################
+    if set_prepare:
+        with hp.cd(TRAIN_FOLDER):
+            sdf_active_train, sdf_inactive_train, folder_to_get = set_preparation(traj, resname, top, RMSD, cluster, last, clust_type, rmsd_type, sieve, database_train, mol_to_read, substrate, debug, train=True, test=False)
+
+        with hp.cd(TEST_FOLDER):
+            sdf_active_test, sdf_inactive_test, _ = set_preparation(traj, resname, top, RMSD, cluster, last, clust_type, rmsd_type, sieve, database_test, mol_to_read, substrate, debug, train=False, test=True, folder_to_get=folder_to_get)
+        
+    ########################################################## DOCK ###########################################
+    if dock:
+
+        with hp.cd(TRAIN_FOLDER):
+  
+            sdf_active_train = "dataset/actives.sdf"
+            sdf_inactive_train = "dataset/inactives.sdf"
+  
+            docking(sdf_active_train, sdf_inactive_train, precision, maxkeep, maxref, grid_mol,mol_to_read, debug=True, greasy=greasy)
+        with hp.cd(TEST_FOLDER):
+
+            docking(sdf_active_test, sdf_inactive_test, precision, maxkeep, maxref, grid_mol, mol_to_read, debug=True, greasy=greasy)
+
+   ########################################################## GLIDE ANALYSIS  ###########################################
+ 
+    if analysis:
+        sdf_active_train = "dataset/actives.sdf"
+        sdf_inactive_train = "dataset/inactives.sdf"
+        with hp.cd(TRAIN_FOLDER):
+            csv_train = glide_analysis(glide_files, best, csv, sdf_active_train, sdf_inactive_train, debug, greasy)
+        with hp.cd(TEST_FOLDER):
+            csv_test = glide_analysis(glide_files, best, csv, sdf_active_test, sdf_inactive_test, debug, greasy)
+
+    
+    ########################################################## BUILD MODEL  ###########################################
+
+    if build:
+        sdf_active_train = "/home/moruiz/cyp/pubchem/predictions/cyp2c9/from_train/dataset/active_train.sdf"
+        sdf_inactive_train = "/home/moruiz/cyp/pubchem/predictions/cyp2c9/from_train/dataset/inactive_train.sdf"
+        csv_train = "/home/moruiz/cyp/pubchem/predictions/cyp2c9/from_train/descriptors/glide_features.csv"
+        with hp.cd(TRAIN_FOLDER):
+            model = build_model(sdf_active_train, sdf_inactive_train, csv_train, clf, tpot, cv, debug)
+
+    ########################################################## PREDICT  ###########################################
+
+    if predict:
+        sdf_active_test = "/home/moruiz/cyp/pubchem/predictions/cyp2c9/from_test/dataset/active_test.sdf"
+        sdf_inactive_test = "/home/moruiz/cyp/pubchem/predictions/cyp2c9/from_test/dataset/inactive_test.sdf"
+        csv_test = "/home/moruiz/cyp/pubchem/predictions/cyp2c9/from_test/descriptors/glide_features.csv"
+        with hp.cd(TEST_FOLDER):
+            predict_model(model, sdf_active_test, sdf_inactive_test, csv_test, clf, tpot, cv, debug)
+
+
+def set_preparation(traj, resname, top, RMSD, cluster, last, clust_type, rmsd_type, sieve, database, mol_to_read, substrate, debug, train, test, folder_to_get=None):
+
+    if not os.path.exists(DATASET_FOLDER): os.mkdir(DATASET_FOLDER)
+    
+    #folder where used molecules during train are stored    
+    if train: folder_to_get = os.path.abspath(DATASET_FOLDER)
+    print("Extracting clusters from MD...")
+    an.analise(traj, resname, top, RMSD, cluster, last, clust_type, rmsd_type, sieve, output_dir=ANALYSIS_FOLDER)
+    print("Reading files....")
+    if database == 'pubchem': 
+        DBase = pchm.PubChem(pubchem, train, test,substrate, folder_output=DATASET_FOLDER, n_molecules_to_read=mol_to_read, folder_to_get=folder_to_get, production=False, debug=debug)
+        sdf_active, sdf_inactive = DBase.process_pubchem()
+    if database == 'dude': 
+        DBase = dd.DUDE(dude, train, test, folder_output=DATASET_FOLDER, folder_to_get=folder_to_get, debug=debug)
+        sdf_active, sdf_inactive = DBase.process_dude()
+
+    return sdf_active, sdf_inactive, folder_to_get
+
+
+def docking(sdf_active, sdf_inactive, precision, maxkeep, maxref, grid_mol, mol_to_read, debug, greasy):
+    
+    if not os.path.exists(DOCKING_FOLDER): os.mkdir(DOCKING_FOLDER)
+    if not os.path.exists(DESCRIPTORS_FOLDER): os.mkdir(DESCRIPTORS_FOLDER)
+
+    if greasy:
+        print('Greasy preparation')
+        folder = os.path.abspath(ANALYSIS_FOLDER)
+        sdf_active = os.path.abspath(sdf_active)
+        sdf_inactive = os.path.abspath(sdf_inactive)
+        docking_obj = dk.Glide_Docker(glob.glob(os.path.join(folder, "*clust*.pdb")), [sdf_active, sdf_inactive], greasy=True, debug=debug)
+        with hp.cd(DOCKING_FOLDER):
+                docking_obj.dock(precision=precision, maxkeep=maxkeep, maxref=maxref, grid_mol=grid_mol)
+        greas = gre.GreasyObj(folder=DOCKING_FOLDER, active=sdf_active, inactive=sdf_inactive, systems=glob.glob(os.path.join(DOCKING_FOLDER, "*grid.zip")))
+        greas.preparation()
+        sys.exit('Waiting for greasy results')
+    else:
+        print("Docking in process...")
+        folder = os.path.abspath(ANALYSIS_FOLDER)
+        sdf_active = os.path.abspath(sdf_active)
+        sdf_inactive = os.path.abspath(sdf_inactive)
+        docking_obj = dk.Glide_Docker(glob.glob(os.path.join(folder, "*clust*.pdb")), [sdf_active, sdf_inactive], debug=debug)
+        with hp.cd(DOCKING_FOLDER):
+                docking_obj.dock(precision=precision, maxkeep=maxkeep, maxref=maxref, grid_mol=grid_mol)
+                if debug == False: sys.exit('Waiting for docking results')
+    return
+
+def glide_analysis(glide_files, best, csv, sdf_active, sdf_inactive, debug, greasy):
+
+    print("Analyzing docking...")
+    inp_files = glob.glob(os.path.join(DOCKING_FOLDER, glide_files))
+    if greasy: 
+        greas = gre.GreasyObj(folder=DOCKING_FOLDER, active=sdf_active, inactive=sdf_inactive, systems=[])
+        inp_files = greas.merge_glides(inp_files)
+    glide_csv = gl.analyze(inp_files, glide_dir=DESCRIPTORS_FOLDER, best=best, csv=csv, active=sdf_active, inactive=sdf_inactive, debug=debug)    
+   
+    return glide_csv
+
+
+def build_model(sdf_active_train, sdf_inactive_train, csv_train, clf, tpot, cv, debug):
+    
+
+    #preprocess
+    pre = Pre.ProcessorSDF(csv=csv_train, fp=False, descriptors=False, MACCS=False, columns=None)
+    print("Fit and tranform for preprocessor..")
+    X_train, y_train = pre.fit_transform(sdf_active=sdf_active_train, sdf_inactive=sdf_inactive_train, folder=DESCRIPTORS_FOLDER)
+    print("Sanitazing...")
+    X_train, y_train, mol_names = pre.sanitize(X_train, y_train)
+    print("Filtering features...")
+    pre.filter_features(X_train)
+    
+    #fit model
+    Model = model.GenericModel(clf=clf, tpot=tpot,  cv=cv)
+    print("Fitting model...")
+    Model.fit(X_train,y_train)
+    
+    #postprocessing
+    print("Postprocess for training ...")
+    if not os.path.exists(METRICS_FOLDER): os.mkdir(METRICS_FOLDER)
+    post = Post.PostProcessor(clf, Model.X_trans, Model.Y, Model.prediction_fit, Model.prediction_proba_fit, y_pred_test_clfs=Model.indiv_fit, folder=METRICS_FOLDER) 
+    uncertainties = post.calculate_uncertanties()
+    post.ROC()
+    post.PR()
+    post.conf_matrix()
+    post.UMAP_plot(single=True)
+    post.PCA_plot()
+    post.tsne_plot()
+   
+    return Model
+ 
+def predict_model(Model, sdf_active_test, sdf_inactive_test, csv_test, clf, tpot, cv, debug): 
+    
+    #preprocess test
+    folder = DESCRIPTORS_FOLDER 
+    pre = Pre.ProcessorSDF(csv=csv_test, fp=False, descriptors=False, MACCS=False, columns=None)
+    print("Fit and tranform for preprocessor..")
+
+    X_test, y_test = pre.fit_transform(sdf_active=sdf_active_test, sdf_inactive=sdf_inactive_test, folder=folder)
+    print("Sanitazing...")
+    X_test, y_test, mol_names = pre.sanitize(X_test, y_test)
+    print("Filtering features...")
+    pre.filter_features(X_test)
+    
+    #predict model
+    print("Predicting...")
+    y_pred = Model.predict(X_test, y_test, imputer=Model.imputer, scaler=Model.scaler, train_folder=os.path.join("../", TRAIN_FOLDER))
+    
+    #postprocessing
+    print("Postprocess for test ...")
+    if not os.path.exists(METRICS_FOLDER): os.mkdir(METRICS_FOLDER)
+    post = Post.PostProcessor(clf, Model.X_test_trans, Model.Y_test, Model.prediction_test, Model.predictions_proba_test, y_pred_test_clfs=Model.indiv_pred, x_train=Model.X_trans, y_true_train=Model.Y, folder=METRICS_FOLDER) 
+    uncertainties = post.calculate_uncertanties()
+    post.ROC()
+    post.PR()
+    post.conf_matrix()
+    post.UMAP_plot(single=True, wrong=True, wrongall=True, traintest=True, wrongsingle=True)
+    post.PCA_plot()
+    post.tsne_plot()
+    post.shap_values(names=mol_names, features=pre.headers, debug=True)
+    post.distributions(features=pre.headers, debug=True)
+    post.feature_importance(features=pre.headers)
+    post.domain_analysis(names=mol_names)
 
 def parse_args():
-    
-    parser = argparse.ArgumentParser(description='Specify trajectories and topology to be analised.\n  \
-    i.e python -m modtox.main traj.xtc --top topology.pdb', formatter_class=RawTextHelpFormatter,  conflict_handler='resolve')
-    an.parse_args(parser)
-    dd.parse_args(parser)
-    pchm.parse_args(parser)
-    gl.parse_args(parser)
-    dk.parse_args(parser)
-    md.parse_args(parser)
-    parser.add_argument('--dock',  action="store_true", help='Topology of your trajectory')
-    parser.add_argument('--assemble_model', action="store_true", help='Assemble model')
-    parser.add_argument('--predict', action = 'store_true', help = 'Predict an external set')
-    parser.add_argument('--debug', action="store_true", help='Run debug simulation')
-    parser.add_argument('--output_dir', help='Folder to store modtox files', default="cyp2c9")
-    status = parser.add_mutually_exclusive_group(required=True)
-    status.add_argument('--train',action="store_true")
-    status.add_argument('--test',action="store_true")
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--set_prepare',  action="store_true", help='Preparation of files from MD')
+    parser.add_argument('--dock',  action="store_true", help='Flag for docking')
+    parser.add_argument('--analysis',  action="store_true", help='Extract csv_file from glide results')
+    parser.add_argument('--build',  action="store_true", help='Build ML model')
+    parser.add_argument('--predict',  action="store_true", help='Predict from ML loaded model')
+    parser.add_argument('--greasy',  action="store_true", help='Prepare files to dock with greasy')
+    parser.add_argument('--top',  default="/data/ModTox/5_CYPs/HROT_1r9o/1r9o_holo/1r9o_holo.top", help='Topology')
+    parser.add_argument('--traj',  default="/data/ModTox/5_CYPs/HROT_1r9o/1r9o_holo/1R9O_*.x", help='Trajectory files')
+    parser.add_argument('--resname',  default="FLP", help='Residue name')
+    parser.add_argument('--clf',  default='single', help='Classifier type: single/stack')
+    parser.add_argument('--tpot',  action="store_true", help='Use TPOT to build model')
+    parser.add_argument('--cv',  default=10, type=int, help='Cross-validation')
+    parser.add_argument('--mol_to_read',  default=100, type=int, help='Molecules to read from databases')
+    parser.add_argument('--substrate',  default="p450-cyp2c9", type=str, help='Substrate name (only for pubchem)')
+    parser.add_argument('--dude',  default='/home/moruiz/cyp/dude/cp2c9', type=str, help='Path to dude files')
+    parser.add_argument('--pubchem',  default='/home/moruiz/cyp/pubchem/AID_1851_datatable_all.csv', type=str, help='Pubchem file')
     args = parser.parse_args()
-    
-    return args.traj, args.resname, args.active, args.inactive, args.top, args.glide_files, args.best, args.csv, args.RMSD, args.cluster, args.last, args.clust_type, args.rmsd_type, args.receptor, args.ligands_to_dock, args.grid, args.precision, args.maxkeep, args.maxref, args.dock, args.assemble_model, args.predict, args.save, args.load, args.external_data, args.pb, args.cv, args.features, args.features_cv, args.descriptors, args.classifier, args.filename_model, args.dude, args.pubchem, args.substrate, args.grid_mol, args.clust_sieve, args.debug, args.output_dir,args.train, args.test, args.mol_to_read, args.tpot
+    return args.set_prepare, args.dock, args.analysis, args.build, args.predict, args.greasy, args.top, args.traj, args.resname, args.clf, args.tpot, args.cv, args.mol_to_read, args.substrate, args.dude, args.pubchem
 
 
-def main(traj, resname, active=None, inactive=None, top=None, glide_files="*dock_lib.maegz", best=False, csv=False, RMSD=True, cluster=True, last=True, clust_type="BS", rmsd_type="BS", receptor="*pv*.maegz", grid=None, precision="SP", maxkeep=500, maxref=400, dock=False, assemble_model=False, predict = False, save=None, load=None, external_data=None, pb=False, cv=2, features=5, features_cv=1, descriptors=[], classifier="single", filename_model = None, dude=None, pubchem = None, substrate=None, grid_mol=2, sieve=10, debug=False, output_dir="cyp2c9", train=False, test=False, mol_to_read=None, tpot=False):
-    
-    
-    assert output_dir not in os.getcwd(), "Wrong directory for running the script"
-    # Create test training folder
-    if not os.path.exists(output_dir):
-        os.mkdir(output_dir)
-
-    if train: direct = os.path.join(output_dir, "from_train")
-    if test: 
-        direct = os.path.join(output_dir, "from_test")
-        assert os.path.exists(os.path.join(output_dir, "from_train")), "Wrong directory for running the script"
-    if not os.path.exists(direct): os.mkdir(direct)
-    if dock:
-        # Retrieve receptor, ligands and dock them
-        with hp.cd(direct):
-            #Saving commandline arguments
-            with open('commandline_args_dock.txt', 'w') as f:
-                f.write(" ".join(sys.argv[1:]))
-
-            print("Extracting clusters from MD")
-            if not os.path.exists(ANALISIS_FOLDER):
-                an.analise(traj, resname, top, RMSD, cluster, last, clust_type, rmsd_type, sieve)
-
-            print("Prepare active and inactive ligands")
-            if dude:
-                active, inactive = dd.process_dude(dude, train, test, debug=debug)
-            elif pubchem:
-                active, inactive = pchm.process_pubchem(pubchem, train, test, substrate, mol_to_read=mol_to_read, debug=debug)
-            elif active.split(".")[-1] == "csv":
-                active = gpcr.process_gpcrdb(active)
-                inactive = inactive
-
-            print("Dock active and inactive dataset")
-            if not debug:
-                if not os.path.exists(DOCKING_FOLDER): os.mkdir(DOCKING_FOLDER)
-                with hp.cd(DOCKING_FOLDER):
-                    docking_obj = dk.Glide_Docker(glob.glob("../analisis/*clust*.pdb"), [active, inactive], debug=debug)
-                    docking_obj.dock(precision=precision, maxkeep=maxkeep, maxref=maxref, grid_mol=grid_mol)
-                print("Docking in process... Once is finished run the same command exchanging --dock by --assemble_model flag to build model")
-
-    if assemble_model:
-        assert train, "Assemble model only allowed with train flag" 
-        active = "dataset/active_train.sdf"
-        inactive = "dataset/inactive_train.sdf"
-
-        with hp.cd(direct):
-            #Saving commandline arguments
-            with open('commandline_args_assemble.txt', 'w') as f:
-                f.write(" ".join(sys.argv[1:]))
-            print("Build input fingerprints from docking terms")
-            inp_files = glob.glob(os.path.join(DOCKING_FOLDER, glide_files))
-            gl.analyze(inp_files, best=best, csv=csv, active=active, inactive=inactive, debug=debug)
-
-            print("Build model")
-            for model in MODELS:
-                try:
-                    model_obj = md.GenericModel(active, inactive, classifier, filename_model, csv=model["csv"], pb=model["pb"], fp=model["fingerprint"], descriptors=model["descriptors"], MACCS=model["MACCS"], tpot=tpot, debug=debug, cv=cv)
-                    model_obj.build_model(output_conf=model["conf_matrix"])
-                    #model_obj.feature_importance(cl.XGBOOST, cv=features_cv, number_feat=features, output_features=model["output_feat"])
-                except IOError as e:
-                    print("Model with descriptors not build for failure to connect to client webserver", e)
-
-            print("Models sucesfully build and saved.")
-     
-    if predict:
-        active = "dataset/active_test.sdf"
-        inactive = "dataset/inactive_test.sdf"
-
-        with hp.cd(direct):
-            print(direct)
-            assert os.path.isfile(os.path.join("../from_train/model", filename_model))== True, "Run the training of the module first with flag --assemble_model. More in docs"
-            #Saving commandline arguments
-            with open('commandline_args_predict.txt', 'w') as f:
-                f.write(" ".join(sys.argv[1:]))
-
-            cc.command_check() #checking if classifiers selection is appropriate
-            
-            print("Build input fingerprints from docking terms")
-            inp_files = glob.glob(os.path.join(DOCKING_FOLDER, glide_files))
-            gl.analyze(inp_files, best=best, csv=csv, active=active, inactive=inactive, debug=debug)
-
-            print("Predict samples")
-            for model in MODELS: 
-                model_obj = md.GenericModel(active, inactive, classifier, filename_model, csv=model["csv"], pb=model["pb"], fp=model["fingerprint"], descriptors=model["descriptors"], MACCS=model["MACCS"], tpot=tpot, debug=debug, cv=cv)
-                model_obj.external_prediction()
-    
 if __name__ == "__main__":
-    trajs, resname, active, inactive, top, glide_files, best, csv, RMSD, cluster, last, clust_type, rmsd_type, \
-    receptor, ligands_to_dock, grid, precision, maxkeep, maxref, dock, assemble_model, predict,\
-    save, load, external_data, pb, cv, features, features_cv, descriptors, \
-    classifier, filename_model, dude, pubchem, substrate, grid_mol, sieve, debug, output_dir, train, test, mol_to_read, tpot = parse_args()
-    main(trajs, resname, active, inactive, top, glide_files, best, csv, RMSD, cluster, last, clust_type, rmsd_type, 
-        receptor, grid, precision, maxkeep, maxref, dock, assemble_model, predict, save, load, external_data, pb, cv, features, features_cv, 
-        descriptors, classifier, filename_model, dude, pubchem, substrate, grid_mol, sieve, debug, output_dir, train, test, mol_to_read, tpot)
+
+    set_prepare, dock, analysis, build, predict, greasy, top, traj, resname, clf, tpot, cv, mol_to_read, substrate, dude, pubchem = parse_args()
+    main(traj=traj, resname=resname, top=top, clf=clf, tpot=tpot, cv=cv, dude=dude, pubchem=pubchem, greasy=greasy, set_prepare=set_prepare, dock=dock, build=build, predict=predict, mol_to_read=mol_to_read, substrate=substrate)
+
