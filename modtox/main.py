@@ -129,18 +129,16 @@ def docking(sdf_active, sdf_inactive, precision, maxkeep, maxref, grid_mol, mol_
 def glide_analysis(glide_files, best, csv, sdf_active, sdf_inactive, debug, greasy):
 
     print("Analyzing docking...")
-    if greasy: 
-       command_greasy = "/opt/schrodinger2019-1/utilities/glide_merge {}/$ > {}/$".format(DOCKING_FOLDER, DOCKING_FOLDER)
-       #"/opt/schrodinger2019-1/utilities/glide_merge ../docking/input5*.maegz > new.maegz"
-    if not debug:
-        subprocess.call(command_greasy.split())
 
-
-    import pdb; pdb.set_trace()
+    print("Analyzing docking...")
     inp_files = glob.glob(os.path.join(DOCKING_FOLDER, glide_files))
+    if greasy: 
+        greas = gre.GreasyObj(folder=DOCKING_FOLDER, active=sdf_active, inactive=sdf_inactive, systems=[])
+        inp_files = greas.merge_glides(inp_files)
     glide_csv = gl.analyze(inp_files, glide_dir=DESCRIPTORS_FOLDER, best=best, csv=csv, active=sdf_active, inactive=sdf_inactive, debug=debug)    
    
     return glide_csv
+
 
 
 def build_model(sdf_active_train, sdf_inactive_train, csv_train, clf, tpot, cv, debug):
