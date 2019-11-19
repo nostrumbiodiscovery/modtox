@@ -175,40 +175,7 @@ class Descriptors():
         np.savetxt(os.path.join(self.folder, "2D_descriptors.txt"), list(descriptors_df), fmt="%s")
         return  descriptors_df.astype(float)
     
-class Descriptors_Schordinger():
 
-    def fit(self, molecules):
-        return molecules
-
-    def fit_transform(self, molecules, labels): 
-        return self.transform(self.fit(molecules))
-
-    def transform(self, molecules):
-        print("\tBuilding Schrodinger Descriptors")
-        df = pd.DataFrame()
-        finger_prints_train = preprocessor.fit_transform(molecules)
-        for i, mol in enumerate(molecules):
-            desc = mol.GetPropsAsDict()
-            for x in ENTITIES_TO_REMOVE:
-                if x in desc:
-                    del desc[x]
-            df = df.append(pd.Series(desc), ignore_index=True)
-        return df
-
-class Shape():
-
-    def fit(self, molecules):
-        return molecules
-
-    def fit_transform(self, molecules, labels): 
-        return self.transform(self.fit(molecules))
-
-    def transform(self, molecules):
-        df = pd.DataFrame()
-        molecules = molecules["molecules"].tolist()
-        df["Shape"] = [mol.GetPropsAsDict()["r_m_Shape_Sim"] if "r_m_Shape_Sim" in mol.GetPropsAsDict().keys() else None for mol in suppl]
-        return df
-    
 class Smiles():
     
     def fit(self, molecules):

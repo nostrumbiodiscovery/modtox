@@ -138,8 +138,8 @@ class DUDE():
                 fps_test_inactive = [Chem.Fingerprints.FingerprintMols.FingerprintMol(m) for m in mols_test_inactive]
                 fps_train = [Chem.Fingerprints.FingerprintMols.FingerprintMol(m) for m in mols_train]
 
-                similarities_active = [rdkit.DataStructs.FingerprintSimilarity(fp_train, fp_test) for fp_test in fps_test_active for fp_train in fps_train]
-                similarities_inactive = [rdkit.DataStructs.FingerprintSimilarity(fp_train, fp_test) for fp_test in fps_test_inactive for fp_train in fps_train]
+                similarities_active = [DataStructs.FingerprintSimilarity(fp_train, fp_test) for fp_test in fps_test_active for fp_train in fps_train]
+                similarities_inactive = [DataStructs.FingerprintSimilarity(fp_train, fp_test) for fp_test in fps_test_inactive for fp_train in fps_train]
                 #all similarity-pairs
                 to_keep = []
                 for i in range(len(fps_test_active)):
@@ -202,11 +202,11 @@ class DUDE():
         active_output = self.to_sdf(inchi_active, mol_names=active_names)
         if not self.debug:
             active_output_proc = pr.ligprep(active_output, self.folder_output)
-            if not debug:
+            if not self.debug:
                 active_output_proc = ft.mae_to_sd(active_output_proc, output=os.path.join(self.folder_output, 'actives.sdf'))
             
             inactive_output_proc = pr.ligprep(inactive_output, self.folder_output)
-            if not debug:
+            if not self.debug:
                 inactive_output_proc = ft.mae_to_sd(inactive_output_proc, output=os.path.join(self.folder_output, 'inactives.sdf'))
         else:
             active_output_proc = active_output
@@ -228,4 +228,3 @@ if __name__ == "__main__":
     into account tautomerization, chirality and protonation of active ligands. Inactive are left as DUDE output them.", formatter_class=RawTextHelpFormatter)
     parse_args(parser)
     args = parser.parse_args()
-    dude_set(args.dataset, args.output)
