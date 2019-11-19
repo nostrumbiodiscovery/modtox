@@ -4,6 +4,7 @@ matplotlib.use('Agg')
 import pylab as pl
 import shap  # package used to calculate Shap values
 import os
+from matplotlib.lines import Line2D
 import operator
 import umap
 import numpy as np
@@ -262,7 +263,7 @@ class PostProcessor():
             ax.add_patch(Ellipse(position, n * width, n * height,
                                  angle, alpha=alpha, lw=0, color=color))
 
-    def biplot_pca(self, score, coeff, headers=None, labels=None):
+    def biplot_pca(self, score, coeff, folder=".", headers=None, labels=None):
         fig, ax = plt.subplots()
         xs = score[:,0]
         ys = score[:,1]
@@ -316,7 +317,7 @@ class PostProcessor():
         pca = PCA(n_components=2)
         embedding = pca.fit_transform(self.x_test)
         if biplot:
-            biplot_pca(embedding[:,0:2], np.transpose(pca.components_[0:2, :]), biplot, labels=self.y_true_test)
+            self.biplot_pca(embedding[:,0:2], np.transpose(pca.components_[0:2, :]), biplot, labels=self.y_true_test)
         variance_ratio = pca.explained_variance_ratio_
         variance_total = sum(variance_ratio)
         fig, ax = plt.subplots()
