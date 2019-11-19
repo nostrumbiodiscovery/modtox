@@ -283,6 +283,74 @@ else:
     np.save("Xtrain", np.array(X_train))
     np.save("Ytrain", np.array(y_train))
 
+folder = "/home/moruiz/cyp/new_test_2/from_train/docking/"
+dataset = "/home/moruiz/cyp/new_test_2/from_train/dataset/"
+maes_lig = glob.glob(os.path.join(folder, "*dock_lib.maegz"))
+maes_rec = glob.glob(os.path.join(folder, "*rec.maegz"))
+
+actives = os.path.join(dataset, "actives.sdf")
+inactives = os.path.join("/home/moruiz/cyp/dude/cp2c9/decoys_final.sdf")
+
+#coverting ligands
+if len(glob.glob(os.path.join(folder, "*dock_lib.sdf"))) == 0: sdfs_lig = [mae_to_sd(mae, folder=folder, output=None) for mae in maes_lig]
+else: sdfs_lig = glob.glob(os.path.join(folder, "*dock_lib.sdf"))
+                 
+#coverting receptor
+if len(glob.glob(os.path.join(folder, "*_rec.sdf"))) == 0: sdfs_rec = [mae_to_sd(mae, folder=folder, output=None) for mae in maes_rec]
+else: sdfs_rec = glob.glob(os.path.join(folder, "*rec.sdf"))
+sdfs = [[lig, rec] for lig, rec in zip(sdfs_lig, sdfs_rec)]
+
+#Create vocabulary
+vocabulary_elements, features = retrieve_vocabulary_from_sdf(sdfs_lig)
+print(vocabulary_elements, features)
+
+sdfs_lig = [ [sdf] for sdf in sdfs_lig]
+cpus = 5
+with Pool(cpus) as pool:
+    result = list(tqdm(pool.istarmap(extract_cnn_input, sdfs_lig), total=len(sdfs_lig))) #[sdf, vectors]
+
+
+with open(actives, "r") as f:
+    data = f.readlines()
+    ids = np.array([i+1 for i, j in zip(count(), data) if j == '$$$$\n'])
+    ids[-1] = 0 # first line contains a name, but not the last
+    acts = [data[idx].split('\n')[0] for idx in ids] 
+with open(inactives, "r") as f:
+    data = f.readlines()
+    ids = np.array([i+1 for i, j in zip(count(), data) if j == '$$$$\n'])
+    ids[-1] = 0
+    inacts = [data[idx].split('\n')[0] for idx in ids] 
+
+X = []; Y = []
+tot = 0
+for clust, sdf in tqdm(result): # for each cluster
+    ii = 0
+    toremove = []
+    with open(sdf, "r") as f:
+        data = f.readlines()
+        ids = np.array([i+1 for i, j in zip(count(), data) if j == '$$$$\n'])
+        ids[-1] = 0 # first line contains a name, but not the last
+        names = [data[idx].split('\n')[0] for idx in ids]
+    for i,x in tqdm(enumerate(clust)): # for each mol in the cluster 
+        if names[i] in acts:
+            Y.append(1)
+            X.append(x)
+            ii += 1; 
+        if names[i] in inacts:
+            Y.append(0)
+            X.append(x)
+            ii += 1; 
+        if names[i] not in acts and names[i] not in inacts: 
+            print('Unexpected name (usually cluster...)', names[i])
+            toremove.append(names[i])
+    for rm in toremove: names.remove(rm)
+    print(sdf, ii, len(names))
+
+import pdb; pdb.set_trace()
+num, x, y, z, l = list(np.array(X).shape)
+print(num, x, y, z, l)
+X_train = X
+y_train = keras.utils.to_categorical(Y, 2)
 print("Build model")
 model = Sequential()
 input_layer = Input((x, y, z, l))
@@ -315,7 +383,6 @@ flatten_layer = Flatten()(pooling_layer4)
 dense_layer2 = Dropout(0.4)(flatten_layer)
 output_layer = Dense(units=2, activation='softmax')(dense_layer2)
 
-
 ## define the model with input layer and output layer
 model = Model(inputs=input_layer, outputs=output_layer)
 
@@ -338,9 +405,4 @@ with open("model.yaml", "w") as yaml_file:
 # serialize weights to HDF5
 model.save_weights("model.h5")
 print("Saved model to disk")
-
-
-
-
-
 
