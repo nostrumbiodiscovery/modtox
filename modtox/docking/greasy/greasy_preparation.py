@@ -16,7 +16,7 @@ runjob_greasy_template = os.path.join(DIR, 'runjob_greasy_template.sh')
 
 class GreasyObj():
 
-    def __init__(self, folder, active, inactive, systems):
+    def __init__(self, folder, active, inactive, systems, debug=False):
  
         self.folder = folder
         self.active = [active]
@@ -25,7 +25,7 @@ class GreasyObj():
         self.greasy_template = greasy_template
         self.input_template = input_template
         self.runjob_greasy_template = runjob_greasy_template
-        self._format_checking()
+        self.debug = debug
 
     def _format_checking(self):
         extension_receptor = self.systems[0].split(".")[-1]
@@ -36,8 +36,27 @@ class GreasyObj():
         assert extension_inactive in ACCEPTED_FORMATS, "ligand must be a pdb, sdf or mae at the moment"
         assert extension_receptor in ['zip'], "receptor must be zip type"
 
+
+    def merge_glides(self, inp_files):
+
+      #"/opt/schrodinger2019-1/utilities/glide_merge ../docking/input5*.maegz > new.maegz"
+        assert len(inp_files) == 20
+        new_files = []
+        if not self.debug:
+            for i in range(0, len(inp_files), 2):
+                command_greasy = "/opt/schrodinger2019-1/utilities/glide_merge $old -o {}/$new".format(self.folder)
+                newname = "input_merged_{}.maegz".format(int(i/2))
+                oldname = "{} {}".format(inp_files[i], inp_files[i+1])
+                command_greasy = command_greasy.replace("$old", oldname)
+                command_greasy = command_greasy.replace("$new", newname)
+                new_files.append(os.path.join(self.folder, newname))
+                subprocess.call(command_greasy.split())
+        return new_files
+
+
     def preparation(self): 
 
+        self._format_checking()
         self.active_to_dock_mae = fm.convert_to_mae(self.active, folder=self.folder)
         self.inactive_to_dock_mae = fm.convert_to_mae(self.inactive, folder=self.folder)
 
