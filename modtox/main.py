@@ -1,3 +1,4 @@
+import time
 import sys
 import glob
 import os
@@ -27,7 +28,7 @@ DESCRIPTORS_FOLDER = "descriptors"
 METRICS_FOLDER = "metrics"
 
 
-def main(traj, resname, top, clf, tpot, cv, mol_to_read=None, RMSD=True, cluster=True, last=True, clust_type="BS", rmsd_type="BS", sieve=10, precision="SP", maxkeep=500, maxref=400, grid_mol=2, csv=False, substrate=None, best=False, glide_files="*pv.maegz", database_train='dude', database_test='pubchem', dude=None, pubchem=None, set_prepare=True, dock=True, build=True, predict=True, debug=False, greasy=True):
+def main(traj, resname, top, clf, tpot, cv, mol_to_read=None, RMSD=True, cluster=True, last=True, clust_type="BS", rmsd_type="BS", sieve=10, precision="SP", maxkeep=500, maxref=400, grid_mol=2, csv=False, substrate=None, best=False, glide_files="*pv.maegz", database_train='dude', database_test='pubchem', dude=None, pubchem=None, set_prepare=True, dock=True, build=True, predict=True, debug=False, greasy=True, sdf_active_train=None, sdf_inactive_train=None, sdf_active_test=None, sdf_inactive_test=None, csv_train=None, csv_test=None):
     
     if not os.path.exists(TRAIN_FOLDER): os.mkdir(TRAIN_FOLDER)
     if not os.path.exists(TEST_FOLDER): os.mkdir(TEST_FOLDER)
@@ -44,44 +45,38 @@ def main(traj, resname, top, clf, tpot, cv, mol_to_read=None, RMSD=True, cluster
     if dock:
 
         with hp.cd(TRAIN_FOLDER):
-  
-            sdf_active_train = "dataset/actives.sdf"
-            sdf_inactive_train = "dataset/inactives.sdf"
-  
+            assert sdf_active_train !=None and sdf_inactive_train != None, "Sdf's must be provided! (use --sdf_active_train ,...)"
             docking(sdf_active_train, sdf_inactive_train, precision, maxkeep, maxref, grid_mol,mol_to_read, debug=True, greasy=greasy)
+
         with hp.cd(TEST_FOLDER):
-
-    #        sdf_active_test = "dataset/actives.sdf"
-    #        sdf_inactive_test = "dataset/inactives.sdf"
-
-            docking(sdf_active_test, sdf_inactive_test, precision, maxkeep, maxref, grid_mol, mol_to_read, debug=True, greasy=greasy)
+            assert sdf_active_test !=None and sdf_inactive_test != None, "sdf's must be provided! (use --sdf_active_test, ...)"
+            docking(sdf_active_test, sdf_inactive_test, precision, maxkeep, maxref, grid_mol, mol_to_read, debug=False, greasy=greasy)
 
    ########################################################## GLIDE ANALYSIS  ###########################################
  
     if analysis:
-        sdf_active_train = "dataset/actives.sdf"
-        sdf_inactive_train = "dataset/inactives.sdf"
+
         with hp.cd(TRAIN_FOLDER):
+            assert sdf_active_train !=None and sdf_inactive_train != None, "Sdf's must be provided! (use --sdf_active_train ,...)"
             csv_train = glide_analysis(glide_files, best, csv, sdf_active_train, sdf_inactive_train, debug, greasy)
         with hp.cd(TEST_FOLDER):
+            assert sdf_active_test !=None and sdf_inactive_test != None, "Sdf's must be provided! (use --sdf_active_train ,...)"
             csv_test = glide_analysis(glide_files, best, csv, sdf_active_test, sdf_inactive_test, debug, greasy)
 
     
     ########################################################## BUILD MODEL  ###########################################
 
     if build:
-        sdf_active_train = "dataset/actives.sdf"
-        sdf_inactive_train = "dataset/inactives.sdf"
-        csv_train = "descriptors/glide_features.csv"
+        assert sdf_active_train !=None and sdf_inactive_train != None, "Sdf's must be provided! (use --sdf_active_train ,...)"
+        assert csv_train != None, "csv_train must be provided! (use --csv_train)"
         with hp.cd(TRAIN_FOLDER):
             model = build_model(sdf_active_train, sdf_inactive_train, csv_train, clf, tpot, cv, debug)
 
     ########################################################## PREDICT  ###########################################
 
     if predict:
-        sdf_active_test = "/home/moruiz/cyp/pubchem/predictions/cyp2c9/from_test/dataset/active_test.sdf"
-        sdf_inactive_test = "/home/moruiz/cyp/pubchem/predictions/cyp2c9/from_test/dataset/inactive_test.sdf"
-        csv_test = "/home/moruiz/cyp/pubchem/predictions/cyp2c9/from_test/descriptors/glide_features.csv"
+        assert sdf_active_train !=None and sdf_inactive_train != None, "Sdf's must be provided! (use --sdf_active_train ,...)"
+        assert csv_train != None, "csv_train must be provided! (use --csv_train)"
         with hp.cd(TEST_FOLDER):
             predict_model(model, sdf_active_test, sdf_inactive_test, csv_test, clf, tpot, cv, debug)
 
@@ -115,10 +110,18 @@ def docking(sdf_active, sdf_inactive, precision, maxkeep, maxref, grid_mol, mol_
         folder = os.path.abspath(ANALYSIS_FOLDER)
         sdf_active = os.path.abspath(sdf_active)
         sdf_inactive = os.path.abspath(sdf_inactive)
-        docking_obj = dk.Glide_Docker(glob.glob(os.path.join(folder, "*clust*.pdb")), [sdf_active, sdf_inactive], greasy=True, debug=debug)
-        with hp.cd(DOCKING_FOLDER):
+        systems = glob.glob(os.path.join(DOCKING_FOLDER, "*grid.zip")) 
+        import pdb; pdb.set_trace()
+        if not len(systems) == 10:
+            docking_obj = dk.Glide_Docker(glob.glob(os.path.join(folder, "*clust*.pdb")), [sdf_active, sdf_inactive], greasy=True, debug=debug)
+            with hp.cd(DOCKING_FOLDER):
                 docking_obj.dock(precision=precision, maxkeep=maxkeep, maxref=maxref, grid_mol=grid_mol)
-        greas = gre.GreasyObj(folder=DOCKING_FOLDER, active=sdf_active, inactive=sdf_inactive, systems=glob.glob(os.path.join(DOCKING_FOLDER, "*grid.zip")))
+        systems = glob.glob(os.path.join(DOCKING_FOLDER, "*grid.zip")) 
+        while not len(systems) == 10:
+            print(len(systems))
+            time.sleep(5)
+
+        greas = gre.GreasyObj(folder=DOCKING_FOLDER, active=sdf_active, inactive=sdf_inactive, systems= systems)
         greas.preparation()
         sys.exit('Waiting for greasy results')
     else:
@@ -147,7 +150,6 @@ def glide_analysis(glide_files, best, csv, sdf_active, sdf_inactive, debug, grea
 
 def build_model(sdf_active_train, sdf_inactive_train, csv_train, clf, tpot, cv, debug):
     
-
     #preprocess
     pre = Pre.ProcessorSDF(csv=csv_train, fp=False, descriptors=False, MACCS=False, columns=None)
     print("Fit and tranform for preprocessor..")
@@ -227,12 +229,19 @@ def parse_args():
     parser.add_argument('--substrate',  default="p450-cyp2c9", type=str, help='Substrate name (only for pubchem)')
     parser.add_argument('--dude',  default='/home/moruiz/cyp/dude/cp2c9', type=str, help='Path to dude files')
     parser.add_argument('--pubchem',  default='/home/moruiz/cyp/pubchem/AID_1851_datatable_all.csv', type=str, help='Pubchem file')
+    parser.add_argument('--sdf_active_train',  default=None, type=str, help='sdf file with actives for train')
+    parser.add_argument('--sdf_inactive_train',  default=None, type=str, help='sdf file with inactives for train')
+    parser.add_argument('--sdf_active_test',  default=None, type=str, help='sdf file with actives for test')
+    parser.add_argument('--sdf_inactive_test',  default=None, type=str, help='sdf file with inactives for test')
+    parser.add_argument('--csv_train',  default=None, type=str, help='glide csv file for train')
+    parser.add_argument('--csv_test',  default=None, type=str, help='glide csv file for test')
+
     args = parser.parse_args()
-    return args.set_prepare, args.dock, args.analysis, args.build, args.predict, args.greasy, args.top, args.traj, args.resname, args.clf, args.tpot, args.cv, args.mol_to_read, args.substrate, args.dude, args.pubchem
+    return args.set_prepare, args.dock, args.analysis, args.build, args.predict, args.greasy, args.top, args.traj, args.resname, args.clf, args.tpot, args.cv, args.mol_to_read, args.substrate, args.dude, args.pubchem, args.sdf_active_train, args.sdf_inactive_train,args.sdf_active_test, args.sdf_inactive_test, args.csv_train, args.csv_test
 
 
 if __name__ == "__main__":
 
-    set_prepare, dock, analysis, build, predict, greasy, top, traj, resname, clf, tpot, cv, mol_to_read, substrate, dude, pubchem = parse_args()
-    main(traj=traj, resname=resname, top=top, clf=clf, tpot=tpot, cv=cv, dude=dude, pubchem=pubchem, greasy=greasy, set_prepare=set_prepare, dock=dock, build=build, predict=predict, mol_to_read=mol_to_read, substrate=substrate)
+    set_prepare, dock, analysis, build, predict, greasy, top, traj, resname, clf, tpot, cv, mol_to_read, substrate, dude, pubchem, sdf_active_train, sdf_inactive_train, sdf_active_test, sdf_inactive_test, csv_train, csv_test = parse_args()
+    main(traj=traj, resname=resname, top=top, clf=clf, tpot=tpot, cv=cv, dude=dude, pubchem=pubchem, greasy=greasy, set_prepare=set_prepare, dock=dock, build=build, predict=predict, mol_to_read=mol_to_read, substrate=substrate, sdf_active_train=sdf_active_train, sdf_inactive_train=sdf_inactive_train, sdf_active_test=sdf_active_test, sdf_inactive_test=sdf_inactive_test, csv_train=csv_train, csv_test=csv_test)
 
