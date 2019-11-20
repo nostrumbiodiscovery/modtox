@@ -67,7 +67,7 @@ def get_tpot_classifiers(generations=1, population_size=10, cv=2, fast=False):
     return [pipeline_optimizer1, pipeline_optimizer2, pipeline_optimizer3, 
                     pipeline_optimizer4, pipeline_optimizer5, pipeline_optimizer6]
 
-def get_tpot_classifier(generations=10, population_size=10, cv=2, fast=False):
+def get_tpot_classifier(generations=20, population_size=10, cv=2, fast=False):
 
     if fast:
         tpot_conf = "TPOT light"

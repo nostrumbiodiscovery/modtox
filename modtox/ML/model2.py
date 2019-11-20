@@ -194,10 +194,11 @@ class GenericModel(object):
 
     def fit(self, X, y):
 
+        import pdb; pdb.set_trace()
         self.X = X
         self.Y = y
         f = open(os.path.join(self.folder, self.filename_model), 'wb')
-
+        
         #imputing and scaling
         self.X_trans = self.scaler.fit_transform(self.imputer.fit_transform(self.X))        
 
