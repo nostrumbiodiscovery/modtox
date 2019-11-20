@@ -27,7 +27,7 @@ DESCRIPTORS_FOLDER = "descriptors"
 METRICS_FOLDER = "metrics"
 
 
-def main(traj, resname, top, clf, tpot, cv, mol_to_read=None, RMSD=True, cluster=True, last=True, clust_type="BS", rmsd_type="BS", sieve=10, precision="SP", maxkeep=500, maxref=400, grid_mol=2, csv=False, substrate=None, best=False, glide_files="*maegz", database_train='dude', database_test='pubchem', dude=None, pubchem=None, set_prepare=True, dock=True, build=True, predict=True, debug=False, greasy=True):
+def main(traj, resname, top, clf, tpot, cv, mol_to_read=None, RMSD=True, cluster=True, last=True, clust_type="BS", rmsd_type="BS", sieve=10, precision="SP", maxkeep=500, maxref=400, grid_mol=2, csv=False, substrate=None, best=False, glide_files="*pv.maegz", database_train='dude', database_test='pubchem', dude=None, pubchem=None, set_prepare=True, dock=True, build=True, predict=True, debug=False, greasy=True):
     
     if not os.path.exists(TRAIN_FOLDER): os.mkdir(TRAIN_FOLDER)
     if not os.path.exists(TEST_FOLDER): os.mkdir(TEST_FOLDER)
@@ -62,20 +62,26 @@ def main(traj, resname, top, clf, tpot, cv, mol_to_read=None, RMSD=True, cluster
         sdf_active_train = "dataset/actives.sdf"
         sdf_inactive_train = "dataset/inactives.sdf"
         with hp.cd(TRAIN_FOLDER):
-            csv_train = glide_analysis(glide_files, best, csv, sdf_active_train, sdf_inactive_train, debug)
- #       with hp.cd(TEST_FOLDER):
- #           csv_test = glide_analysis(glide_files, best, csv, sdf_active_test, sdf_inactive_test, debug)
+            csv_train = glide_analysis(glide_files, best, csv, sdf_active_train, sdf_inactive_train, debug, greasy)
+        with hp.cd(TEST_FOLDER):
+            csv_test = glide_analysis(glide_files, best, csv, sdf_active_test, sdf_inactive_test, debug, greasy)
 
     
     ########################################################## BUILD MODEL  ###########################################
 
     if build:
+        sdf_active_train = "dataset/actives.sdf"
+        sdf_inactive_train = "dataset/inactives.sdf"
+        csv_train = "descriptors/glide_features.csv"
         with hp.cd(TRAIN_FOLDER):
             model = build_model(sdf_active_train, sdf_inactive_train, csv_train, clf, tpot, cv, debug)
 
     ########################################################## PREDICT  ###########################################
 
     if predict:
+        sdf_active_test = "/home/moruiz/cyp/pubchem/predictions/cyp2c9/from_test/dataset/active_test.sdf"
+        sdf_inactive_test = "/home/moruiz/cyp/pubchem/predictions/cyp2c9/from_test/dataset/inactive_test.sdf"
+        csv_test = "/home/moruiz/cyp/pubchem/predictions/cyp2c9/from_test/descriptors/glide_features.csv"
         with hp.cd(TEST_FOLDER):
             predict_model(model, sdf_active_test, sdf_inactive_test, csv_test, clf, tpot, cv, debug)
 
@@ -129,8 +135,6 @@ def docking(sdf_active, sdf_inactive, precision, maxkeep, maxref, grid_mol, mol_
 def glide_analysis(glide_files, best, csv, sdf_active, sdf_inactive, debug, greasy):
 
     print("Analyzing docking...")
-
-    print("Analyzing docking...")
     inp_files = glob.glob(os.path.join(DOCKING_FOLDER, glide_files))
     if greasy: 
         greas = gre.GreasyObj(folder=DOCKING_FOLDER, active=sdf_active, inactive=sdf_inactive, systems=[])
@@ -144,13 +148,12 @@ def glide_analysis(glide_files, best, csv, sdf_active, sdf_inactive, debug, grea
 def build_model(sdf_active_train, sdf_inactive_train, csv_train, clf, tpot, cv, debug):
     
 
-    import pdb; pdb.set_trace()
     #preprocess
     pre = Pre.ProcessorSDF(csv=csv_train, fp=False, descriptors=False, MACCS=False, columns=None)
     print("Fit and tranform for preprocessor..")
     X_train, y_train = pre.fit_transform(sdf_active=sdf_active_train, sdf_inactive=sdf_inactive_train, folder=DESCRIPTORS_FOLDER)
     print("Sanitazing...")
-    X_train, y_train, mol_names = pre.sanitize(X_train, y_train)
+    X_train, y_train, mol_names, cv = pre.sanitize(X_train, y_train, cv)
     print("Filtering features...")
     pre.filter_features(X_train)
     
@@ -181,7 +184,7 @@ def predict_model(Model, sdf_active_test, sdf_inactive_test, csv_test, clf, tpot
     print("Fit and tranform for preprocessor..")
     X_test, y_test = pre.fit_transform(sdf_active=sdf_active_test, sdf_inactive=sdf_inactive_test, folder=DESCRIPTORS_FOLDER)
     print("Sanitazing...")
-    X_test, y_test, mol_names = pre.sanitize(X_test, y_test)
+    X_test, y_test, mol_names, cv = pre.sanitize(X_test, y_test, cv)
     print("Filtering features...")
     pre.filter_features(X_test)
     

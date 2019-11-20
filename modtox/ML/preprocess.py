@@ -141,7 +141,7 @@ class ProcessorSDF():
     def fit_transform(self, sdf_active, sdf_inactive, folder='.'):
         return self.fit(sdf_active, sdf_inactive).transform(folder)
         
-    def sanitize(self, X, y, cv=5, feature_to_check='external_descriptors', folder='.'):
+    def sanitize(self, X, y, cv, feature_to_check='external_descriptors', folder='.'):
   
         # function to remove non-docked instances and prepare datasets to model
         assert feature_to_check, "Need to provide external data path"
@@ -180,7 +180,7 @@ class ProcessorSDF():
         if cv > n_inactive_corrected  or cv > n_active_corrected:
              cv = min([n_active_corrected, n_inactive_corrected])
         
-        return self.X, self.y, self.mol_names 
+        return self.X, self.y, self.mol_names, cv 
 
     def filter_features(self, X):
          
