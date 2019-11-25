@@ -166,8 +166,9 @@ class ProcessorSDF():
             molecules_to_remove =  [mol for i, mol in enumerate(self.mol_names) if np.isnan(X[i,indices_to_check]).all()]
 
         #we have to remove the first value of the headers_ext descriptors since is the index of the molecule (1,2,3,4,5...)
-        to_remove_index = len(self.headers_de) + len(self.headers_maccs) + len(self.headers_fp) 
-        X = np.delete(X, to_remove_index, axis=1)
+        if feature_to_check == 'external_descriptors':
+            to_remove_index = len(self.headers_de) + len(self.headers_maccs) + len(self.headers_fp) 
+            X = np.delete(X, to_remove_index, axis=1)
         mols_to_maintain = [mol for mol in self.mol_names if mol not in molecules_to_remove]
         indxs_to_maintain = [np.where(np.array(self.mol_names) == mol)[0][0] for mol in mols_to_maintain]
         labels = np.array(y)[indxs_to_maintain]

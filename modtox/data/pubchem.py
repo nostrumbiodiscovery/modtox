@@ -136,6 +136,7 @@ class PubChem():
         return 
 
     def reading_from_pubchem(self):
+
         data = pd.read_csv(self.csv_filename)
         cols = data.columns.values
         active_cols = [col for col in cols if 'Activity Outcome' in col]
@@ -148,8 +149,12 @@ class PubChem():
             useful_col = active_cols[activity_labels.index(label)]
             if self.n_molecules_to_read: end = self.n_molecules_to_read + 7
             else: end = len(data)
-            useful_activities = data.ix[8:end, useful_col] # we add 8 to avoid the initial uninformative lines
             useful_names = data.ix[8:end, 'PUBCHEM_CID']
+            nonnamed = [i + 8 for i,name in enumerate(useful_names) if np.isnan(name)]
+            idxs = list(range(8, end))
+            idxs = [ids for ids in idxs if ids not in nonnamed]
+            useful_names = data.ix[idxs, 'PUBCHEM_CID']
+            useful_activities = data.ix[idxs, useful_col] # we add 8 to avoid the initial uninformative lines
         activities = {int(name):activity for name, activity in zip(useful_names, useful_activities)}
         return activities
 

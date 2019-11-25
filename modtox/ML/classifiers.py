@@ -20,32 +20,32 @@ scale_pos_weight=1,
 seed=27)
 
 
-SVM = svm.SVC(C=1, gamma=1, kernel="rbf", probability=True)
+SVM = svm.SVC(C=1, gamma=0.1, kernel="rbf", probability=True)
 
-KN = KNeighborsClassifier(3)
+KN = KNeighborsClassifier(7)
 
 TREE = DecisionTreeClassifier(max_depth=5)
 
 NB = GaussianNB()
 
-def retrieve_classifier(classifier, tpot=False, cv=5, fast=False):
+def retrieve_classifier(classifier, tpot=False, cv=5, fast=False, generations=None, population_size=None):
     if classifier == "xgboost":
         clf = XGBOOST
     elif classifier == "single":
         if tpot:
-            clf = get_tpot_classifier(cv=cv, fast=fast)
+            clf = get_tpot_classifier(cv=cv, fast=fast, generations=generations, population_size=population_size)
         else:
-            clf = SVM
+            clf = KN
     elif classifier == "stack":
         if tpot:
-            clf = get_tpot_classifiers(cv=cv, fast=fast)
+            clf = get_tpot_classifiers(cv=cv, fast=fast, generations=generations, population_size=population_size)
         else:
-            clf = [SVM, XGBOOST, KN, TREE, NB, NB]
+            clf = [SVM, XGBOOST, KN, TREE, NB, SVM]
     else:
         clf = classifier
     return clf
 
-def get_tpot_classifiers(generations=1, population_size=10, cv=2, fast=False):
+def get_tpot_classifiers(generations=3, population_size=10, cv=10, fast=False):
 
     if fast:
         tpot_conf = "TPOT light"

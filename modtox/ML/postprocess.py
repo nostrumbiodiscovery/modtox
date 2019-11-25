@@ -23,10 +23,14 @@ from matplotlib.offsetbox import AnchoredText
 
 class PostProcessor():
 
-    def __init__(self, clf, x_test, y_true_test, y_pred_test, y_proba_test, y_pred_test_clfs=None, x_train=None, y_true_train=None, folder='.'):
+    def __init__(self, clf, x_test, y_true_test, y_pred_test, y_proba_test, y_pred_test_clfs=None, x_train=None, y_true_train=None, y_pred_train=None, y_proba_train=None, y_pred_train_clfs=None, folder='.'):
         
         self.x_train = x_train
         self.y_true_train = y_true_train
+        self.y_pred_train = y_pred_train
+        self.y_proba_train = y_proba_train
+        self.y_proba_train_clfs = y_pred_train_clfs
+
 
         self.x_test = x_test
         self.y_true_test = y_true_test
@@ -141,8 +145,13 @@ class PostProcessor():
 
         return features_name
 
+    def std(self, preds):
 
-    def domain_analysis(self, output_densities="thresholds_vs_density.png", output_thresholds="threshold_analysis.txt", output_distplots="displot", debug=False, names=None):
+        std = np.std(preds)
+        return 1 - std
+ 
+
+    def domain_analysis(self, output_densities="thresholds_vs_density.png", output_thresholds="threshold_analysis.txt", output_distplots="displot", debug=False, names=None, stack=False, regulardomain=True):
         assert self.x_train.any() and self.y_true_train.any(), "Needed train and test datasets. Specify with x_train=X, ytrain=Y"
 
         names= ["sample_{}".format(i) for i in range(self.x_test.shape[0])] if not names else names
@@ -165,7 +174,7 @@ class PostProcessor():
             d_allowed = [d for d in i if d <= d_ref]
             all_allowed.append(d_allowed)
             n_allowed.append(len(d_allowed))
-
+     
         #selecting minimum value not 0:
         min_val = [np.sort(n_allowed)[i] for i in range(len(n_allowed)) if np.sort(n_allowed)[i] != 0]
         #replacing 0's with the min val
@@ -173,6 +182,18 @@ class PostProcessor():
         all_d = [sum(all_allowed[i]) for i, d in enumerate(d_no_ii)]
         thresholds = np.divide(all_d, n_allowed) #threshold computation
         thresholds[np.isinf(thresholds)] = min(thresholds) #setting to the minimum value where infinity
+        print('Thresholds computed')
+
+        if not stack or regulardomain: weights = 1
+        #weight domain by std and bias
+        if stack and not regulardomain:
+            assert self.y_proba_train.any() and self.y_proba_train_clfs.any()
+            mean_clfs = []
+            invstds = [self.std(preds) for preds in self.y_proba_train_clfs[:,:,1].T]
+            biases = [proba[1] if true == 1 else 1 - proba[1] for proba, true in zip(self.y_proba_train, self.y_true_train)]
+            weights = np.multiply(invstds, biases)
+        
+        thresholds = thresholds*weights
 
         count_active = []; count_inactive = []
        
@@ -180,14 +201,15 @@ class PostProcessor():
    
         d_train_test = np.array([distance.cdist([x], self.x_train) for x in self.x_test])
    
-        for i in d_train_test: # for each sample
+        for i, name in zip(d_train_test, names): # for each sample
             idxs = [j for j,d in enumerate(i[0]) if d <= thresholds[j]] #saving indexes of training with threshold > distance
             count_active.append(len([self.y_true_train.tolist()[i] for i in idxs if self.y_true_train[i] == 1]))
             count_inactive.append(len([self.y_true_train.tolist()[i] for i in idxs if self.y_true_train[i] == 0]))
 
         n_insiders = np.array(count_active) + np.array(count_inactive)
         mean_insiders = np.mean(n_insiders)
-        
+        #we include uncertainties in the txt file
+        uncert = self.calculate_uncertanties() 
         df = pd.DataFrame()
         df['Names'] = names
         df['Thresholds'] = n_insiders
@@ -196,6 +218,7 @@ class PostProcessor():
         df['True labels'] = self.y_true_test
         df['Prediction'] = self.y_pred_test
         df['Prediction probability'] = np.array([pred_1[1] for pred_1 in self.y_proba_test])
+        df['Uncertainties'] = np.array(uncert)
         df = df.sort_values(by=['Thresholds'], ascending = False) 
 
         with open(os.path.join(self.folder, output_thresholds), "w") as f:
@@ -217,7 +240,7 @@ class PostProcessor():
             for j in tqdm(range(len(names))):
                 #plotting 
                 fig, ax1 = plt.subplots()
-                sns.distplot(distances[j], label = 'Distances to train molecules', ax=ax1)
+                sns.distplot(d_train_test[j], label = 'Distances to train molecules', ax=ax1)
                 sns.distplot(thresholds, label = 'Thresholds of train molecules', ax=ax1)
                 ax1.set_xlabel('Euclidean distances')
                 ax1.set_ylabel('Normalized counts')
@@ -350,10 +373,10 @@ class PostProcessor():
         else: print("uncertainties can't be computed in single model")
 
 
-    def UMAP_plot(self, title="UMAP projection", fontsize=24, output_umap="UMAP_proj", single=False, wrong=False, wrongall=False, traintest=False, wrongsingle=False):
+    def UMAP_plot(self, title="UMAP projection", fontsize=24, output_umap="UMAP_proj", single=False, wrong=False, wrongall=False, traintest=False, wrongsingle=False, names=[]):
 
+       names = np.array(names)
        reducer = umap.UMAP(n_neighbors=5, min_dist=0.2, n_components = 5)
-
        #getting the embedding
        if wrong or wrongall or traintest:  
            X = np.concatenate((self.x_train, self.x_test))
@@ -365,13 +388,12 @@ class PostProcessor():
        if traintest:
            # train and test separation
            embedding = embedding1
+
            colors = plt.get_cmap('Spectral')(np.linspace(0, 1, 2))
            fig, ax = plt.subplots()
-           Y1 = list(map(lambda x: 0, self.y_true_train)) #setting 0 the train
-           Y2 = list(map(lambda x: 1, self.y_true_test)) # setting 1 the test
+           Y1 = [0 for x in self.y_true_train] #setting 0 to train
+           Y2 = [1 for x in self.y_true_test] #setting 1 to test
            Y = np.concatenate((Y1,Y2))
-           Y, idx = self._UMAP_sorting(X,Y)
-           embedding = embedding[idx]
            for i in range(embedding.shape[0]):
                pos = embedding[i, :2]
                self.ellipse_plot(pos, embedding[i, 2],embedding[i, 3], embedding[i, 4], ax, dmin=0.2, dmax=1.0, alpha=0.01, color = colors[np.array(Y)[i]])
@@ -387,35 +409,31 @@ class PostProcessor():
            embedding = embedding2
            colors = plt.get_cmap('Spectral')(np.linspace(0, 1, 2))
            fig, ax = plt.subplots()
-           Y = list(map(lambda x: int(x), self.y_true_test)) # trues --> 1, falses ---> 0
-           Y, idx = self._UMAP_sorting(X,Y)
-           embedding = embedding[idx]
+           Y = [int(x) for x in self.y_true_test] # trues --> 1, falses ---> 0
+           idx = self._UMAP_indexing(Y)
+           non_idx = [ids for ids in list(range(len(Y))) if ids not in idx]
            for i in range(embedding.shape[0]):
                pos = embedding[i, :2]
                self.ellipse_plot(pos, embedding[i, 2],embedding[i, 3], embedding[i, 4], ax, dmin=0.2, dmax=1.0, alpha=0.01, color = colors[np.array(Y)[i]])
-           end = np.where(np.array(Y) == 0)[0][0]
-           ax.scatter(embedding[:end, 0], embedding[:end, 1], c = 'g', cmap = 'Spectral', label='Active')
-           ax.scatter(embedding[end:, 0], embedding[end:, 1], c = 'r', cmap = 'Spectral', label='Inactive')
+           ax.scatter(embedding[idx, 0], embedding[idx, 1], c = 'g', cmap = 'Spectral', label='Active')
+           ax.scatter(embedding[non_idx, 0], embedding[non_idx, 1], c = 'r', cmap = 'Spectral', label='Inactive')
            fig.gca().set_aspect('equal', 'datalim')
            plt.legend()
            ax.set_title(title)
            fig.savefig(os.path.join(self.folder, '{}_single.png'.format(output_umap)))
        if wrongsingle: 
-           # train and test reparation
            embedding = embedding2
            colors = plt.get_cmap('Spectral')(np.linspace(0, 1, 2))
            fig, ax = plt.subplots()
-           Y = list(map(lambda x: int(x), self.y_true_test)) # trues --> 1, falses ---> 0
-           Yp = list(map(lambda x: int(x), self.y_pred_test)) # trues --> 1, falses ---> 0
-           Y, idx = self._UMAP_sorting(X,Y)
-           embedding = embedding[idx]
-           Yp = np.array(Yp)[idx]
+           Y = [int(x) for x in self.y_true_test] # trues --> 1, falses ---> 0
+           Yp = [int(x) for x in self.y_pred_test] # trues --> 1, falses ---> 0
+           idx = self._UMAP_indexing(Y)
+           non_idx = [ids for ids in list(range(len(Y))) if ids not in idx]
            for i in range(embedding.shape[0]):
                pos = embedding[i, :2]
                self.ellipse_plot(pos, embedding[i, 2],embedding[i, 3], embedding[i, 4], ax, dmin=0.2, dmax=1.0, alpha=0.01, color = colors[np.array(Y)[i]])
-           end = np.where(np.array(Y) == 0)[0][0]
-           ax.scatter(embedding[:end, 0], embedding[:end, 1], c = 'g', cmap = 'Spectral', label='Active')
-           ax.scatter(embedding[end:, 0], embedding[end:, 1], c = 'r', cmap = 'Spectral', label='Inactive')
+           ax.scatter(embedding[idx, 0], embedding[idx, 1], c = 'g', cmap = 'Spectral', label='Active')
+           ax.scatter(embedding[non_idx, 0], embedding[non_idx, 1], c = 'r', cmap = 'Spectral', label='Inactive')
            mm = [ x == y for x,y in zip(Yp, Y)]
            indxs = np.array([ j for j, i in enumerate(mm) if i==False])
            indxs0 = [i for i in indxs if Yp[i] == 0]
@@ -429,37 +447,31 @@ class PostProcessor():
            ax.set_title(title)
            fig.savefig(os.path.join(self.folder, '{}_wrong_original.png'.format(output_umap)))
        if wrong:
-           # train and test reparation
            embedding = embedding1
            colors = plt.get_cmap('Spectral')(np.linspace(0, 1, 4))
            fig, ax = plt.subplots()
-           Y1 = list(map(lambda x: int(x) + 2, self.y_true_train))
-           Y2 = list(map(lambda x: int(x), self.y_true_test))
+           Y1 = [int(x)+2 for x in self.y_true_train] 
+           Y2 = [int(x) for x in self.y_true_test] 
            Y = np.concatenate((Y1,Y2))
-           Y, idx = self._UMAP_sorting(X,Y)
-           embedding = embedding[idx]
+           Yp =[int(x) for x in self.y_pred_test]
 
-           # we need to reorder the test to choose the correct molecules
-
-           Yp2 = list(map(lambda x: int(x), self.y_pred_test))
-           Yp = np.concatenate((Y1,Yp2))
-           Yp = Yp[idx]
+           idx = self._UMAP_indexing(Y1)
+           non_idx = [ids for ids in list(range(len(Y1))) if ids not in idx]
 
            for i in range(embedding.shape[0]):
                pos = embedding[i, :2]
                self.ellipse_plot(pos, embedding[i, 2],embedding[i, 3], embedding[i, 4], ax, dmin=0.2, dmax=1.0, alpha=0.01, color = colors[np.array(Y)[i]])
-           end = np.where(np.array(Y) == 2)[0][0]
-           end1 = np.where(np.array(Y) == 1)[0][0]
-           ax.scatter(embedding[:end, 0], embedding[:end, 1], c = 'b', cmap = 'Spectral', label= 'train active')
-           ax.scatter(embedding[end:end1, 0], embedding[end:end1, 1], c = 'r', cmap = 'Spectral', label= 'train inactive')
-           mm = [ x == y for x,y in zip(Yp, Y)]
+           ax.scatter(embedding[idx, 0], embedding[idx, 1], c = 'b', cmap = 'Spectral', label= 'train active')
+           ax.scatter(embedding[non_idx, 0], embedding[non_idx, 1], c = 'r', cmap = 'Spectral', label= 'train inactive')
+
+           mm = [ x == y for x,y in zip(Yp, Y2)]
            indxs = np.array([ j for j, i in enumerate(mm) if i==False])
-           indxs0 = [i for i in indxs if Yp[i] == 0]
-           indxs1 = [i for i in indxs if Yp[i] == 1]
+           indxs0 = [i + len(Y1) for i in indxs if Y2[i] == 0]
+           indxs1 = [i + len(Y1) for i in indxs if Y2[i] == 1]
            if len(indxs0) >= 1:
-               ax.scatter(embedding[indxs0, 0], embedding[indxs0, 1], c = 'y', cmap = 'Spectral', label= 'wrong as 0')
+               ax.scatter(embedding[indxs0, 0], embedding[indxs0, 1], c = 'y', cmap = 'Spectral', label= 'inactive pred as active')
            if len(indxs1) >= 1:
-               ax.scatter(embedding[indxs1, 0], embedding[indxs1, 1], c = 'y', marker='^', cmap = 'Spectral', label= 'wrong as 1')
+               ax.scatter(embedding[indxs1, 0], embedding[indxs1, 1], c = 'y', marker='^', cmap = 'Spectral', label= 'active pred as inactive')
            fig.gca().set_aspect('equal', 'datalim')
            plt.legend()
            ax.set_title(title)
@@ -470,35 +482,35 @@ class PostProcessor():
            embedding = embedding1
            colors = plt.get_cmap('Spectral')(np.linspace(0, 1, 4))
            fig, ax = plt.subplots()
-           Y1 = list(map(lambda x: int(x) + 2, self.y_true_train))
-           Y2 = list(map(lambda x: int(x), self.y_true_test))
+           Y1 = [int(x)+2 for x in self.y_true_train] 
+           Y2 = [int(x) for x in self.y_true_test] 
            Y = np.concatenate((Y1,Y2))
-           Y, idx = self._UMAP_sorting(X,Y)
+           Yp =[int(x) for x in self.y_pred_test]
 
-           # we need to reorder the test to choose the correct molecules
+           idx1 = self._UMAP_indexing(Y1)
+           non_idx1 = [ids for ids in list(range(len(Y1))) if ids not in idx1]
 
-           Yp2 = list(map(lambda x: int(x), self.y_pred_test))
-           Yp = np.concatenate((Y1,Yp2))
-           Yp = Yp[idx]
-           embedding = embedding[idx]
+           idx2 = self._UMAP_indexing(Y2)
+           non_idx2 = [ids for ids in list(range(len(Y2))) if ids not in idx2]
+           idx2 = [ii + len(Y1) for ii in idx2]
+           non_idx2 = [ii + len(Y1) for ii in non_idx2]
+
            for i in range(embedding.shape[0]):
                pos = embedding[i, :2]
                self.ellipse_plot(pos, embedding[i, 2],embedding[i, 3], embedding[i, 4], ax, dmin=0.2, dmax=1.0, alpha=0.01, color = colors[np.array(Y)[i]])
-           end = np.where(np.array(Y) == 2)[0][0]
-           end1 = np.where(np.array(Y) == 1)[0][0]
-           end2 = np.where(np.array(Y) == 0)[0][0]
-           ax.scatter(embedding[:end, 0], embedding[:end, 1], c = 'b', cmap = 'Spectral', label= 'train active')
-           ax.scatter(embedding[end:end1, 0], embedding[end:end1, 1], c = 'r', cmap = 'Spectral', label= 'train inactive')
-           ax.scatter(embedding[end1:end2, 0], embedding[end1:end2, 1], c = 'g', cmap = 'Spectral', label= 'test active')
-           ax.scatter(embedding[end2:, 0], embedding[end2:, 1], c = 'm', cmap = 'Spectral', label= 'test inactive')
-           mm = [ x == y for x,y in zip(Yp, Y)]
+           ax.scatter(embedding[idx1, 0], embedding[idx1, 1], c = 'b', cmap = 'Spectral', label= 'train active')
+           ax.scatter(embedding[non_idx1, 0], embedding[non_idx1, 1], c = 'r', cmap = 'Spectral', label= 'train inactive')
+           ax.scatter(embedding[idx2, 0], embedding[idx2, 1], c = 'g', cmap = 'Spectral', label= 'test active')
+           ax.scatter(embedding[non_idx2, 0], embedding[non_idx2, 1], c = 'm', cmap = 'Spectral', label= 'test inactive')
+
+           mm = [ x == y for x,y in zip(Yp, Y2)]
            indxs = np.array([ j for j, i in enumerate(mm) if i==False])
-           indxs0 = [i for i in indxs if Yp[i] == 0]
-           indxs1 = [i for i in indxs if Yp[i] == 1]
+           indxs0 = [i + len(Y1) for i in indxs if Y2[i] == 0]
+           indxs1 = [i +len(Y1) for i in indxs if Y2[i] == 1]
            if len(indxs0) >= 1:
-               ax.scatter(embedding[indxs0, 0], embedding[indxs0, 1], c = 'y', cmap = 'Spectral', label= 'wrong as 0')
+               ax.scatter(embedding[indxs0, 0], embedding[indxs0, 1], c = 'y', cmap = 'Spectral', label= 'inactive pred as active')
            if len(indxs1) >= 1:
-               ax.scatter(embedding[indxs1, 0], embedding[indxs1, 1], c = 'y', marker='^', cmap = 'Spectral', label= 'wrong as 1')
+               ax.scatter(embedding[indxs1, 0], embedding[indxs1, 1], c = 'y', marker = '^', cmap = 'Spectral', label= 'active pred as inactive')
            fig.gca().set_aspect('equal', 'datalim')
            plt.legend()
            ax.set_title(title)
@@ -506,10 +518,19 @@ class PostProcessor():
  
     def _UMAP_sorting(self, X, Y):    
         # here we sort the values
-        idx = list(range(len(Y)))
-        Y, idx = (list(t) for t in zip(*sorted(zip(Y, idx), reverse=True)))
+        idx = np.argsort(Y)
+        Y = np.array(Y)[idx]
+        Y = np.flip(Y)
+        idx = np.flip(idx)
+      
+        #Y, idx = (list(t) for t in zip(*sorted(zip(Y, idx), reverse=True)))
         return Y, idx
-         
-        
+    
+    def _UMAP_indexing(self, Y):
+        #we choose indexes of actives
+        maxnum = int(max(Y))
+        return [x for x,y in enumerate(Y) if int(y) == maxnum]
+    
+
     def tree_image(): pass
 
