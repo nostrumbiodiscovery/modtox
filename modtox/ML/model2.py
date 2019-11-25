@@ -98,7 +98,7 @@ class ImputerForSample(object):
 
 class GenericModel(object):
 
-    def __init__(self, clf, filename_model='opt_model.pkl', folder='.',  tpot=False, cv=5, debug=False):
+    def __init__(self, clf, filename_model='opt_model.pkl', folder='.',  tpot=False, cv=5, generations=None, population_size=None, majvoting=False, debug=False):
         self.X = None
         self.Y = None
         self.fitted = False
@@ -106,7 +106,8 @@ class GenericModel(object):
         self.filename_model = filename_model
         self.tpot = tpot
         self.cv = cv
-        self.clf = cl.retrieve_classifier(clf, self.tpot, cv=self.cv, fast=True)
+        self.majvoting = majvoting
+        self.clf = cl.retrieve_classifier(clf, self.tpot, cv=self.cv, generations=generations, population_size=population_size, fast=True)
         self.stack = self._is_stack_model()   
 
         self.scaler = StandardScaler()
@@ -169,16 +170,27 @@ class GenericModel(object):
 
 
     def _pipeline_fit(self, X, Y, f):
-        self.indiv_fit, proba =  self._extract_pred_proba(X, Y, f=f, models=self.clf[:-1 ])
-        X_stack = self._stack(X, self.indiv_fit, proba)
-        self.prediction_fit, self.prediction_proba_fit = self._last_fit(X_stack, Y, f)
+        self.indiv_fit, self.proba_fit =  self._extract_pred_proba(X, Y, f=f, models=self.clf[:-1])
+        if self.majvoting: #majority voting
+            commons = [np.bincount(x) for x in self.indiv_fit.T]
+            self.prediction_fit = np.array([np.argmax(i) for i in commons])
+            self.prediction_proba_fit = np.array([[max(i)/sum(i),min(i)/sum(i)] for i in commons]) #now proba is just disagreement between clfs
+        else:
+            X_stack = self._stack(X, self.indiv_fit, self.proba_fit)
+            self.prediction_fit, self.prediction_proba_fit = self._last_fit(X_stack, Y, f)
         self.clf_results = self._stack_final_results(self.indiv_fit, self.prediction_fit, Y)
 
     def _pipeline_predict(self, X, Y):
   
-        self.indiv_pred, proba = self._extract_pred_proba(X, Y, models=self.loaded_models[:-1])
-        X_pred_stack = self._stack(X, self.indiv_pred, proba)
-        self.prediction_test, self.predictions_proba_test = self._last_predict(X_pred_stack)
+        if self.majvoting: #majority voting
+            self.indiv_pred, self.proba_predict = self._extract_pred_proba(X, Y, models=self.loaded_models)
+            commons = [np.bincount(x) for x in self.indiv_pred.T] 
+            self.prediction_test = np.array([np.argmax(i) for i in commons])
+            self.predictions_proba_test = np.array([[max(i)/sum(i),min(i)/sum(i)] for i in commons]) #now proba is just disagreement between clfs
+        else:
+            self.indiv_pred, self.proba_predict = self._extract_pred_proba(X, Y, models=self.loaded_models[:-1])
+            X_pred_stack = self._stack(X, self.indiv_pred, self.proba_predict)
+            self.prediction_test, self.predictions_proba_test = self._last_predict(X_pred_stack)
         self.clf_results =  self._stack_final_results(self.indiv_pred, self.prediction_test, Y)
 
     def load_models(self):
@@ -193,8 +205,6 @@ class GenericModel(object):
         return data
 
     def fit(self, X, y):
-
-        import pdb; pdb.set_trace()
         self.X = X
         self.Y = y
         f = open(os.path.join(self.folder, self.filename_model), 'wb')
@@ -216,7 +226,6 @@ class GenericModel(object):
 
     def predict(self, X_test, Y_test, scaler=None, imputer=None, train_folder="."):
         assert self.fitted, "Please fit the model first"
-        
         self.X_test = X_test
         self.Y_test = Y_test
         self.train_folder = train_folder

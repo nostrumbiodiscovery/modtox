@@ -47,8 +47,8 @@ def greasy(active, inactive, systems, folder):
 def retrieve_preprocessor(csv=None, fp=False, descriptors=False, MACCS=True, columns=None):
     return Pre.ProcessorSDF(csv=csv, fp=fp, descriptors=descriptors, MACCS=MACCS, columns=columns, debug=True)
 
-def retrieve_model(clf, folder, tpot=None):
-    return model.GenericModel(clf=clf, tpot=tpot, folder=folder)
+def retrieve_model(clf, folder, tpot=None, cv=5, generations=None, population_size=None):
+    return model.GenericModel(clf=clf, tpot=tpot, cv=cv, generations=generations, population_size=population_size, folder=folder)
 
 def retrieve_database_pubchem(pubchem, substrate, nmols, tmp):
     return pchm.PubChem(pubchem=pubchem, train=True, test=False, folder_output=tmp, substrate=substrate, n_molecules_to_read=nmols, debug=True)
