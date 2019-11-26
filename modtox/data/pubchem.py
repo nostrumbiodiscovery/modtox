@@ -1,14 +1,17 @@
 import os
+import time
 import pandas as pd
+import itertools
 import numpy as np
 import csv
 import uuid
 import pubchempy as pcp
 import argparse
 import pickle
-from tqdm import tqdm
 import rdkit
+from tqdm import tqdm
 from rdkit import Chem
+from multiprocessing import Pool
 from rdkit.Chem import AllChem
 import modtox.Helpers.preprocess as pr
 import modtox.Helpers.formats as ft
@@ -29,8 +32,19 @@ class PubChem():
         self.n_molecules_to_read = n_molecules_to_read
         self.splitting()
 
+    def converting_to_inchi(self, name):
+        rename = pcp.Compound.from_cid(int(name)).inchi
+        time.sleep(0.6)
+        return rename
+
     def to_inchi(self, which_names):
-           return [pcp.Compound.from_cid(int(i)).inchi for i in tqdm(which_names)]
+        cpus = 5
+        pool = Pool(cpus)
+        result = list(pool.imap(self.converting_to_inchi , tqdm(which_names)))
+        pool.close()
+        pool.join()
+        
+        return result
 
     def splitting(self):
        print('Reading from {}'.format(self.csv_filename))
@@ -39,43 +53,97 @@ class PubChem():
        self.inactive_names = [mol for mol, activity in data.items() if activity == 'Inactive']
        print('Discard of inconclusive essays done. Initial set: {} , Final set: {}'.format(len(data.items()), len(self.active_names) + len(self.inactive_names)))
 
-    def to_sdf(self, actype):
+    def to_sdf(self, actype, readfromfile=True):
 
         molecules = []
         molecules_rdkit = []
         if self.train: where = "train"
         if self.test: where = "test"
-        outputname = actype + '_' + where +'.sdf'
+        outputname = actype + '_' + where + '.sdf'
         if not os.path.exists(self.folder_output): os.mkdir(self.folder_output)
-        output = os.path.join(self.folder_output, outputname)
-        w = Chem.SDWriter(output)
+        self.output = os.path.join(self.folder_output, outputname)
+        if os.path.exists(self.output): os.remove(self.output)
+#        w = Chem.SDWriter(output)
         print('Filter and inchikey identification in process ... for {}'.format(actype))
         if actype == 'active':
-            iks, names = self.filtering(self.active_names)
-            self.active_inchi = iks
-            self.active_names = names
-        
+            if not readfromfile:
+                iks, names = self.filtering(self.active_names)
+                self.active_inchi = iks
+                self.active_names = names
+                with open(os.path.join(self.folder_output, 'actives_info.csv'), 'w') as pp:
+                    writer = csv.writer(pp)
+                    writer.writerows(zip(iks, names))
+            else:
+                with open(os.path.join(self.folder_output, 'actives_info.csv'), 'r') as pp:
+                    reader = csv.reader(pp)
+                    names = []; iks = []
+                    for row in reader:
+                        iks.append(row[0])
+                        names.append(row[1])
+                self.active_inchi = iks
+                self.active_names = names
+
         if actype == 'inactive':
-            iks, names = self.filtering(self.inactive_names)
-            self.inactive_inchi = iks
-            self.inactive_names = names
+            if not readfromfile:
+                iks, names = self.filtering(self.inactive_names)
+                self.inactive_inchi = iks
+                self.inactive_names = names
+                with open(os.path.join(self.folder_output, 'inactives_info.csv'), 'w') as pp:
+                    writer = csv.writer(pp)
+                    writer.writerows(zip(iks, names))
+            else:
+                with open(os.path.join(self.folder_output, 'inactives_info.csv'), 'r') as pp:
+                    reader = csv.reader(pp)
+                    names = []; iks = []
+                    for row in reader:
+                        iks.append(row[0])
+                        names.append(row[1])
+                self.inactive_inchi = iks
+                self.inactive_names = names
+
             #removing from training repeated instances
             if not self.production: self.cleaning()
         print('Assigning stereochemistry...')
-        for inchy, name in tqdm(zip(iks, names)):
-            try:
-                m = Chem.inchi.MolFromInchi(str(inchy))
-                Chem.AssignStereochemistry(m)
-                AllChem.EmbedMolecule(m)
-                m.SetProp("_Name", str(name))
-                m.SetProp("_MolFileChiralFlag", "1")
-                molecules_rdkit.append(m)
-            except IndexError:
-                print("Molecules {} not found".format(name))
-        for m in molecules_rdkit:             
-            w.write(m)
-        return output, len(names)
-
+        cpus = 5
+        pool = Pool(cpus)
+        molecules_rdkit = list(tqdm(pool.imap(self.stereochem, itertools.zip_longest(iks, names)), total= len(names)))
+        pool.close()
+        pool.join()
+        #removing molecules without stereochemical assignation
+       # for mol in molecules_rdkit:
+       #     w.write(mol)
+        return self.output, len(names)
+   
+    def stereochem(self, inchy_name):
+        wrongs = []
+        m= None
+        try:
+            m = Chem.inchi.MolFromInchi(str(inchy_name[0]))
+        except IndexError:
+            print("Molecules {} not found".format(inchy_name[1]))
+        try:
+            Chem.AssignStereochemistry(m)
+            AllChem.EmbedMolecule(m)
+            name = str(inchy_name[1])
+            m.SetProp("_Name", name)
+            m.SetProp("_MolFileChiralFlag", "1")
+            time.sleep(0.6)
+        except: #to avoid ERROR: Sanitization error: Explicit valence for atom # 19 S, 8, is greater than permitted 
+            pass
+        if m == None:        
+            if actype == "active":
+                index = self.active_names.index(inchy_name[1])
+                self.active_names = [name for i, inchi in enumerate(self.active_names) if i != index]
+                self.active_inchi = [inchi for i, inchi in enumerate(self.active_inchi) if i != index]
+            if actype == "inactive":
+                index = self.inactive_names.index(inchy_name[1])
+                self.inactive_inchi = [inchi for i, inchi in enumerate(self.inactive_inchi) if i != index]
+                self.inactive_names = [inchi for i, inchi in enumerate(self.inactive_names) if i != index]
+        else:
+            outf=open(self.output,'a')
+            writer = Chem.SDWriter(outf)
+            writer.write(m)
+        return m 
 
     def filtering(self, which_names):
         iks = self.to_inchi(which_names)
