@@ -150,6 +150,44 @@ class PostProcessor():
         std = np.std(preds)
         return 1 - std
  
+    def Id(self, d_train_test, train, test, threshold):
+
+        distances_test = [ d/max(d) for i, d in enumerate(d_train_test) if i in test]
+        distances_train_test = [d for i, d in enumerate(distances_test.T) if i in train]
+        minimums = [min(d) for d in distances_train_test.T]
+        values = [1 if min(d)<= threshold else 0 for mm in minimums]
+        return values
+
+    def AVE(self):
+        import pdb; pdb.set_trace() 
+        d_train_test = np.array([distance.cdist([x], self.x_train) for x in self.x_test])
+
+        #first we split into active/inactive for test and train
+        #indexing
+        a_train = [i for i,y in enumerate(self.y_true_train) if y == 1]
+        i_train = [i for i,y in enumerate(self.y_true_train) if y == 0]
+        a_test = [i for i,y in enumerate(self.y_true_test) if y == 1]
+        i_test = [i for i,y in enumerate(self.y_true_test) if y == 0]
+
+        d_means = np.means()
+        D = np.arange(0, 1, 0.01)
+        Haa = 0 ; Hai = 0; Hia = 0; Hii = 0
+        for d in D:
+            Saa = (1/len(a_test)) * np.sum(self.Id(d_train_test, a_train, a_test, d))
+            Haa += Saa
+            Sai = (1/len(a_test)) * np.sum(self.Id(d_train_test, i_train, a_test, d))
+            Hai += Sai
+            Sia = (1/len(i_test)) * np.sum(self.Id(d_train_test, a_train, i_test, d))
+            Hia += Sia
+            Sii = (1/len(i_test)) * np.sum(self.Id(d_train_test, i_train, i_test, d))
+            Hii += Sii
+
+        for H in [Haa, Hai, Hia, Hii]:
+            H = H/np.mean(D)
+
+        B = Haa - Hai + Hii - Hia
+        return B
+        
 
     def domain_analysis(self, output_densities="thresholds_vs_density.png", output_thresholds="threshold_analysis.txt", output_distplots="displot", debug=False, names=None, stack=False, regulardomain=True):
         assert self.x_train.any() and self.y_true_train.any(), "Needed train and test datasets. Specify with x_train=X, ytrain=Y"
@@ -201,6 +239,7 @@ class PostProcessor():
    
         d_train_test = np.array([distance.cdist([x], self.x_train) for x in self.x_test])
    
+
         for i, name in zip(d_train_test, names): # for each sample
             idxs = [j for j,d in enumerate(i[0]) if d <= thresholds[j]] #saving indexes of training with threshold > distance
             count_active.append(len([self.y_true_train.tolist()[i] for i in idxs if self.y_true_train[i] == 1]))
