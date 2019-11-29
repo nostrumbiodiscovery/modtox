@@ -427,18 +427,26 @@ class PostProcessor():
        if traintest:
            # train and test separation
            embedding = embedding1
-
-           colors = plt.get_cmap('Spectral')(np.linspace(0, 1, 2))
+           import pdb; pdb.set_trace()
+           #colors = plt.get_cmap('Spectral')(np.linspace(0, 1, 2))
+           colors = plt.get_cmap('Spectral')(np.linspace(0, 1, 4))
            fig, ax = plt.subplots()
-           Y1 = [0 for x in self.y_true_train] #setting 0 to train
-           Y2 = [1 for x in self.y_true_test] #setting 1 to test
+           Y1 = [x+2 for x in self.y_true_train] #setting 0 to train
+           Y2 = [x for x in self.y_true_test] #setting 1 to test
            Y = np.concatenate((Y1,Y2))
            for i in range(embedding.shape[0]):
                pos = embedding[i, :2]
                self.ellipse_plot(pos, embedding[i, 2],embedding[i, 3], embedding[i, 4], ax, dmin=0.2, dmax=1.0, alpha=0.01, color = colors[np.array(Y)[i]])
            end = self.x_train.shape[0]
-           ax.scatter(embedding[:end, 0], embedding[:end, 1], c = 'b', cmap = 'Spectral', label= 'train')
-           ax.scatter(embedding[end:, 0], embedding[end:, 1], c = 'r', cmap = 'Spectral', label= 'test')
+           act_train = [i for i,val in enumerate(Y1) if val == 3]
+           inact_train = [i for i,val in enumerate(Y1) if val == 2]
+           act_test = [i+len(Y1) for i,val in enumerate(Y2) if val == 1]
+           inact_test = [i+len(Y1) for i,val in enumerate(Y2) if val == 0]
+           ax.scatter(embedding[act_train, 0], embedding[act_train, 1], c = 'b', cmap = 'Spectral', label= 'active train')
+           ax.scatter(embedding[inact_train, 0], embedding[inact_train, 1], c = 'g', cmap = 'Spectral', label= 'inactive train')
+           ax.scatter(embedding[act_test, 0], embedding[act_test, 1], c = 'r', cmap = 'Spectral', label= 'active test')
+           ax.scatter(embedding[inact_test, 0], embedding[inact_test, 1], c = 'm', cmap = 'Spectral', label= 'inactive test')
+        #   ax.scatter(embedding[end:, 0], embedding[end:, 1], c = 'r', cmap = 'Spectral', label= 'test')
            fig.gca().set_aspect('equal', 'datalim')
            plt.legend()
            ax.set_title(title)

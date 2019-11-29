@@ -53,19 +53,19 @@ class PubChem():
        self.inactive_names = [mol for mol, activity in data.items() if activity == 'Inactive']
        print('Discard of inconclusive essays done. Initial set: {} , Final set: {}'.format(len(data.items()), len(self.active_names) + len(self.inactive_names)))
 
-    def to_sdf(self, actype, readfromfile=True):
+    def to_sdf(self, readfromfile=True):
 
         molecules = []
         molecules_rdkit = []
         if self.train: where = "train"
         if self.test: where = "test"
-        outputname = actype + '_' + where + '.sdf'
+        outputname = self.actype + '_' + where + '.sdf'
         if not os.path.exists(self.folder_output): os.mkdir(self.folder_output)
         self.output = os.path.join(self.folder_output, outputname)
         if os.path.exists(self.output): os.remove(self.output)
 #        w = Chem.SDWriter(output)
-        print('Filter and inchikey identification in process ... for {}'.format(actype))
-        if actype == 'active':
+        print('Filter and inchikey identification in process ... for {}'.format(self.actype))
+        if self.actype == 'active':
             if not readfromfile:
                 iks, names = self.filtering(self.active_names)
                 self.active_inchi = iks
@@ -83,7 +83,7 @@ class PubChem():
                 self.active_inchi = iks
                 self.active_names = names
 
-        if actype == 'inactive':
+        if self.actype == 'inactive':
             if not readfromfile:
                 iks, names = self.filtering(self.inactive_names)
                 self.inactive_inchi = iks
@@ -131,11 +131,11 @@ class PubChem():
         except: #to avoid ERROR: Sanitization error: Explicit valence for atom # 19 S, 8, is greater than permitted 
             pass
         if m == None:        
-            if actype == "active":
+            if self.actype == "active":
                 index = self.active_names.index(inchy_name[1])
                 self.active_names = [name for i, inchi in enumerate(self.active_names) if i != index]
                 self.active_inchi = [inchi for i, inchi in enumerate(self.active_inchi) if i != index]
-            if actype == "inactive":
+            if self.actype == "inactive":
                 index = self.inactive_names.index(inchy_name[1])
                 self.inactive_inchi = [inchi for i, inchi in enumerate(self.inactive_inchi) if i != index]
                 self.inactive_names = [inchi for i, inchi in enumerate(self.inactive_names) if i != index]
@@ -227,8 +227,10 @@ class PubChem():
         return activities
 
     def process_pubchem(self):
-        active_output, n_actives = self.to_sdf(actype = 'active')
-        inactive_output, n_inactives = self.to_sdf(actype = 'inactive') 
+        self.actype = 'active'
+        active_output, n_actives = self.to_sdf()
+        self.actype = 'inactive'
+        inactive_output, n_inactives = self.to_sdf() 
         if not self.debug: 
             output_active_proc = pr.ligprep(active_output, output="active_processed.mae")
             output_active_proc = ft.mae_to_sd(output_active_proc, output=os.path.join(self.folder_output, 'actives.sdf'))

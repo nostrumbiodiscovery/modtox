@@ -98,7 +98,7 @@ class ImputerForSample(object):
 
 class GenericModel(object):
 
-    def __init__(self, clf, filename_model='opt_model.pkl', folder='.',  tpot=False, cv=5, generations=None, population_size=None, majvoting=False, debug=False):
+    def __init__(self, clf, filename_model='opt_model.pkl', folder='.',  tpot=False, cv=5, generations=3, population_size=10, majvoting=False, debug=False):
         self.X = None
         self.Y = None
         self.fitted = False
@@ -107,7 +107,7 @@ class GenericModel(object):
         self.tpot = tpot
         self.cv = cv
         self.majvoting = majvoting
-        self.clf = cl.retrieve_classifier(clf, self.tpot, cv=self.cv, generations=generations, population_size=population_size, fast=True)
+        self.clf = cl.retrieve_classifier(clf, self.tpot, cv=self.cv, generations=generations, population_size=population_size, fast=False)
         self.stack = self._is_stack_model()   
 
         self.scaler = StandardScaler()
@@ -126,7 +126,12 @@ class GenericModel(object):
 
         if self.tpot:
             pred = np.array([cl.predict(X) for cl in models])
-            proba = np.array([cl.predict_proba(X) for cl in models])
+            try:
+                proba = np.array([cl.predict_proba(X) for cl in models])
+            except RuntimeError:
+                proba = np.array([[[0,1] if pre == 1 else [1,0] for pre in pred[i]]for i in range(len(models))])
+            except AttributeError:
+                proba = np.array([[[0,1] if pre == 1 else [1,0] for pre in pred[i]]for i in range(len(models))])
         else:
             assert y.any(), "Need y"
             pred = np.array([ cross_val_predict(c, X, y, cv=self.cv) for c in models])
@@ -146,11 +151,14 @@ class GenericModel(object):
         return [([pred == true for pred, true  in zip(result, Y_true.tolist())]) for result in clf_result]
 
     def _last_fit(self, X, y, f=None):
-
        if self.tpot:
            self.last_clf.fit(X,y)
            prediction = self.last_clf.predict(X)
-           prediction_proba = self.last_clf.predict_proba(X)
+           try:
+               prediction_proba = self.last_clf.predict_proba(X)
+           except RuntimeError:
+               prediction_proba = np.array([[0,1] if pred == 1 else [1,0] for pred in prediction])
+               pass
            pickle.dump(self.last_clf.fitted_pipeline_, f)
        else:
            prediction = cross_val_predict(self.last_clf, X, y, cv=self.cv)
@@ -164,7 +172,11 @@ class GenericModel(object):
 
     def _last_predict(self, X):
         prediction = self.last_model.predict(X)
-        proba = self.last_model.predict_proba(X)
+        try:
+            proba = self.last_model.predict_proba(X)
+        except AttributeError:
+            proba = np.array([[0,1] if pred == 1 else [1,0] for pred in prediction])
+            pass
 
         return prediction, proba
 
