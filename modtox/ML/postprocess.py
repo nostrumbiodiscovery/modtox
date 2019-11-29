@@ -159,7 +159,6 @@ class PostProcessor():
         return values
 
     def AVE(self):
-        import pdb; pdb.set_trace() 
         d_train_test = np.array([distance.cdist([x], self.x_train) for x in self.x_test])
 
         #first we split into active/inactive for test and train
@@ -427,7 +426,6 @@ class PostProcessor():
        if traintest:
            # train and test separation
            embedding = embedding1
-           import pdb; pdb.set_trace()
            #colors = plt.get_cmap('Spectral')(np.linspace(0, 1, 2))
            colors = plt.get_cmap('Spectral')(np.linspace(0, 1, 4))
            fig, ax = plt.subplots()

@@ -53,7 +53,7 @@ class PubChem():
        self.inactive_names = [mol for mol, activity in data.items() if activity == 'Inactive']
        print('Discard of inconclusive essays done. Initial set: {} , Final set: {}'.format(len(data.items()), len(self.active_names) + len(self.inactive_names)))
 
-    def to_sdf(self, readfromfile=True):
+    def to_sdf(self, readfromfile):
 
         molecules = []
         molecules_rdkit = []
@@ -226,11 +226,11 @@ class PubChem():
         activities = {int(name):activity for name, activity in zip(useful_names, useful_activities)}
         return activities
 
-    def process_pubchem(self):
+    def process_pubchem(self, readfromfile=False):
         self.actype = 'active'
-        active_output, n_actives = self.to_sdf()
+        active_output, n_actives = self.to_sdf(readfromfile)
         self.actype = 'inactive'
-        inactive_output, n_inactives = self.to_sdf() 
+        inactive_output, n_inactives = self.to_sdf(readfromfile) 
         if not self.debug: 
             output_active_proc = pr.ligprep(active_output, output="active_processed.mae")
             output_active_proc = ft.mae_to_sd(output_active_proc, output=os.path.join(self.folder_output, 'actives.sdf'))

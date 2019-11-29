@@ -16,6 +16,7 @@ GLIDE_FEATURES=os.path.join(DATA_PATH, "glide_features.csv")
 PUBCHEM=os.path.join(DATA_PATH, "AID_1851_datatable_all.csv")
 SYSTEMS = glob.glob(os.path.join(DOCKING, "*.zip*"))
 DUDE = os.path.join(DATA_PATH, "cp2c9")
+BINDING = os.path.join(DATA_PATH, "cyp2c9_bindingdb.sdf")
 SUBSTRATE="p450-cyp2c9"
 NMOLS=10
 BEST=False; CSV=False
@@ -62,8 +63,17 @@ def test_preparation_dude(dude, tmp):
 def test_preparation_pubchem(substrate, pubchem, nmols, tmp):
 
     pubchem = tc.retrieve_database_pubchem(substrate=substrate, pubchem=pubchem, nmols=nmols, tmp=tmp)
-    sdf_active, sdf_inactive = pubchem.process_pubchem()
+    sdf_active, sdf_inactive = pubchem.process_pubchem(readfromfile=False)
     assert filecmp.cmp(os.path.join(TMP, 'used_mols.txt'), os.path.join(DATA_PATH, 'used_mols_pubchem.txt'))
+
+@pytest.mark.parametrize("binding, tmp", [
+                         (BINDING, TMP),
+                         ])
+def test_preparation_bindingdb(binding, tmp):
+
+    binding = tc.retrieve_database_bindingdb(binding=binding, tmp=tmp)
+    sdf_active, sdf_inactive = binding.process_bind()
+    assert filecmp.cmp(os.path.join(TMP, 'used_mols.txt'), os.path.join(DATA_PATH, 'used_mols_bindingdb.txt'))
 
 ########## PREPROCESS TESTS  #####################
 @pytest.mark.parametrize("sdf_active, sdf_inactive, glide_features", [
@@ -151,14 +161,14 @@ def test_model_single():
 def test_model_fit_stack_tpot():
 
     X_train, _, y_train , _ = tc.retrieve_data()
-    model = tc.retrieve_model(clf="stack", tpot=True, cv=5, generations=3, population_size=10, folder=TMP)
+    model = tc.retrieve_model(clf="stack", tpot=True, cv=5, generations=1, population_size=5, random_state=42, folder=TMP)
     model.fit(X_train, y_train)
     tc.compare_models(os.path.join(TMP,'opt_model.pkl'), os.path.join(DATA_PATH, 'model_fit_stack_tpot.pkl'))
 
 def test_model_fit_single_tpot():
 
     X_train, _, y_train , _ = tc.retrieve_data()
-    model = tc.retrieve_model(clf="single", tpot=True, cv=5, generations=3, population_size=10, folder=TMP)
+    model = tc.retrieve_model(clf="single", tpot=True, cv=5, generations=1, population_size=5, random_state=42, folder=TMP)
     model.fit(X_train, y_train)
     tc.compare_models(os.path.join(TMP,'opt_model.pkl'), os.path.join(DATA_PATH, 'model_fit_single_tpot.pkl'))
 

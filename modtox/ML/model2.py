@@ -98,7 +98,7 @@ class ImputerForSample(object):
 
 class GenericModel(object):
 
-    def __init__(self, clf, filename_model='opt_model.pkl', folder='.',  tpot=False, cv=5, generations=3, population_size=10, majvoting=False, debug=False):
+    def __init__(self, clf, filename_model='opt_model.pkl', folder='.',  tpot=False, cv=5, generations=3, random_state=42, population_size=10, majvoting=False, debug=False):
         self.X = None
         self.Y = None
         self.fitted = False
@@ -107,7 +107,7 @@ class GenericModel(object):
         self.tpot = tpot
         self.cv = cv
         self.majvoting = majvoting
-        self.clf = cl.retrieve_classifier(clf, self.tpot, cv=self.cv, generations=generations, population_size=population_size, fast=False)
+        self.clf = cl.retrieve_classifier(clf, self.tpot, cv=self.cv, generations=generations, random_state=random_state, population_size=population_size, fast=False)
         self.stack = self._is_stack_model()   
 
         self.scaler = StandardScaler()
