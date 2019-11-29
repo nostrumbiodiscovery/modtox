@@ -81,7 +81,7 @@ class BindingDB():
                 # recording instances from the training data
         if self.train:
             with open(os.path.join(self.folder_output, self.used_mols), 'w') as r:
-                for item in self.active_inchi + self.inactive_inchi:
+                for item in [*self.active_inchi, *self.inactive_inchi]:
                     r.write("{}\n".format(item))
 
         # extracting molecules from test already present in train
@@ -135,6 +135,7 @@ class BindingDB():
        ic = [mol.data['IC50 (nM)'] for mol in mols]
        novalued = []
        ic_clean = []
+       if self.debug: ic = ic[:3]
        for j,i in enumerate(ic):
            try:
                i = float(i)

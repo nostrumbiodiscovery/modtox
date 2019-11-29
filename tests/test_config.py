@@ -11,6 +11,7 @@ import modtox.ML.preprocess as Pre
 import modtox.ML.postprocess as Post
 import modtox.ML.model2 as model
 import modtox.data.pubchem as pchm
+import modtox.data.bindingdb as bdb
 import modtox.data.dude as dd
 import modtox.docking.glide.analyse as gl
 import modtox.docking.greasy.greasy_preparation as gre
@@ -27,7 +28,6 @@ def retrieve_data(size=1500, split=True):
         return X,y
 
 def compare_models(file1, file2):
-
     pipe1 = pickle.load(open(file1, 'rb'))
     pipe2 = pickle.load(open(file2, 'rb'))
     comp = []
@@ -47,14 +47,17 @@ def greasy(active, inactive, systems, folder):
 def retrieve_preprocessor(csv=None, fp=False, descriptors=False, MACCS=True, columns=None):
     return Pre.ProcessorSDF(csv=csv, fp=fp, descriptors=descriptors, MACCS=MACCS, columns=columns, debug=True)
 
-def retrieve_model(clf, folder, tpot=None, cv=5, generations=None, population_size=None):
-    return model.GenericModel(clf=clf, tpot=tpot, cv=cv, generations=generations, population_size=population_size, folder=folder)
+def retrieve_model(clf, folder, tpot=None, cv=5, generations=None, random_state=42, population_size=None):
+    return model.GenericModel(clf=clf, tpot=tpot, cv=cv, generations=generations, random_state=random_state, population_size=population_size, folder=folder)
 
 def retrieve_database_pubchem(pubchem, substrate, nmols, tmp):
     return pchm.PubChem(pubchem=pubchem, train=True, test=False, folder_output=tmp, substrate=substrate, n_molecules_to_read=nmols, debug=True)
 
 def retrieve_database_dude(dude, tmp):
     return dd.DUDE(dude_folder=dude, folder_output=tmp, train=True, test=False, debug=True)
+
+def retrieve_database_bindingdb(binding, tmp):
+    return bdb.BindingDB(bindingdb=binding, folder_output=tmp, train=True, test=False, debug=True)
 
 def retrieve_imputer():
     return model.Imputer(imputer_type='cluster_based', n_clusters=1)

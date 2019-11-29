@@ -32,7 +32,7 @@ DESCRIPTORS_FOLDER = "descriptors"
 METRICS_FOLDER = "metrics"
 
 
-def main(traj, resname, top, clf, tpot, cv, mol_to_read=None, RMSD=True, cluster=True, last=True, clust_type="BS", rmsd_type="BS", sieve=10, precision="SP", maxkeep=500, maxref=400, grid_mol=2, csv=False, substrate=None, folder_to_get=None, best=False, glide_files="*pv.maegz", database_train='pubchem', database_test='bindingdb', dude=None, pubchem=None, binding=None, set_prepare=True, dock=True, build=True, predict=True, debug=False, greasy=True, sdf_active_train=None, sdf_inactive_train=None, sdf_active_test=None, sdf_inactive_test=None, csv_train=None, csv_test=None, majvoting=False, train=True, test=True):
+def main(traj, resname, top, clf, tpot, cv, mol_to_read=None, RMSD=True, cluster=True, last=True, clust_type="BS", rmsd_type="BS", sieve=10, precision="SP", maxkeep=500, maxref=400, grid_mol=2, csv=False, substrate=None, folder_to_get=None, best=False, glide_files="*pv.maegz", database_train='pubchem', database_test='bindingdb', dude=None, pubchem=None, binding=None, set_prepare=True, dock=True, build=True, predict=True, debug=False, greasy=True, sdf_active_train=None, sdf_inactive_train=None, sdf_active_test=None, sdf_inactive_test=None, csv_train=None, csv_test=None, majvoting=False, train=True, test=True, fp=False, descriptors=False, MACCS=False, columns=None, feature_to_check="external_descriptors"):
     
     if not os.path.exists(TRAIN_FOLDER): os.mkdir(TRAIN_FOLDER)
     if not os.path.exists(TEST_FOLDER): os.mkdir(TEST_FOLDER)
@@ -76,7 +76,8 @@ def main(traj, resname, top, clf, tpot, cv, mol_to_read=None, RMSD=True, cluster
         if train:
             assert sdf_active_train !=None and sdf_inactive_train != None, "Sdf's must be provided! (use --sdf_active_train ,...)"
             with hp.cd(TRAIN_FOLDER):
-                model = build_model(sdf_active_train, sdf_inactive_train, csv_train, clf, tpot, cv, majvoting, debug)
+                model = build_model(sdf_active_train, sdf_inactive_train, csv_train, clf, tpot, cv, majvoting, fp, descriptors, MACCS, columns, feature_to_check, debug)
+            train_folder = os.path.abspath(TRAIN_FOLDER)
 
     ########################################################## PREDICT  ###########################################
 
@@ -84,7 +85,7 @@ def main(traj, resname, top, clf, tpot, cv, mol_to_read=None, RMSD=True, cluster
         if test:
             assert sdf_active_test !=None and sdf_inactive_test != None, "Sdf's must be provided! (use --sdf_active_train ,...)"
             with hp.cd(TEST_FOLDER):
-                predict_model(model, sdf_active_test, sdf_inactive_test, csv_test, clf, tpot, cv, majvoting, debug)
+                predict_model(model, sdf_active_test, sdf_inactive_test, csv_test, clf, tpot, cv, majvoting, fp, descriptors, MACCS, columns, feature_to_check, train_folder, debug)
 
 
 def set_preparation(traj, resname, top, RMSD, cluster, last, clust_type, rmsd_type, sieve, database, mol_to_read, substrate, debug, train, test, folder_to_get=None):
@@ -155,16 +156,16 @@ def glide_analysis(glide_files, best, csv, sdf_active, sdf_inactive, debug, grea
     return glide_csv
 
 
-def build_model(sdf_active_train, sdf_inactive_train, csv_train, clf, tpot, cv, majvoting, debug):
+def build_model(sdf_active_train, sdf_inactive_train, csv_train, clf, tp, cv, majvoting, fp, descriptors, MACCS, columns, feature_to_check, debug):
 
     #preprocess
-    pre = Pre.ProcessorSDF(csv=csv_train, fp=False, descriptors=False, MACCS=False, columns=None)
+    pre = Pre.ProcessorSDF(csv=csv_train, fp=fp, descriptors=descriptors, MACCS=MACCS, columns=columns)
     #pre = Pre.ProcessorSDF(csv=False, fp=False, descriptors=False, MACCS=True, columns=None)
     print("Fit and tranform for preprocessor..")
  
     X_train, y_train = pre.fit_transform(sdf_active=sdf_active_train, sdf_inactive=sdf_inactive_train, folder=DESCRIPTORS_FOLDER)
     print("Sanitazing...")
-    X_train, y_train, mol_names, cv = pre.sanitize(X_train, y_train, cv, folder=DESCRIPTORS_FOLDER, feature_to_check='external_descriptors')
+    X_train, y_train, mol_names, cv = pre.sanitize(X_train, y_train, cv, folder=DESCRIPTORS_FOLDER, feature_to_check=feature_to_check)
     print("Filtering features...")
     pre.filter_features(X_train)
     
@@ -187,21 +188,21 @@ def build_model(sdf_active_train, sdf_inactive_train, csv_train, clf, tpot, cv, 
    
     return Model
  
-def predict_model(Model, sdf_active_test, sdf_inactive_test, csv_test, clf, tpot, cv, majvoting, debug): 
+def predict_model(Model, sdf_active_test, sdf_inactive_test, csv_test, clf, tpot, cv, majvoting, fp, descriptors, MACCS, columns, feature_to_check, train_folder, debug): 
     
     #preprocess test
-    pre = Pre.ProcessorSDF(csv=csv_test, fp=False, descriptors=False, MACCS=False, columns=None)
+    pre = Pre.ProcessorSDF(csv=csv_test, fp=fp, descriptors=descriptors, MACCS=MACCS, columns=columns)
     #pre = Pre.ProcessorSDF(csv=False, fp=False, descriptors=False, MACCS=True, columns=None)
     print("Fit and tranform for preprocessor..")
     X_test, y_test = pre.fit_transform(sdf_active=sdf_active_test, sdf_inactive=sdf_inactive_test, folder=DESCRIPTORS_FOLDER)
     print("Sanitazing...")
-    X_test, y_test, mol_names, cv = pre.sanitize(X_test, y_test, cv, folder=DESCRIPTORS_FOLDER, feature_to_check='external_descriptors')
+    X_test, y_test, mol_names, cv = pre.sanitize(X_test, y_test, cv, folder=DESCRIPTORS_FOLDER, feature_to_check=feature_to_check)
     print("Filtering features...")
     pre.filter_features(X_test)
     
     #predict model
     print("Predicting...")
-    y_pred = Model.predict(X_test, y_test, imputer=Model.imputer, scaler=Model.scaler, train_folder=os.path.join("../", TRAIN_FOLDER))
+    y_pred = Model.predict(X_test, y_test, imputer=Model.imputer, scaler=Model.scaler, train_folder=train_folder)
     
     #postprocessing
     print("Postprocess for test ...")
@@ -256,13 +257,18 @@ def parse_args():
     parser.add_argument('--majvoting', action="store_true", help='Majority voting in stack model for last prediction')
     parser.add_argument('--train',  action="store_true", help='Run for training')
     parser.add_argument('--test',  action="store_true",  help='Run for testing')
+    parser.add_argument('--fp',  default=False,  help='finger-print')
+    parser.add_argument('--descriptors',  default=False,  help='descriptors')
+    parser.add_argument('--MACCS',  default=False,  help='MACCS fingerprints')
+    parser.add_argument('--columns',  default=None,  help='columns')
+    parser.add_argument('--feature_to_check',  default="external_descriptors",  help='Feature to check nans')
 
     args = parser.parse_args()
-    return args.set_prepare, args.dock, args.analysis, args.build, args.predict, args.greasy, args.top, args.traj, args.resname, args.clf, args.tpot, args.cv, args.mol_to_read, args.substrate, args.folder_to_get, args.dude, args.pubchem, args.binding, args.sdf_active_train, args.sdf_inactive_train,args.sdf_active_test, args.sdf_inactive_test, args.csv_train, args.csv_test, args.database_train, args.database_test, args.majvoting, args.train, args.test
+    return args.set_prepare, args.dock, args.analysis, args.build, args.predict, args.greasy, args.top, args.traj, args.resname, args.clf, args.tpot, args.cv, args.mol_to_read, args.substrate, args.folder_to_get, args.dude, args.pubchem, args.binding, args.sdf_active_train, args.sdf_inactive_train,args.sdf_active_test, args.sdf_inactive_test, args.csv_train, args.csv_test, args.database_train, args.database_test, args.majvoting, args.train, args.test, args.fp, args.descriptors, args.MACCS, args.columns, args.feature_to_check
 
 
 if __name__ == "__main__":
 
-    set_prepare, dock, analysis, build, predict, greasy, top, traj, resname, clf, tpot, cv, mol_to_read, substrate, folder_to_get, dude, pubchem, binding, sdf_active_train, sdf_inactive_train, sdf_active_test, sdf_inactive_test, csv_train, csv_test, database_train, database_test, majvoting, train, test = parse_args()
-    main(traj=traj, resname=resname, top=top, clf=clf, tpot=tpot, cv=cv, dude=dude, pubchem=pubchem, binding=binding, greasy=greasy, set_prepare=set_prepare, dock=dock, build=build, predict=predict, mol_to_read=mol_to_read, substrate=substrate, folder_to_get=folder_to_get, sdf_active_train=sdf_active_train, sdf_inactive_train=sdf_inactive_train, sdf_active_test=sdf_active_test, sdf_inactive_test=sdf_inactive_test, csv_train=csv_train, csv_test=csv_test, database_train=database_train, database_test=database_test, majvoting=majvoting, train=train, test=test)
+    set_prepare, dock, analysis, build, predict, greasy, top, traj, resname, clf, tpot, cv, mol_to_read, substrate, folder_to_get, dude, pubchem, binding, sdf_active_train, sdf_inactive_train, sdf_active_test, sdf_inactive_test, csv_train, csv_test, database_train, database_test, majvoting, train, test, fp, descriptors, MACCS, columns, feature_to_check = parse_args()
+    main(traj=traj, resname=resname, top=top, clf=clf, tpot=tpot, cv=cv, dude=dude, pubchem=pubchem, binding=binding, greasy=greasy, set_prepare=set_prepare, dock=dock, build=build, predict=predict, mol_to_read=mol_to_read, substrate=substrate, folder_to_get=folder_to_get, sdf_active_train=sdf_active_train, sdf_inactive_train=sdf_inactive_train, sdf_active_test=sdf_active_test, sdf_inactive_test=sdf_inactive_test, csv_train=csv_train, csv_test=csv_test, database_train=database_train, database_test=database_test, majvoting=majvoting, train=train, test=test, fp=fp, descriptors=descriptors, MACCS=MACCS, columns=columns, feature_to_check=feature_to_check)
 
