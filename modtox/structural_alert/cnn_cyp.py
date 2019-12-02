@@ -1,5 +1,6 @@
 import istarmap
-from keras.models import model_from_yaml
+#from rdkit import Chem
+from keras.callbacks import History, EarlyStopping, ModelCheckpoint, ReduceLROnPlateau
 import keras
 from keras.datasets import mnist
 from keras.models import Sequential
@@ -7,6 +8,7 @@ from keras.layers import Dense, Dropout, Flatten
 from keras.layers import Conv2D, MaxPooling2D, GlobalAveragePooling3D, GlobalMaxPooling3D
 from keras.layers import Conv3D, MaxPool3D, Flatten, Dense, AveragePooling3D
 from keras.layers import Dropout, Input, BatchNormalization
+from keras.models import model_from_yaml
 from keras.losses import categorical_crossentropy
 from keras.optimizers import Adadelta
 from keras.models import Model
@@ -22,12 +24,14 @@ import numpy as np
 from tqdm import tqdm
 import subprocess
 import glob
-from rdkit import Chem
-from rdkit.Chem import Descriptors
-import modtox.constants.constants as cs
 from itertools import count
+from tensorflow.python.client import device_lib
+assert 'GPU' in str(device_lib.list_local_devices())
+from keras import backend
+assert len(backend.tensorflow_backend._get_available_gpus()) > 0
 
-def mae_to_sd(mae, schr=cs.SCHR, folder='.', output=None):
+
+def mae_to_sd(mae, schr=".", folder='.', output=None):
     if not output:
         output = os.path.splitext(os.path.basename(mae))[0]+".sdf"
     output = os.path.join(folder, output)
@@ -192,16 +196,16 @@ else:
     maes_lig = glob.glob(os.path.join(folder, "*dock_lib.maegz"))
     maes_rec = glob.glob(os.path.join(folder, "*rec.maegz"))
     
-    actives = os.path.join(dataset, "actives.sdf")
-    inactives = os.path.join("/home/moruiz/cyp/dude/cp2c9/decoys_final.sdf")
+    actives = "actives.sdf"
+    inactives = "inactives.sdf"
     
     #coverting ligands
-    if len(glob.glob(os.path.join(folder, "*dock_lib.sdf"))) == 0: sdfs_lig = [mae_to_sd(mae, folder=folder, output=None) for mae in maes_lig]
-    else: sdfs_lig = glob.glob(os.path.join(folder, "*dock_lib.sdf"))
+    if len(glob.glob("*dock_lib.sdf")) == 0: sdfs_lig = [mae_to_sd(mae, folder=folder, output=None) for mae in maes_lig]
+    else: sdfs_lig = glob.glob("*dock_lib.sdf")
                      
     #coverting receptor
-    if len(glob.glob(os.path.join(folder, "*_rec.sdf"))) == 0: sdfs_rec = [mae_to_sd(mae, folder=folder, output=None) for mae in maes_rec]
-    else: sdfs_rec = glob.glob(os.path.join(folder, "*rec.sdf"))
+    if len(glob.glob("*_rec.sdf")) == 0: sdfs_rec = [mae_to_sd(mae, folder=folder, output=None) for mae in maes_rec]
+    else: sdfs_rec = glob.glob("*rec.sdf")
     sdfs = [[lig, rec] for lig, rec in zip(sdfs_lig, sdfs_rec)]
     
     #Create vocabulary
@@ -221,7 +225,7 @@ else:
         masses = np.array([Descriptors.MolWt(mol) for mol in mols]) #masses of all the ligands
         centers_of_mass = [np.sum([np.array(getatoms[i][j].GetMass()) * pos[i][j] for j in range(num_atoms[i])], axis=0)/masses[i] for i in range(len(masses))]
         coms.extend(centers_of_mass)
-    
+    print(coms)
     center_grid = np.mean(np.array(coms), axis=0)
     
     assert center_grid.shape[0] == 3
@@ -283,92 +287,28 @@ else:
     np.save("Xtrain", np.array(X_train))
     np.save("Ytrain", np.array(y_train))
 
-folder = "/home/moruiz/cyp/new_test_2/from_train/docking/"
-dataset = "/home/moruiz/cyp/new_test_2/from_train/dataset/"
-maes_lig = glob.glob(os.path.join(folder, "*dock_lib.maegz"))
-maes_rec = glob.glob(os.path.join(folder, "*rec.maegz"))
+print(X_train.shape, y_train.shape)
 
-actives = os.path.join(dataset, "actives.sdf")
-inactives = os.path.join("/home/moruiz/cyp/dude/cp2c9/decoys_final.sdf")
-
-#coverting ligands
-if len(glob.glob(os.path.join(folder, "*dock_lib.sdf"))) == 0: sdfs_lig = [mae_to_sd(mae, folder=folder, output=None) for mae in maes_lig]
-else: sdfs_lig = glob.glob(os.path.join(folder, "*dock_lib.sdf"))
-                 
-#coverting receptor
-if len(glob.glob(os.path.join(folder, "*_rec.sdf"))) == 0: sdfs_rec = [mae_to_sd(mae, folder=folder, output=None) for mae in maes_rec]
-else: sdfs_rec = glob.glob(os.path.join(folder, "*rec.sdf"))
-sdfs = [[lig, rec] for lig, rec in zip(sdfs_lig, sdfs_rec)]
-
-#Create vocabulary
-vocabulary_elements, features = retrieve_vocabulary_from_sdf(sdfs_lig)
-print(vocabulary_elements, features)
-
-sdfs_lig = [ [sdf] for sdf in sdfs_lig]
-cpus = 5
-with Pool(cpus) as pool:
-    result = list(tqdm(pool.istarmap(extract_cnn_input, sdfs_lig), total=len(sdfs_lig))) #[sdf, vectors]
-
-
-with open(actives, "r") as f:
-    data = f.readlines()
-    ids = np.array([i+1 for i, j in zip(count(), data) if j == '$$$$\n'])
-    ids[-1] = 0 # first line contains a name, but not the last
-    acts = [data[idx].split('\n')[0] for idx in ids] 
-with open(inactives, "r") as f:
-    data = f.readlines()
-    ids = np.array([i+1 for i, j in zip(count(), data) if j == '$$$$\n'])
-    ids[-1] = 0
-    inacts = [data[idx].split('\n')[0] for idx in ids] 
-
-X = []; Y = []
-tot = 0
-for clust, sdf in tqdm(result): # for each cluster
-    ii = 0
-    toremove = []
-    with open(sdf, "r") as f:
-        data = f.readlines()
-        ids = np.array([i+1 for i, j in zip(count(), data) if j == '$$$$\n'])
-        ids[-1] = 0 # first line contains a name, but not the last
-        names = [data[idx].split('\n')[0] for idx in ids]
-    for i,x in tqdm(enumerate(clust)): # for each mol in the cluster 
-        if names[i] in acts:
-            Y.append(1)
-            X.append(x)
-            ii += 1; 
-        if names[i] in inacts:
-            Y.append(0)
-            X.append(x)
-            ii += 1; 
-        if names[i] not in acts and names[i] not in inacts: 
-            print('Unexpected name (usually cluster...)', names[i])
-            toremove.append(names[i])
-    for rm in toremove: names.remove(rm)
-    print(sdf, ii, len(names))
-
-import pdb; pdb.set_trace()
-num, x, y, z, l = list(np.array(X).shape)
-print(num, x, y, z, l)
-X_train = X
-y_train = keras.utils.to_categorical(Y, 2)
+from keras.utils import multi_gpu_model
 print("Build model")
 model = Sequential()
+#model = multi_gpu_model(model, gpus=2)
 input_layer = Input((x, y, z, l))
 
 ## convolutional layers
-conv_layer1 = Conv3D(filters=15, kernel_size=(5, 5, 5), padding="same", activation='relu')(input_layer)
-conv_layer2 = Conv3D(filters=15, kernel_size=(5, 5, 5),padding="same", activation='relu')(conv_layer1)
+conv_layer1 = Conv3D(filters=32, kernel_size=(2, 2, 2), padding="same", activation='relu')(input_layer)
+conv_layer2 = Conv3D(filters=32, kernel_size=(2, 2, 2),padding="same", activation='relu')(conv_layer1)
 pooling_layer1 = MaxPool3D(pool_size=(2, 2, 2))(conv_layer2)
 
 ## add max pooling to obtain the most imformatic features
-conv_layer3 = Conv3D(filters=32, kernel_size=(3, 3, 3),padding="same", activation='relu')(pooling_layer1)
-conv_layer4 = Conv3D(filters=32, kernel_size=(3, 3, 3),padding="same", activation='relu')(conv_layer3)
+conv_layer3 = Conv3D(filters=64, kernel_size=(2, 2, 2),padding="same", activation='relu')(pooling_layer1)
+conv_layer4 = Conv3D(filters=64, kernel_size=(2, 2, 2),padding="same", activation='relu')(conv_layer3)
 pooling_layer2 = MaxPool3D(pool_size=(2, 2, 2))(conv_layer4)
 
 
 ## add max pooling to obtain the most imformatic features
-conv_layer5 = Conv3D(filters=64, kernel_size=(2, 2, 2), padding="same",activation='relu')(pooling_layer2)
-conv_layer6 = Conv3D(filters=64, kernel_size=(2, 2, 2),padding="same", activation='relu')(conv_layer5)
+conv_layer5 = Conv3D(filters=256, kernel_size=(2, 2, 2), padding="same",activation='relu')(pooling_layer2)
+conv_layer6 = Conv3D(filters=256, kernel_size=(2, 2, 2),padding="same", activation='relu')(conv_layer5)
 pooling_layer3 = MaxPool3D(pool_size=(2, 2, 2))(conv_layer6)
 
 ## perform batch normalization on the convolution outputs before feeding it to MLP architecture
@@ -379,24 +319,29 @@ flatten_layer = Flatten()(pooling_layer4)
 ## add dropouts to avoid overfitting / perform regularization
 #dense_layer1 = Dense(units=2048, activation='relu')(flatten_layer)
 #dense_layer1 = Dropout(0.4)(dense_layer1)
-#dense_layer2 = Dense(units=512, activation='relu')(dense_layer1)
-dense_layer2 = Dropout(0.4)(flatten_layer)
+dense_layer2 = Dense(units=512, activation='relu')(flatten_layer)
+dense_layer2 = Dropout(0.4)(dense_layer2)
 output_layer = Dense(units=2, activation='softmax')(dense_layer2)
+
 
 ## define the model with input layer and output layer
 model = Model(inputs=input_layer, outputs=output_layer)
-
 model.compile(loss=categorical_crossentropy, optimizer=Adadelta(lr=0.1), metrics=['acc'])
 
-ratio = len([y for y in Y if y ==1]) / len(Y)
+## Define y1/y0 ratio
+ratio = len([y for y in Y if y == 1]) / len([y for y in Y if y == 0])
 class_weight = {0: 1,
                 1: ratio}
 
+assert ratio == 1.1669394435351883
+
+history = History()
+earlyStopping = EarlyStopping(monitor='loss', patience=10, verbose=0, mode='min')
+mcp_save = ModelCheckpoint('model_save.hdf5', save_best_only=True, monitor='loss', mode='min')
+reduce_lr_loss = ReduceLROnPlateau(monitor='loss', factor=0.1, patience=7, verbose=1, epsilon=1e-4, mode='min')
 
 print("Fit model")
-model.fit(x=np.array(X_train), y=np.array(y_train), batch_size=128, epochs=50, class_weight=class_weight)
-model.evaluate(X_train, y_train)
-preds = model.predict(X_train)
+history = model.fit(x=np.array(X_train), y=np.array(y_train), batch_size=128, callbacks=[history, earlyStopping, mcp_save, reduce_lr_loss], epochs=50, class_weight=class_weight)
 
 # serialize model to YAML
 model_yaml = model.to_yaml()
@@ -405,4 +350,3 @@ with open("model.yaml", "w") as yaml_file:
 # serialize weights to HDF5
 model.save_weights("model.h5")
 print("Saved model to disk")
-
