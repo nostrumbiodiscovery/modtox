@@ -4,6 +4,7 @@ import time
 import collections
 from rdkit import Chem
 import keras
+import json
 from keras.datasets import mnist
 from keras.models import Sequential, model_from_json
 from keras.layers import Dense, Dropout, Flatten
@@ -40,10 +41,12 @@ import tensorflow as tf
 from tensorflow.python.client import device_lib
 assert 'GPU' in str(device_lib.list_local_devices())
 from keras import backend
+backend.clear_session()
 assert len(backend.tensorflow_backend._get_available_gpus()) > 0
 
 from rdkit import Chem
 from rdkit.Chem import Descriptors
+from rdkit.Chem.rdmolfiles import MolToPDBFile
 import sparse
 import pandas
 
@@ -122,7 +125,7 @@ class Grid(object):
 
     def calculate_pixels(self):
         print("Calculating pixels...")
-        rear_back_pixel_center = self.rear_back_pixel_center = self.vertexes[6]  + np.array((self.resolution/2, -self.resolution/2, -self.resolution/2))
+        rear_back_pixel_center = self.rear_back_pixel_center = self.vertexes[0]  + np.array((self.resolution/2, self.resolution/2, self.resolution/2))
         self.n_pixels = n_pixels =  int(self.side / self.resolution)
 
     def is_point_inside(self, point):
@@ -143,6 +146,7 @@ class Grid(object):
         ax.set_ylabel('Y')
         ax.set_zlabel('Z')
         return fig.show()
+
 
 def extract_cnn_input(sdf_lig, sdf_rec, center_of_mass, vocabulary_elements, features, resolution, volume=True,
                      include_rec=False, just_receptor=True, just_ligands=False):
@@ -174,24 +178,22 @@ def extract_cnn_input(sdf_lig, sdf_rec, center_of_mass, vocabulary_elements, fea
         num_atoms = [co.GetNumAtoms() for co in conf]
         pos = np.array([[list(co.GetAtomPosition(num)) for num in range(num_atoms[i])] for i,co in enumerate(conf)])
         # now we only take atoms of ligand in a 20A radius (supposed to be all of them if small)
-
         us_atoms = [[atoms[j][i] for i in range(len(atoms[j])) if np.linalg.norm(pos[j][i]- cm) <= side ] for j in range(len(atoms))]
         tot_atoms += us_atoms
         tot_mols += mols
     print("Filling grid with atom info")
-    atoms_all_mols, dict_at_pos, core_atoms = fill_grid_with_atoms(grid2, tot_mols, tot_atoms, cm, vocabulary_elements, features, side=side, 
+    atoms_all_mols, dict_at_pos, core_atoms, individuals = fill_grid_with_atoms(grid2, tot_mols, tot_atoms, cm, vocabulary_elements, features, side=side, 
                                                        volume=volume, include_rec=include_rec, just_receptor=just_receptor, 
                                                        just_ligands=just_ligands)
-    return [atoms_all_mols, dict_at_pos, core_atoms, sdf_lig, sdf_rec]
+    return [atoms_all_mols, dict_at_pos, core_atoms, individuals, atoms, sdf_lig, sdf_rec]
+
 
 def fill_grid_with_atoms(grid2, mols, atoms, cm, vocabulary_elements, features, side, include_rec=False, just_receptor=True, just_ligands=False, volume=True):
 
     at_all_mols = []
     dict_at_pos = {}
-    core_atoms = []
-    if include_rec:
-        mols = [mol for mol in mols[0]+mols[1]]
-        atoms = [atom for atom in atoms[0]+atoms[1]]
+    core_atoms = {}
+    individuals = {}
     print(len(mols), len(atoms))
     for mol in tqdm(range(len(mols))):
             sparse_matrix_dict = {}
@@ -201,29 +203,30 @@ def fill_grid_with_atoms(grid2, mols, atoms, cm, vocabulary_elements, features, 
             num_atoms = conf.GetNumAtoms()
             coords_mol = np.array(list([conf.GetAtomPosition(num) for num in range(num_atoms)]))
             dict_at_pos[mol] = {}
-            core_atoms.append([])
+            core_atoms[mol] = {}
+            individuals[mol] = {}
             for atom in np.unique(atoms[mol]):
                 dict_at_pos[mol][atom] = []
-            for atom in range(len(atoms[mol])):
+            for tt, atom in enumerate(range(len(atoms[mol]))):
                 element = atoms[mol][atom]
                 coords = coords_mol[atom]
                 #assert grid2.is_point_inside(coords), coords
-                ixs = np.array([int(abs((x/grid2.resolution))) for x in np.array(np.array(coords) - np.array(grid2.rear_back_pixel_center))])
-                core_atoms[mol].append(ixs)
+                ixs = np.array([int(round((x/grid2.resolution))) for x in np.array(np.array(coords) - np.array(grid2.rear_back_pixel_center))])
                 #computing volumes
                 if volume:
                     idxs = volume_occupancy(grid2.resolution, element, ixs, vocabulary_elements, side)
                 else:
-                    idxs = [ixs]
-
+                    idxs = [ixs] 
+                individuals[mol][tt] = idxs
                 if len(dict_at_pos[mol][element]) == 0:
                     dict_at_pos[mol][element] = idxs
+                    core_atoms[mol][element] = [ixs]
                 else:
                     try:
                         dict_at_pos[mol][element] = np.concatenate((dict_at_pos[mol][element], idxs))
+                        core_atoms[mol][element] =  np.concatenate((core_atoms[mol][element], [ixs]))
                     except ValueError:
                         print('ValueError', idxs)
-
                 for idx in idxs:
                     try:
                         atoms_per_pixel[idx[0]][idx[1]][idx[2]]
@@ -252,7 +255,8 @@ def fill_grid_with_atoms(grid2, mols, atoms, cm, vocabulary_elements, features, 
                 print('Probably negative indices detected')
                 break
     print('moleculas', len(mols), len(core_atoms))
-    return at_all_mols, dict_at_pos, core_atoms
+    return at_all_mols, dict_at_pos, core_atoms, individuals
+
 
 def volume_occupancy(resolution, element, pixel, vocabulary_elements, side): 
     minindx = 0 #minimum index
@@ -346,6 +350,145 @@ def pixels_importance(model, X, X_rec, y_train, include_rec, nsample):
     return np.array(pos), ligand_contributions
 
 
+def pixels_per_atom(model, X, y_train, indiv_positions, cores, nsample, idx_receptor=None):
+
+    if idx_receptor is None:
+        atoms_pos = indiv_positions[nsample] 
+    else:
+        atoms_pos = indiv_positions[idx_receptor] 
+    atoms_pos = checking_positions(atoms_pos)
+    print('Analysis on pixels...')
+    print('Len x', len(X))
+    x,y,z,l = X[0].shape
+    print('Dimensions', x,y,z,l)
+    params_test = {'dim': (x,y,z),
+              'batch_size': 1,
+              'n_classes': 2,
+              'n_channels': l,
+              'shuffle': False,
+              'tofit': True}
+
+    print('Preparing generator')
+    test_generator = DataGenerator([nsample], labels=y_train, X=X, verbose=0, **params_test)
+    pred_baseline = model.predict_generator(test_generator)[0]
+    print('pred baseline', pred_baseline)
+    true_label = y_train[nsample]
+    print('true label', true_label)
+    label = np.argmax(pred_baseline)
+
+    nsamples = len(X)
+    x,y,z,l = X[0].shape
+    blank_pixel = np.zeros(l)
+
+    pos = []
+    old_X = X.copy()
+    for i, at in enumerate(tqdm(atoms_pos.keys())): #for each atom
+        positions = atoms_pos[at] #positions of that atom
+        new_X_train = old_X[nsample].todense()
+        for posi in positions: # deactivating each position
+            coordx = posi[0]; coordy = posi[1]; coordz = posi[2]
+            if 1 in new_X_train[coordx,coordy,coordz]:
+                new_X_train[coordx,coordy,coordz] = blank_pixel
+        new_X_sparse = [sparse.COO(new_X_train)]
+        test_generator = DataGenerator([0], labels=y_train, X=new_X_sparse, verbose=0, **params_test)
+        pred =  model.predict_generator(test_generator)[0]
+        if true_label[label] == 1:
+            importance_single_atom = pred[1] - pred_baseline[1]
+        else:
+            importance_single_atom = pred_baseline[1] - pred[1]
+        centx = cores[i][0]; centy = cores[i][1]; centz = cores[i][2];
+        pos.append([centx, centy, centz, importance_single_atom])
+                
+    return np.array(pos), atoms_pos
+
+
+
+def checking_positions(posit):
+    
+    '''saving positions in a dict if inside the box'''
+    
+    inside_box_positions = []
+    for i in posit.keys():
+        if len(posit[i]) > 0:
+            inside_box_positions.append(i)
+    return {i:j for i,j in zip(posit.keys(), posit.values()) if i in inside_box_positions}
+
+def customizing_pdbs(clusters=list(range(10)), nsample=[0]):
+    
+    total_idx = 0
+    for k, (sdf_lig, sdf_rec) in enumerate(zip(sdfs_lig, sdfs_rec)): #for each sdf file
+        print('\t-----> cluster', k, 'how many in cluster')
+        supl_lig = Chem.SDMolSupplier(sdf_lig, removeHs=False)
+        supl_rec = Chem.SDMolSupplier(sdf_rec, removeHs=False)
+        mols_lig = [mol for mol in supl_lig]
+        idx_receptor = len(mols_lig) + total_idx #index of the receptor in indiv_positions
+        mols_rec = [mol for mol in supl_rec]
+        if k in clusters:
+            for i in range(len(dict_core_pos[k])): #for each molecule of that file
+                print('\t----->> molecule', i, 'of: ', len(dict_core_pos[k]))
+                if not i == len(dict_core_pos[k])-1 and i in nsample:
+                    central_atoms = np.concatenate([i for i in dict_core_pos[k][i].values()])
+                    central_atoms_rec = np.concatenate([i for i in dict_core_pos[k][len(dict_core_pos[k])-1].values()])
+                    ff_lig = MolToPDBFile(mols_lig[i], 'clust_{}_{}_lig.pdb'.format(k,i))
+                    ff_rec = MolToPDBFile(mols_rec[0], 'clust_{}_{}_rec.pdb'.format(k,i))
+                    real_idx = i + total_idx
+                    poses_lig, atoms_pos_lig = pixels_per_atom(loaded_model, X, y_train, indiv_positions, central_atoms, real_idx)
+
+                    poses_rec, atoms_pos_rec = pixels_per_atom(loaded_model, X, y_train, indiv_positions, central_atoms_rec, real_idx, idx_receptor)
+                    ranged_lig = heatmap_on_betafactors(file='clust_{}_{}_lig.pdb'.format(k,i), vector=poses_lig[:,3], filled=atoms_pos_lig)
+                    ranged_rec = heatmap_on_betafactors(file='clust_{}_{}_rec.pdb'.format(k,i), vector=poses_rec[:,3], ranged=None, filled=atoms_pos_rec)  
+        #update index referenced to total molecules (mols of ligand + mol of receptor)
+        total_idx += len(mols_lig) + 1
+
+def rescale_vector(x, ranged=None):
+
+    tmax = 100
+    tmin = -100
+    rmax = max(x)
+    rmin = min(x)
+    if ranged is not None:
+        if ranged[1] > rmax: rmax = ranged[1]
+        if ranged[0] < rmin: rmin = ranged[0]
+    return np.array([((m - rmin)/(rmax - rmin))*(tmax-tmin) + tmin for m in x]), (rmin, rmax)
+
+
+def heatmap_on_betafactors(file, vector, ranged=None, filled=None):
+    toreplace = []
+    values = []
+    with open (file, 'r') as f:
+        filedata = f.readlines()
+        lines = [i.split() for i in filedata]
+        k = 0
+        for j, line in enumerate(lines):
+            if line[0]=='HETATM':
+                toreplace.append(j)
+                #filling the mnolecules out of the box with 0's
+                if j not in filled.keys():
+                    values.append(0.00)
+                else:
+                    values.append(vector[k])
+                    k+=1 
+    rescaled, (rmin, rmax) = rescale_vector(values, ranged)
+    toreplace = np.array(toreplace)
+    newdata = ''
+    j = 0
+    for i,dr in enumerate(filedata):
+        if i in toreplace:
+            try:
+                newdata += dr.replace(' 0.00', ' ' + str(round(rescaled[j], 2)))
+            except IndexError:
+                assert False
+            j+=1
+        else:
+            newdata += dr         
+    newfile = file.split('.')[0] + '_mod.pdb'
+    with open(newfile, 'w') as ff:
+        ff.write(newdata)
+        print('pdb written on', newfile)
+    return (rmin, rmax)
+
+
+
 ####################################
 
 restart = False
@@ -355,8 +498,8 @@ actives = os.path.join(folder, "actives.sdf")
 inactives = os.path.join(folder, "decoys_final.sdf")
 resolution = 0.5
 include_rec, just_rec, just_ligands, volume = arg_parser()
-folder_tosave = 'topass'
-
+folder_tosave = 'topass_05_2_rec_imp'
+if not os.path.exists(folder_tosave): os.mkdir(folder_tosave)
 
 if not restart:
     sdfs_lig = glob.glob(os.path.join(folder, "input__cluster.c*__dock_lib.sdf")) 
@@ -421,12 +564,24 @@ with open(inactives, "r") as f:
     ids[-1] = 0
     inacts = [data[idx].split('\n')[0] for idx in ids] 
 
-X = []; Y = []; sdfs = []; total_names=[]; total_indices=[]; cores = []
-tot = 0
 
-for clust, _ , atoms, sdf_lig, _ in tqdm(result): # for each cluster
-    sdfs.append(sdf_lig)
-    cores += atoms
+X = []; Y = []; sdfs = []; total_names=[]; total_indices=[]; dict_core_pos = []; indiv_positions={}; dict_atoms_pos = []
+tot = 0
+prev_max = -1
+
+for clust, d , atoms, indiv , _, sdf_lig, sdf_rec in tqdm(result): # for each cluster
+    ii = 0
+    if just_ligands:
+        sdfs.append(sdf_lig)
+    if include_rec:
+        sdfs.append(sdf_lig)
+        sdfs.append(sdf_rec)
+    dict_atoms_pos.append(d)
+    dict_core_pos.append(atoms)
+    for key in indiv.keys():
+        new_key = key + prev_max+1
+        indiv_positions[new_key] = indiv[key]
+    prev_max = max(indiv_positions.keys())
     with open(sdf_lig, "r") as f:
         data = f.readlines()
         ids = [i+1 for i, j in zip(count(), data) if j == '$$$$\n']
@@ -434,43 +589,46 @@ for clust, _ , atoms, sdf_lig, _ in tqdm(result): # for each cluster
         ids.insert(0, 0) #Insert first line as always have a molecule name
         ids = np.array(ids)
         names_lig = [data[idx].split('\n')[0] for idx in ids]
-    
+        print('names', len(names_lig))
         if "clust3" in sdf_lig:
             assert names[0] == "CHEMBL115876"
             assert names[-1] == "CHEMBL255389"
             assert names[3] == "ZINC36928916"
     for i, x in tqdm(enumerate(clust)): # for each mol in the cluster
         total_indices.append(i)
-        if names_lig[i] in acts:
-            Y.append(1)
-            X.append(x)
-        elif names_lig[i] in inacts:
-            Y.append(0)
-            X.append(x)
-        elif names_lig[i] not in acts and names_lig[i] not in inacts:
-            Y.append(1)
-            X.append(x)
+        if include_rec: 
+            end = len(clust) - 1 #idx of receptor
+            x_receptor = clust[len(clust) - 1] 
+        else: 
+            end = len(clust) + 1 
+        if i != end:
+            if names_lig[i] in acts:
+                Y.append(1)
+                if include_rec:   
+                    x = x_receptor + x
+                X.append(x)
+                ii += 1
+            elif names_lig[i] in inacts:
+                Y.append(0)
+                if include_rec:   
+                    x = x_receptor + x
+                X.append(x)
+                ii += 1
+            elif names_lig[i] not in acts and names_lig[i] not in inacts:
+                Y.append(1)
+                if include_rec:   
+                    x = x_receptor + x
+                X.append(x)
+                ii += 1;
 
     total_names.extend(names_lig)
-    print(sdf_lig, len(cores), len(names_lig), len(total_indices), len(total_names))
+    print(sdf_lig, ii, len(names_lig), len(total_indices), len(total_names))
 
     y_train = keras.utils.to_categorical(Y, 2)
 
 n = len(X)
 x,y,z,l = X[0].shape
-print('train shape', y_train.shape, len(cores), n,x,y,z,l)
-
-
-X_rec = []
-for _ , receptor_mols , _, _, sdf_rec, in tqdm(result): # for each cluster
-    for i, x in tqdm(enumerate(receptor_mols)):
-        X_rec.append(x)
-
-print(y_train.shape)
-n = len(X)
-x,y,z,l = X[0].shape
-
-print('dimensions', n,x,y,z,l)
+print('train shape', y_train.shape, len(dict_core_pos), n,x,y,z,l)
 
 class DataGenerator(keras.utils.Sequence):
     'Generates data for Keras'
@@ -595,14 +753,16 @@ if not restart:
     validation_generator = DataGenerator(val_idx, labels=y_train, X=X, **params_validation)
     
     early_stop = EarlyStopping(monitor='val_loss', min_delta=0.001, patience=3, mode='min', verbose=1)
-    checkpoint = ModelCheckpoint('weights.h5', monitor='val_loss', verbose=1, save_best_only=True, mode='min', period=1)
-    reduce_lr_loss = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=10, verbose=1, epsilon=1e-4, mode='min')
+  #  checkpoint = ModelCheckpoint('weights.h5', monitor='val_loss', verbose=1, save_best_only=True, mode='min', period=1)
+    reduce_lr_loss = ReduceLROnPlateau(monitor='val_loss', factor=0.1, patience=5, verbose=1, epsilon=1e-4, mode='min')
     
     
     print("Fit model")
     history = History()
-    model.fit_generator(generator=training_generator, validation_data=validation_generator,  class_weight=class_weight, epochs=20, callbacks = [early_stop,checkpoint, reduce_lr_loss])
-    
+    #model.fit_generator(generator=training_generator, validation_data=validation_generator,  class_weight=class_weight, epochs=20, callbacks = [early_stop,checkpoint, reduce_lr_loss])
+    model.fit_generator(generator=training_generator, validation_data=validation_generator,  class_weight=class_weight, epochs=20, callbacks = [early_stop, reduce_lr_loss])
+    #model.fit_generator(generator=training_generator, validation_data=validation_generator,  class_weight=class_weight, pickle_safe=True, epochs=40)
+    print('Model fitted!') 
     test_generator = DataGenerator(test_idx, labels=y_train, X=X, **params_test)
     ac1 = model.evaluate_generator(generator=test_generator)
     preds1 = model.predict_generator(test_generator)
@@ -627,17 +787,14 @@ else:
 #############################################
 
 print('POSTPROCESS')
-analysis_pixels = True
+analysis_pixels = False
+analysis_element = True
 importance_element = False
 
 
 if importance_element:
     print('Sensitivty analysis')
     
-    dict_atoms_pos = []
-    for _, d , _, _, _ in result:
-        dict_atoms_pos.append(d)    
-
     importances_dict = vocabulary_elements.copy()
     elem_dict = {}
     for element in tqdm(vocabulary_elements.keys()):
@@ -684,10 +841,11 @@ if importance_element:
         new_X_sparse = sparse.COO(new_X_train)
     
         #Calculating importance            
+        print('Testing...')
         test_generator = DataGenerator(test_idx, labels=y_train, X=new_X_sparse, **params_test)
         
         print('Computing performances')
-        ac2 = loaded_model.evaluate_generator(generator=test_generator)
+        ac2 = model.evaluate_generator(generator=test_generator)
         print(ac1, ac2)
         importance = ac2[1]-ac1[1] 
         importances_dict[element] =  importance
@@ -705,6 +863,20 @@ if analysis_pixels:
         ax = fig.gca(projection='3d')
         np.save(os.path.join(folder_tosave, 'pixels_imp_{}_{}'.format(i, resolution)), pos)
         ax.scatter(pos[:,0], pos[:,1], pos[:,2], c=pos[:,3], cmap='viridis')
+
+if analysis_element:
+    side = 20
+    cm = center_grid
+    print("CM", cm)
+    print("Build grid")
+    grid2 = Grid(cm, side, resolution)
+    grid2.calculate_pixels()
+    if include_rec:
+        sdfs_rec = [s for i,s in enumerate(sdfs) if i%2 != 0]
+        sdfs_lig = [s for i,s in enumerate(sdfs) if i%2 == 0]
+   
+    customizing_pdbs(clusters=[0], nsample=[4])
+
 
 assert 1==0
 
