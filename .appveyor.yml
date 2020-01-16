@@ -4,23 +4,23 @@ build: off
 branches:
   only:
     - master
+    - appveyor
 
 environment:
   matrix:
-#    - PYTHON: "C:\\Python27"     # comment out due to tensorflow version
-#    - PYTHON: "C:\\Python27-x64" # comment out due to tensorflow version
-    - PYTHON: "C:\\Python35-x64"
-#    - PYTHON: "C:\\Python36-x32"
-    - PYTHON: "C:\\Python36-x64"
+    - PYTHON: "C:\\Miniconda3"
+      CONDA_PY: "35"
+      CONDA_NPY: "1.10"
 
 init:
   - "ECHO %PYTHON% %PYTHON_VERSION% %PYTHON_ARCH%"
 
 install:
-  - "%PYTHON%\\python.exe -m pip install --upgrade pip setuptools"
-  - "%PYTHON%\\python.exe -m pip install wheel"
-  - "%PYTHON%\\python.exe -m pip install pytest"
-  - "%PYTHON%\\python.exe -m pip install mdtraj prody biopython seaborn sklearn scipy==1.1.0 mordred nltk xgboost requests chembl_webresource_client matplotlib umap-learn"
+  - set PATH=%PYTHON%;%PYTHON%\\Scripts;%PATH%
+  - where python
+  - python -m conda install -c rdkit -c josan_bcn -c nostrumbiodiscovery -c ambermd -c conda-forge mdtraj biopython seaborn scipy==1.1.0 mordred nltk requests matplotlib  -y
+  - python -m conda install -c anaconda py-xgboost
+  - python -m pip install sklearn prody umap-learn pytest
 
 
 test_script:
