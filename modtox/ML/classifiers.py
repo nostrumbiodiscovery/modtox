@@ -114,7 +114,7 @@ def retrieve_classifier(classifier, X=None, Y=None, tpot=False, scoring='balance
         if tpot:
             clf = get_tpot_classifier(cv=cv, fast=fast, scoring=scoring, generations=generations,random_state=random_state, population_size=population_size, model=model)
         else:
-            clf = NB
+            clf = KN
     elif classifier == "stack":
         if tpot:
             clf = get_tpot_classifiers(cv=cv, fast=fast, scoring=scoring, generations=generations, random_state=random_state, population_size=population_size)
@@ -226,6 +226,7 @@ def get_tpot_classifier(scoring='balanced_accuracy', generations=20, population_
         print('mcc scorer')
         scoring = make_scorer(mcc, greater_is_better=True)
  
+    print(model, fast, scoring) 
     pipeline_optimizer = TPOTClassifier(scoring=scoring, generations=generations, population_size=population_size, cv=cv,
                                         random_state=random_state, verbosity=2, config_dict=tpot_conf, template=template)
 
