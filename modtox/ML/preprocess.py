@@ -130,6 +130,7 @@ class ProcessorSDF():
         # Excluding labels
         if not self.debug:
             X = self.data.iloc[:, :-1]
+            np.save("mols", X)
             y = np.array(self.data.iloc[:,-1])
         else: 
             X = self.data.iloc[:2,:-1]
@@ -152,6 +153,8 @@ class ProcessorSDF():
         preprocessor = ColumnTransformer(transformers=[('mol', transformer, molecular_data)])
         pre = Pipeline(steps=[('transformer', preprocessor)])
         X_trans = pre.fit_transform(X)
+        np.save("X", X_trans)
+        np.save("Y", y)
         return X_trans, y
 
     def fit_transform(self, sdf_active, sdf_inactive, folder='.'):

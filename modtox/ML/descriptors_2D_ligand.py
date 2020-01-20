@@ -91,6 +91,8 @@ class Fingerprints_MACS():
 
     def __init__(self, folder='.'): 
         self.folder = folder
+        if not os.path.exists(self.folder):
+            os.mkdir(self.folder)
 
     def fit(self, molecules):
         return molecules
@@ -109,9 +111,10 @@ class Fingerprints_MACS():
             fingerprints.append([int(bit) for bit in mac])
         for i, fingerprint in tqdm(enumerate(fingerprints)):
             df = df.append(pd.Series({"rdkit_fingerprintMACS_{}".format(j):element for j, element in enumerate(fingerprint)}), ignore_index=True)
-        np.savetxt(os.path.join(self.folder, "MAC_descriptors.txt"), list(df), fmt="%s")
-        return df  
 
+        np.savetxt(os.path.join(self.folder, "MAC_descriptors.txt"), list(df), fmt="%s")
+        return df
+    
 class Fingerprints_Morgan():
 
     def fit(self, molecules):
@@ -131,6 +134,8 @@ class Fingerprints():
 
     def __init__(self, folder='.'): 
         self.folder = folder
+        if not os.path.exists(self.folder):
+            os.mkdir(self.folder)
 
 
     def fit(self, molecules):
@@ -143,9 +148,9 @@ class Fingerprints():
         print("\tBuilding Daylight Fingerprints")
         df = pd.DataFrame()
         molecules = molecules["molecules"].tolist()
-        fingerprints = [FingerprintMols.FingerprintMol(mol).ToBitString() for mol in molecules]
+        fingerprints = [FingerprintMols.FingerprintMol(mol) for mol in molecules]
         for i, fingerprint in tqdm(enumerate(fingerprints)):
-            df = df.append(pd.Series({"rdkit_fingerprint_{}".format(j):element for j, element in enumerate(fingerprint)}), ignore_index=True)   
+            df = df.append(pd.Series({"rdkit_fingerprint_{}".format(j): int(element) for j, element in enumerate(fingerprint)}), ignore_index=True)   
         np.savetxt(os.path.join(self.folder, "daylight_descriptors.txt"), list(df), fmt="%s")
         return df.astype(float)
 
@@ -155,6 +160,9 @@ class Descriptors():
         self.descriptors = features
         self.headers = headers
         self.folder = folder 
+        if not os.path.exists(self.folder):
+            os.mkdir(self.folder)
+
     def fit(self, molecules):
         return molecules
 
