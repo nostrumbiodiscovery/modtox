@@ -10,6 +10,8 @@ class ExternalData():
         self.mol_names = mol_names       
         self.exclude = exclude
         self.folder = folder
+        if not os.path.exists(self.folder):
+            os.mkdir(self.folder)
 
     def fit(self, molecules):
         return molecules

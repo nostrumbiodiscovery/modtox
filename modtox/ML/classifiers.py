@@ -96,6 +96,8 @@ def optimize_clf(X,Y, stack, clf):
        #     print('best score', random_search.best_score_)
        #     print('best estimator', estimator)
             gscv = GridSearchCV(clas, params, cv=5, scoring='f1', error_score=0.0, return_train_score=True, verbose=10)
+       #     gscv = GridSearchCVProgressBar(clas, param_grid=params,
+                               return_train_score=True, scoring='f1', cv=5, verbose=3)
             gscv.fit(X_test, Y_test)
             best_params = gscv.best_params_
             estimator = gscv.best_estimator_
@@ -113,7 +115,6 @@ def retrieve_classifier(classifier, X=None, Y=None, tpot=False, scoring='balance
             clf = get_tpot_classifier(cv=cv, fast=fast, scoring=scoring, generations=generations,random_state=random_state, population_size=population_size, model=model)
         else:
             clf = KN
- 
     elif classifier == "stack":
         if tpot:
             clf = get_tpot_classifiers(cv=cv, fast=fast, scoring=scoring, generations=generations, random_state=random_state, population_size=population_size)
@@ -159,7 +160,7 @@ def get_tpot_classifier(scoring='balanced_accuracy', generations=20, population_
         tpot_conf = "TPOT light"
         template = 'FeatureSetSelector-Transformer-Classifier'
 
-    if model =='kn':
+    elif model =='kn':
         tpot_conf = {
         'sklearn.neighbors.KNeighborsClassifier': {
             'n_neighbors': range(1, 101),
@@ -167,7 +168,7 @@ def get_tpot_classifier(scoring='balanced_accuracy', generations=20, population_
             'p': [1, 2]
           }
         }
-    if model =='nb':
+    elif model =='nb':
         tpot_conf = {
         'sklearn.naive_bayes.BernoulliNB': {
             'alpha': [1e-3, 1e-2, 1e-1, 1., 10., 100.],
@@ -175,7 +176,7 @@ def get_tpot_classifier(scoring='balanced_accuracy', generations=20, population_
            }
         }  
 
-    if model =='log':
+    elif model =='log':
         tpot_conf = {
         'sklearn.linear_model.LogisticRegression': {
             'penalty': ["l1", "l2"],
@@ -184,7 +185,7 @@ def get_tpot_classifier(scoring='balanced_accuracy', generations=20, population_
             'class_weight': ['balanced']
           }
        }
-    if model == 'tree':
+    elif model == 'tree':
         tpot_conf = {
         'sklearn.tree.DecisionTreeClassifier': {
             'criterion': ["gini", "entropy"],
@@ -193,7 +194,7 @@ def get_tpot_classifier(scoring='balanced_accuracy', generations=20, population_
             'min_samples_leaf': range(1, 21)
              } 
          }
-    if model == 'xgboost':
+    elif model == 'xgboost':
         tpot_conf = {
         'xgboost.XGBClassifier': {
             'n_estimators': [100],
@@ -206,7 +207,7 @@ def get_tpot_classifier(scoring='balanced_accuracy', generations=20, population_
             }
          }
 
-    if model == 'svm':
+    elif model == 'svm':
         tpot_conf = {
         'sklearn.svm.LinearSVC': {
             'class_weight':[None, 'balanced'],
@@ -217,6 +218,9 @@ def get_tpot_classifier(scoring='balanced_accuracy', generations=20, population_
             'C': [1e-4, 1e-3, 1e-2, 1e-1, 0.5, 1., 5., 10., 15., 20., 25.]
     }
         }
+
+    else:
+        tpot_conf = {}
 
     if scoring == 'mcc':
         print('mcc scorer')

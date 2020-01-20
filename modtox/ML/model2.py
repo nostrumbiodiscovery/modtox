@@ -110,7 +110,7 @@ class GenericModel(object):
         self.cv = cv
         self.majvoting = majvoting
         self.weighting = weighting
-        self.clf = cl.retrieve_classifier(clf,self.tpot, cv=self.cv, scoring=scoring, generations=generations, random_state=random_state, population_size=population_size, fast=False, model=None)
+        self.clf = cl.retrieve_classifier(clf,tpot=self.tpot, cv=self.cv, scoring=scoring, generations=generations, random_state=random_state, population_size=population_size, fast=False, model=None)
         self.random_state = random_state
         self.stack = self._is_stack_model()   
 
