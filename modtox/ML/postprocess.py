@@ -134,7 +134,7 @@ class PostProcessor():
         assert len(features) == self.x_test.shape[1], "Headers and features should be the same length \
             {} {}".format(len(features), self.x_test.shape[1])
 
-        clf = cl.XGBOOST
+        clf = cl.XGBOOST[0]
         model = clf.fit(self.x_test, self.y_true_test)
         important_features = model.get_booster().get_score(importance_type='gain')
         important_features_sorted = sorted(important_features.items(), key=operator.itemgetter(1), reverse=True)

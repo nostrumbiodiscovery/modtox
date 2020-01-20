@@ -19,7 +19,7 @@ from tpot import TPOTClassifier
 parameters_tree = {'criterion':('gini', 'entropy'), 'splitter': ('best', 'random'), 'class_weight':(None, 'balanced'), 'max_depth': range(1, 11), 
                        'min_samples_split': range(2, 20, 2), 'min_samples_leaf': range(1, 22, 2)}
 parameters_bern = {'alpha': [1e-3, 1e-2, 1e-1, 1., 10., 100.], 'fit_prior': [True, False]}
-parameters_kn = {'n_neighbors': range(1, 101), 'weights': ["uniform", "distance"], 'p': [1, 2] }
+parameters_kn = {'n_neighbors': list(range(1,10)) + list(range(10,100,5)), 'weights': ["uniform", "distance"], 'p': [1, 2] }
 parameters_svm = {'kernel': ['rbf', 'linear', 'poly','sigmoid'],  'tol': [1e-5, 1e-4, 1e-3, 1e-2, 1e-1], 
                     'class_weight':[None, 'balanced'],   'C': [1e-4, 1e-3, 1e-2, 1e-1, 0.5, 1., 5., 10., 15., 20., 25.]}
 parameters_log = {'penalty': ["l1", "l2"], 'C': [1e-4, 1e-3, 1e-2, 1e-1, 0.5, 1., 5., 10., 15., 20., 25.], 'dual': [False], 
@@ -61,7 +61,7 @@ def optimize_clf(X,Y, stack, clf):
     warnings.filterwarnings("ignore", category=FutureWarning)
     print(clf)
     #choosing stratified fraction of the total data to optimize hyperparameters
-    _, X_test, _, Y_test = train_test_split(X, Y, test_size=0.2, random_state=42, stratify=Y)
+    _, X_test, _, Y_test = train_test_split(X, Y, test_size=0.1, random_state=42, stratify=Y)
     
     optimized = False 
     if stack:
@@ -95,9 +95,8 @@ def optimize_clf(X,Y, stack, clf):
        #     best_params = random_search.best_params_
        #     print('best score', random_search.best_score_)
        #     print('best estimator', estimator)
+       #     gscv = GridSearchCVProgressBar(clas, param_grid=params, return_train_score=True, scoring='f1', cv=5, verbose=3)
             gscv = GridSearchCV(clas, params, cv=5, scoring='f1', error_score=0.0, return_train_score=True, verbose=10)
-       #     gscv = GridSearchCVProgressBar(clas, param_grid=params,
-                               return_train_score=True, scoring='f1', cv=5, verbose=3)
             gscv.fit(X_test, Y_test)
             best_params = gscv.best_params_
             estimator = gscv.best_estimator_
@@ -114,7 +113,7 @@ def retrieve_classifier(classifier, X=None, Y=None, tpot=False, scoring='balance
         if tpot:
             clf = get_tpot_classifier(cv=cv, fast=fast, scoring=scoring, generations=generations,random_state=random_state, population_size=population_size, model=model)
         else:
-            clf = KN
+            clf = NB
     elif classifier == "stack":
         if tpot:
             clf = get_tpot_classifiers(cv=cv, fast=fast, scoring=scoring, generations=generations, random_state=random_state, population_size=population_size)
