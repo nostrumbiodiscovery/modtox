@@ -116,6 +116,7 @@ class GenericModel(object):
 
         self.scaler = StandardScaler()
         self.imputer = Imputer(imputer_type='simple')
+        #self.imputer = Imputer(imputer_type='cluster_based', n_clusters=10)
         self.debug = debug
 
     def _is_stack_model(self):
