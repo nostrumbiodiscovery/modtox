@@ -5,6 +5,7 @@ from sklearn.metrics import f1_score
 from sklearn.model_selection import cross_val_predict
 from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import confusion_matrix
+from tpot.export_utils import generate_pipeline_code, expr_to_tree
 import modtox.ML.classifiers as cl
 import pandas as pd
 import pickle
@@ -110,6 +111,7 @@ class GenericModel(object):
         self.majvoting = majvoting
         self.weighting = weighting
         self.clf = cl.retrieve_classifier(clf,self.tpot, cv=self.cv, scoring=scoring, generations=generations, random_state=random_state, population_size=population_size, fast=False, model=None)
+        self.random_state = random_state
         self.stack = self._is_stack_model()   
 
         self.scaler = StandardScaler()
@@ -123,8 +125,16 @@ class GenericModel(object):
         if f != None: 
             for cl in models:
                 cl.fit(X, y)
-                if self.tpot: pickle.dump(cl.fitted_pipeline_, f)
-                else: pickle.dump(cl ,f)
+                # 
+                try: 
+                    sklearn_pipeline_str = generate_pipeline_code(expr_to_tree(cl._optimized_pipeline, cl._pset), cl.operators)
+                    sklearn_pipeline = eval(sklearn_pipeline_str, cl.operators_context)
+                    cl._set_param_recursive(sklearn_pipeline.steps, 'random_state', self.random_state)
+                except AttributeError:
+                    pass
+                # 
+                if self.tpot: pickle.dump(sklearn_pipeline, f)
+                else: pickle.dump(cl,f)
 
         if self.tpot:
             pred = np.array([cl.predict(X) for cl in models])
@@ -167,13 +177,18 @@ class GenericModel(object):
     def _last_fit(self, X, y, y_removed, f=None):
        if self.tpot:
            self.last_clf.fit(X,y)
+           # 
+           sklearn_pipeline_str = generate_pipeline_code(expr_to_tree(self.last_clf._optimized_pipeline, self.last_clf._pset), self.last_clf.operators)
+           sklearn_pipeline = eval(sklearn_pipeline_str, self.last_clf.operators_context)
+           self.last_clf._set_param_recursive(sklearn_pipeline.steps, 'random_state', self.random_state)
+           # 
            prediction = self.last_clf.predict(X)
            try:
                prediction_proba = self.last_clf.predict_proba(X)
            except RuntimeError:
                prediction_proba = np.array([[0,1] if pred == 1 else [1,0] for pred in prediction])
                pass
-           pickle.dump(self.last_clf.fitted_pipeline_, f)
+           pickle.dump(sklearn_pipeline, f)
        else:
            prediction = cross_val_predict(self.last_clf, X, y, cv=self.cv)
            try:
