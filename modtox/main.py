@@ -36,10 +36,10 @@ METRICS_FOLDER = "metrics"
 
 def main(traj, resname, top, clf, tpot, cv, scoring='balanced_accuracy', mol_to_read=None, RMSD=True, cluster=True, last=True, clust_type="BS", rmsd_type="BS", sieve=10, precision="SP", maxkeep=500, maxref=400, grid_mol=2, csv=False, substrate=None, folder_to_get=None, best=False, glide_files="*pv.maegz", database_train='pubchem', database_test='bindingdb', dude=None, pubchem=None, binding=None, set_prepare=True, dock=True, build=True, predict=True, debug=False, greasy=True, sdf_active_train=None, sdf_inactive_train=None, sdf_active_test=None, sdf_inactive_test=None, csv_train=None, csv_test=None, majvoting=False, train=True, test=True, fp=False, descriptors=False, MACCS=False, columns=None, feature_to_check="external_descriptors", weighting=False, combine_model=False):
     
-    sdf_active_train = os.path.abspath(sdf_active_train)
-    sdf_inactive_train = os.path.abspath(sdf_inactive_train)
-    sdf_active_test = os.path.abspath(sdf_active_test)
-    sdf_inactive_test = os.path.abspath(sdf_inactive_test)
+ #   sdf_active_train = os.path.abspath(sdf_active_train)
+ #   sdf_inactive_train = os.path.abspath(sdf_inactive_train)
+ #   sdf_active_test = os.path.abspath(sdf_active_test)
+ #   sdf_inactive_test = os.path.abspath(sdf_inactive_test)
     if not os.path.exists(TRAIN_FOLDER): os.mkdir(TRAIN_FOLDER)
     if not os.path.exists(TEST_FOLDER): os.mkdir(TEST_FOLDER)
 
@@ -243,7 +243,7 @@ def predict_model(Model, sdf_active_test, sdf_inactive_test, csv_test, clf, tpot
     pre = Pre.ProcessorSDF(csv=csv_test, fp=fp, descriptors=descriptors, MACCS=MACCS, columns=columns)
     #pre = Pre.ProcessorSDF(csv=False, fp=False, descriptors=False, MACCS=True, columns=None)
     print("Fit and tranform for preprocessor..")
-    X_test, y_test = pre.fit_transform(sdf_active=sdf_active_test, sdf_inactive=sdf_inactive_test, folder=DESCRIPTORS_FOLDER)
+    X_test, y_test = pre.fit_transform(sdf_active=sdf_active_test, sdf_inactive=sdf_inactive_test, sdfs_to_compare=[sdf_active_train, sdf_inactive_train], folder=DESCRIPTORS_FOLDER)
     print("Sanitazing...")
     X_test, y_test, mol_names, y_removed, X_removed, cv = pre.sanitize(X_test, y_test, cv, folder=DESCRIPTORS_FOLDER, feature_to_check=feature_to_check)
     print("Filtering features...")
