@@ -1,7 +1,9 @@
 import pandas as pd
+from tqdm import tqdm
 from rdkit import Chem
 from modtox.ML.descriptors_2D_ligand import *
 from modtox.ML.external_descriptors import *
+from rdkit.DataStructs import FingerprintSimilarity
 
 
 TITLE_MOL = "molecules"
@@ -18,8 +20,35 @@ class ProcessorSDF():
         self.columns = columns
         self.fitted = False
         self.debug = debug
+
+
+    def similarity_filter(self, sdfs_to_compare=None, cut=0.7, *sdfs):
+
+        assert sdfs_to_compare is not None, "Must provide comparison sdfs"
+        print('Similarity filtering with', sdfs_to_compare)
+        mol_ref = []
+        for sdf in tqdm(sdfs_to_compare):
+            mol_ref += [mol for mol in Chem.SDMolSupplier(sdf) if mol]
+        fps_ref = [Chem.Fingerprints.FingerprintMols.FingerprintMol(x) for x in mol_ref]
+        mols_filtered = []
+        for sdf in sdfs:
+            mols_tar= np.array([mol for mol in Chem.SDMolSupplier(sdf)])
+            fps_tar = [Chem.Fingerprints.FingerprintMols.FingerprintMol(x) for x in mols_tar]
+            idxs = []
+            for i,fp1 in tqdm(enumerate(fps_tar), total=len(fps_tar)):
+                for fp2 in fps_ref:
+                    if FingerprintSimilarity(fp1, fp2) > cut:
+                        idxs.append(i)
+                        break
+            print('Detected ' , len(idxs), ' similarities')
+        #    similarities = [float(FingerprintSimilarity(fp1, fp2)) for fp1 in tqdm(fps_tar) for fp2 in fps_ref]
+        #    cloned =  set([int(i/len(fps_ref)) for i,sim in enumerate(similarities) if sim > cut])
+        #    idxs = [ind for ind in list(range(len(fps_tar))) if ind not in cloned]
+            mols_filtered.append(mols_tar[idxs])
+        
+        return mols_filtered
  
-    def _load_train_set(self, sdf_active, sdf_inactive):
+    def _load_train_set(self, sdf_active, sdf_inactive, sdfs_to_compare):
         """
         Separate between train and test dataframe
     
@@ -43,12 +72,22 @@ class ProcessorSDF():
         self.n_initial_inactive = len([mol for mol in Chem.SDMolSupplier(sdf_inactive)])
         print("Active, Inactive")
         print(self.n_initial_active, self.n_initial_inactive)
-    
+        
         self.n_final_active = len(actives)
         self.n_final_inactive = len(inactives)
         print("Read Active, Read Inactive")
         print(self.n_final_active, self.n_final_inactive)
-    
+         
+        #Similarity filtering	
+        if sdfs_to_compare is not None:
+            
+            actives, inactives = [*self.similarity_filter(sdfs_to_compare, 0.7, sdf_active, sdf_inactive)]
+            self.n_filtered_actives = len(actives)
+            self.n_filtered_inactives = len(inactives)
+            
+            print("Filtered Active, Inactive")
+            print(self.n_filtered_actives, self.n_filtered_inactives)
+
         #Do not handle tautomers with same molecule Name
         self.mol_names = []
         actives_non_repited = []
@@ -119,9 +158,11 @@ class ProcessorSDF():
             headers_ext.remove(header)
         return headers, headers_fp, headers_ext, headers_de, headers_maccs
  
-    def fit(self, sdf_active, sdf_inactive):
+    def fit(self, sdf_active, sdf_inactive, sdfs_to_compare=None):
         #Only loads molecules as a df["molecules"] = [rdkit instaces]
-        self.data = self._load_train_set(sdf_active, sdf_inactive)
+        sdf_active = os.path.abspath(sdf_active)
+        sdf_inactive = os.path.abspath(sdf_inactive)
+        self.data = self._load_train_set(sdf_active, sdf_inactive, sdfs_to_compare)
         self.fitted = True
         return self
 
@@ -157,8 +198,8 @@ class ProcessorSDF():
         np.save("Y", y)
         return X_trans, y
 
-    def fit_transform(self, sdf_active, sdf_inactive, folder='.'):
-        return self.fit(sdf_active, sdf_inactive).transform(folder)
+    def fit_transform(self, sdf_active, sdf_inactive, sdfs_to_compare=None, folder='.'):
+        return self.fit(sdf_active, sdf_inactive, sdfs_to_compare).transform(folder)
         
     def sanitize(self, X, y, cv, feature_to_check='external_descriptors', folder='.'):
   
@@ -213,6 +254,7 @@ class ProcessorSDF():
 
         
         return self.X, self.y, self.mol_names, y_removed, X_removed, cv 
+
 
     def filter_features(self, X):
          
