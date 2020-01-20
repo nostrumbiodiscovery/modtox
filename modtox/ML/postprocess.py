@@ -24,13 +24,12 @@ from matplotlib.offsetbox import AnchoredText
 class PostProcessor():
 
     def __init__(self, clf, x_test, y_true_test, y_pred_test, y_proba_test, y_pred_test_clfs=None, x_train=None, y_true_train=None, y_pred_train=None, y_proba_train=None, y_pred_train_clfs=None, folder='.'):
-        
+
         self.x_train = x_train
         self.y_true_train = y_true_train
         self.y_pred_train = y_pred_train
         self.y_proba_train = y_proba_train
         self.y_proba_train_clfs = y_pred_train_clfs
-
 
         self.x_test = x_test
         self.y_true_test = y_true_test
@@ -428,13 +427,13 @@ class PostProcessor():
            embedding = embedding1
            #colors = plt.get_cmap('Spectral')(np.linspace(0, 1, 2))
            colors = plt.get_cmap('Spectral')(np.linspace(0, 1, 4))
-           fig, ax = plt.subplots()
+           fig, ax = plt.subplots(figsize=(14,10))
            Y1 = [x+2 for x in self.y_true_train] #setting 0 to train
            Y2 = [x for x in self.y_true_test] #setting 1 to test
            Y = np.concatenate((Y1,Y2))
            for i in range(embedding.shape[0]):
                pos = embedding[i, :2]
-               self.ellipse_plot(pos, embedding[i, 2],embedding[i, 3], embedding[i, 4], ax, dmin=0.2, dmax=1.0, alpha=0.01, color = colors[np.array(Y)[i]])
+             #  self.ellipse_plot(pos, embedding[i, 2],embedding[i, 3], embedding[i, 4], ax, dmin=0.2, dmax=1.0, alpha=0.01, color = colors[np.array(Y)[i]])
            end = self.x_train.shape[0]
            act_train = [i for i,val in enumerate(Y1) if val == 3]
            inact_train = [i for i,val in enumerate(Y1) if val == 2]

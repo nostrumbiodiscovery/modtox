@@ -64,6 +64,22 @@ class ProcessorSDF():
                 self.mol_names.append(mol_name)
                 inactives_non_repited.append(mol)
     
+        #keep balance sets
+
+        balance = False
+        if balance:
+            #random balance
+            randoms = np.random.choice(range(max(len(inactives_non_repited), len(actives_non_repited))), min(len(inactives_non_repited), len(actives_non_repited)), replace=False) 
+
+            if len(inactives_non_repited) > len(actives_non_repited):
+                inactives_non_repited = np.array(inactives_non_repited)[randoms]
+                randoms = np.add(randoms, len(actives_non_repited))
+                idxs = np.concatenate((list(range(len(actives_non_repited))), randoms))
+            else:
+                idxs = np.concatenate((randoms, list(range(len( actives_non_repited), len(self.mol_names)))))
+                actives_non_repeated = actives_non_repited[randoms]
+            self.mol_names= [mol for i, mol in enumerate(self.mol_names) if i in idxs]
+
         #Main Dataframe
         actives_df = pd.DataFrame({TITLE_MOL: actives_non_repited })
         inactives_df =  pd.DataFrame({TITLE_MOL: inactives_non_repited })
@@ -155,15 +171,19 @@ class ProcessorSDF():
             assert self.external_data, "Need to read external data"
             indices_to_check = [i for i, j in enumerate(self.headers) if j in self.headers_ext] 
             molecules_to_remove =  [mol for i, mol in enumerate(self.mol_names) if np.isnan(X[i,indices_to_check]).all()]
+            print('Number of molecules removed because all values are NAN', len(molecules_to_remove))
         if feature_to_check == 'fingerprintMACCS': 
             indices_to_check = [i for i, j in enumerate(self.headers) if j in self.headers_maccs] 
             molecules_to_remove =  [mol for i, mol in enumerate(self.mol_names) if np.isnan(X[i,indices_to_check]).all()]
+            print('Number of molecules removed because all values are NAN', len(molecules_to_remove))
         if feature_to_check == 'descriptors': 
             indices_to_check = [i for i, j in enumerate(self.headers) if j in self.headers_de] 
             molecules_to_remove =  [mol for i, mol in enumerate(self.mol_names) if np.isnan(X[i,indices_to_check]).all()]
+            print('Number of molecules removed because all values are NAN', len(molecules_to_remove))
         if feature_to_check == 'fingerprint': 
             indices_to_check = [i for i, j in enumerate(self.headers) if j in self.headers_fp] 
             molecules_to_remove =  [mol for i, mol in enumerate(self.mol_names) if np.isnan(X[i,indices_to_check]).all()]
+            print('Number of molecules removed because all values are NAN', len(molecules_to_remove))
 
         #we have to remove the first value of the headers_ext descriptors since is the index of the molecule (1,2,3,4,5...)
         if feature_to_check == 'external_descriptors':
@@ -171,6 +191,11 @@ class ProcessorSDF():
             X = np.delete(X, to_remove_index, axis=1)
         mols_to_maintain = [mol for mol in self.mol_names if mol not in molecules_to_remove]
         indxs_to_maintain = [np.where(np.array(self.mol_names) == mol)[0][0] for mol in mols_to_maintain]
+        indxs_removed = [i for i in range(len(y)) if i not in indxs_to_maintain]
+        y_removed = np.array(y)[indxs_removed]
+        X_removed = X[indxs_removed, :]
+        print('Removed 0s: ', len([l for l in y_removed if l==0]))
+        print('Removed 1s: ', len([l for l in y_removed if l==1]))
         labels = np.array(y)[indxs_to_maintain]
         self.y = pd.Series(labels)
         self.y = np.array(self.y)
@@ -180,8 +205,9 @@ class ProcessorSDF():
         n_inactive_corrected = len([label for label in self.y if label==0])
         if cv > n_inactive_corrected  or cv > n_active_corrected:
              cv = min([n_active_corrected, n_inactive_corrected])
+
         
-        return self.X, self.y, self.mol_names, cv 
+        return self.X, self.y, self.mol_names, y_removed, X_removed, cv 
 
     def filter_features(self, X):
          
@@ -190,6 +216,6 @@ class ProcessorSDF():
             self.X = X[:, user_indexes]
             self.headers = np.array(self.headers)[user_indexes].tolist()
           
-        return self.X, self.headers
+        return 
 
 

@@ -5,6 +5,7 @@ from scipy import stats
 from sklearn import linear_model
 from rdkit.Chem import AllChem
 from sklearn.naive_bayes import GaussianNB
+from tqdm import tqdm
 from sklearn.neighbors import NearestNeighbors
 from rdkit.Chem import MACCSkeys
 from rdkit.Chem.Fingerprints import FingerprintMols
@@ -102,7 +103,7 @@ class Fingerprints_MACS():
         df = pd.DataFrame()
         molecules = molecules["molecules"].tolist()
         fingerprints = [MACCSkeys.GenMACCSKeys(mol).ToBitString() for mol in molecules]
-        for i, fingerprint in enumerate(fingerprints):
+        for i, fingerprint in tqdm(enumerate(fingerprints)):
             df = df.append(pd.Series({"rdkit_fingerprintMACS_{}".format(j):element for j, element in enumerate(fingerprint)}), ignore_index=True)
         np.savetxt(os.path.join(self.folder, "MAC_descriptors.txt"), list(df), fmt="%s")
         return df.astype(float)
@@ -139,7 +140,7 @@ class Fingerprints():
         df = pd.DataFrame()
         molecules = molecules["molecules"].tolist()
         fingerprints = [FingerprintMols.FingerprintMol(mol).ToBitString() for mol in molecules]
-        for i, fingerprint in enumerate(fingerprints):
+        for i, fingerprint in tqdm(enumerate(fingerprints)):
             df = df.append(pd.Series({"rdkit_fingerprint_{}".format(j):element for j, element in enumerate(fingerprint)}), ignore_index=True)   
         np.savetxt(os.path.join(self.folder, "daylight_descriptors.txt"), list(df), fmt="%s")
         return df.astype(float)
