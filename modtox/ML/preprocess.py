@@ -164,7 +164,9 @@ class ProcessorSDF():
 
         self.headers, self.headers_fp, self.headers_ext, self.headers_de, self.headers_maccs = self._retrieve_header(folder=folder)
         # sorting mol_names to coincide with the indexing of csv
-        self.mol_names, y = zip(*sorted(zip(self.mol_names, y)))
+        self.mol_names, X, y = zip(*sorted(zip(self.mol_names, X, y)))
+        X = np.array(X)
+
         if self.debug: self.mol_names = self.mol_names[:2]
         molecules_to_remove = []
         if feature_to_check == 'external_descriptors':

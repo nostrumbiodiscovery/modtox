@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 import os
-
+from tqdm import tqdm
 
 class ExternalData():
 
@@ -40,7 +40,7 @@ class ExternalData():
         headers = list(df)
         values = (None,) * len(headers)
         #If not present on your glide 
-        for i, title in enumerate(self.mol_names):
+        for i, title in tqdm(enumerate(self.mol_names), total=len(self.mol_names)):
             if title not in df["Title"].values.astype(str):
                 null_line = pd.DataFrame.from_records([values], columns=headers, index=[i])
                 null_line["Title"] = str(title)

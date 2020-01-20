@@ -99,15 +99,19 @@ class Fingerprints_MACS():
         return self.transform(self.fit(molecules), folder)
 
     def transform(self, molecules, folder = '.'):
+
         print("\tBuilding MACS Fingerprints")
         df = pd.DataFrame()
         molecules = molecules["molecules"].tolist()
-        fingerprints = [MACCSkeys.GenMACCSKeys(mol).ToBitString() for mol in molecules]
+        MACCS = [MACCSkeys.GenMACCSKeys(mol) for mol in molecules]
+        fingerprints = []
+        for mac in tqdm(MACCS):
+            fingerprints.append([int(bit) for bit in mac])
         for i, fingerprint in tqdm(enumerate(fingerprints)):
             df = df.append(pd.Series({"rdkit_fingerprintMACS_{}".format(j):element for j, element in enumerate(fingerprint)}), ignore_index=True)
         np.savetxt(os.path.join(self.folder, "MAC_descriptors.txt"), list(df), fmt="%s")
-        return df.astype(float)
-    
+        return df  
+
 class Fingerprints_Morgan():
 
     def fit(self, molecules):

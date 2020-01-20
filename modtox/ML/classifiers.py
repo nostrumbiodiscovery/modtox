@@ -61,7 +61,7 @@ def optimize_clf(X,Y, stack, clf):
     warnings.filterwarnings("ignore", category=FutureWarning)
     print(clf)
     #choosing stratified fraction of the total data to optimize hyperparameters
-    _, X_test, _, Y_test = train_test_split(X, Y, test_size=0.1, random_state=42, stratify=Y)
+    _, X_test, _, Y_test = train_test_split(X, Y, test_size=0.2, random_state=42, stratify=Y)
     
     optimized = False 
     if stack:
@@ -73,8 +73,7 @@ def optimize_clf(X,Y, stack, clf):
             else:
                 clas = cl[0]
                 params = cl[1]
-                gscv = GridSearchCVProgressBar(clas, param_grid=params,
-                                   return_train_score=True, scoring='f1', cv=5, verbose=3)
+                gscv = GridSearchCV(clas, params, cv=5, scoring='f1', error_score=0.0, return_train_score=True, verbose=10)
                 gscv.fit(X_test, Y_test)
                 best_params = gscv.best_params_
                 estimator = gscv.best_estimator_
@@ -90,17 +89,16 @@ def optimize_clf(X,Y, stack, clf):
             clas = clf[0]    
             params = clf[1]
     
-            random_search = RandomizedSearchCV(clas, param_distributions=params, n_iter=100, scoring='f1', verbose=3, cv=5)
-            random_search.fit(X_test, Y_test)
-            estimator = random_search.best_estimator_
-            best_params = random_search.best_params_
-            print('best score', random_search.best_score_)
-            print('best estimator', estimator)
-            #gscv = GridSearchCVProgressBar(clas, param_grid=params,
-                          #     return_train_score=True, scoring='f1', cv=5, verbose=3)
-            #gscv.fit(X_test, Y_test)
-            #best_params = gscv.best_params_
-            #estimator = gscv.best_estimator_
+       #     random_search = RandomizedSearchCV(clas, param_distributions=params, n_iter=100, scoring='f1', verbose=3, cv=5)
+       #     random_search.fit(X_test, Y_test)
+       #     estimator = random_search.best_estimator_
+       #     best_params = random_search.best_params_
+       #     print('best score', random_search.best_score_)
+       #     print('best estimator', estimator)
+            gscv = GridSearchCV(clas, params, cv=5, scoring='f1', error_score=0.0, return_train_score=True, verbose=10)
+            gscv.fit(X_test, Y_test)
+            best_params = gscv.best_params_
+            estimator = gscv.best_estimator_
  
         print('best params', best_params)
 
