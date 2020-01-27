@@ -42,8 +42,8 @@ VOT = [VotingClassifier(estimators=[('svm', SVM), ('kn', KN), ('lr', LR),
 
 #optimized clfs for glide
 
-SVM_OPT = svm.SVC(C=0.1, class_weight='balanced', kernel='sigmoid', tol= 0.01)
-KN_OPT = KNeighborsClassifier(n_neighbors=1, p=1, weights='uniform')
+SVM_OPT = svm.SVC(C=0.1, class_weight='balanced', kernel='rbf', tol= 0.01)
+KN_OPT = KNeighborsClassifier(n_neighbors=2, p=1, weights='distance')
 LR_OPT = LogisticRegression(C=0.01,class_weight='balanced', dual=False, penalty='l2')
 TREE_OPT = DecisionTreeClassifier(class_weight='balanced', criterion='entropy',max_depth=3, min_samples_leaf=1, min_samples_split=12,splitter='random')
 NB_OPT = BernoulliNB(alpha=0.001, fit_prior=False)
@@ -89,17 +89,16 @@ def optimize_clf(X,Y, stack, clf):
             clas = clf[0]    
             params = clf[1]
     
-       #     random_search = RandomizedSearchCV(clas, param_distributions=params, n_iter=100, scoring='f1', verbose=3, cv=5)
-       #     random_search.fit(X_test, Y_test)
-       #     estimator = random_search.best_estimator_
-       #     best_params = random_search.best_params_
-       #     print('best score', random_search.best_score_)
-       #     print('best estimator', estimator)
-       #     gscv = GridSearchCVProgressBar(clas, param_grid=params, return_train_score=True, scoring='f1', cv=5, verbose=3)
-            gscv = GridSearchCV(clas, params, cv=5, scoring='f1', error_score=0.0, return_train_score=True, verbose=10)
-            gscv.fit(X_test, Y_test)
-            best_params = gscv.best_params_
-            estimator = gscv.best_estimator_
+            random_search = RandomizedSearchCV(clas, param_distributions=params, n_iter=100, scoring='f1', verbose=3, cv=5, return_train_score=True)
+            random_search.fit(X_test, Y_test)
+            estimator = random_search.best_estimator_
+            best_params = random_search.best_params_
+            print('best score', random_search.best_score_)
+            print('best estimator', estimator)
+       #     gscv = GridSearchCV(clas, params, cv=5, scoring='f1', error_score=0.0, return_train_score=True, verbose=10)
+       #     gscv.fit(X_test, Y_test)
+       #     best_params = gscv.best_params_
+       #     estimator = gscv.best_estimator_
  
         print('best params', best_params)
 
@@ -113,7 +112,7 @@ def retrieve_classifier(classifier, X=None, Y=None, tpot=False, scoring='balance
         if tpot:
             clf = get_tpot_classifier(cv=cv, fast=fast, scoring=scoring, generations=generations,random_state=random_state, population_size=population_size, model=model)
         else:
-            clf = NB
+            clf = LR
     elif classifier == "stack":
         if tpot:
             clf = get_tpot_classifiers(cv=cv, fast=fast, scoring=scoring, generations=generations, random_state=random_state, population_size=population_size)

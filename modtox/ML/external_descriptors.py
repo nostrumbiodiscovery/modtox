@@ -6,7 +6,7 @@ from tqdm import tqdm
 class ExternalData():
 
     def __init__(self, csv, mol_names, folder = '.', exclude=[]):
-        self.csv =  csv
+        self.csv = csv
         self.mol_names = mol_names       
         self.exclude = exclude
         self.folder = folder
@@ -30,7 +30,8 @@ class ExternalData():
         return molecules_not_docked
 
     def transform(self, molecules):
-        print("\tIncorporating external data")
+        ''' important to remember: df follows the order of the csv whereas mol_names the order of the sdf files'''
+        print("\tIncorporating external data from {}".format(self.csv))
         df = pd.read_csv(self.csv)
         n_drop = 0
         #If not present on your dataset discard
@@ -39,9 +40,13 @@ class ExternalData():
             if str(title) not in self.mol_names:
                 df.drop(df.index[i- n_drop], inplace=True)
                 n_drop += 1
+        #check whether molecules in mol_names not in df
+        
+ 
         headers = list(df)
         values = (None,) * len(headers)
         #If not present on your glide 
+        print('Filling null lines...')
         for i, title in tqdm(enumerate(self.mol_names), total=len(self.mol_names)):
             if title not in df["Title"].values.astype(str):
                 null_line = pd.DataFrame.from_records([values], columns=headers, index=[i])

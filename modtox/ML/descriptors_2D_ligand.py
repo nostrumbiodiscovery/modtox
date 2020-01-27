@@ -149,7 +149,7 @@ class Fingerprints():
         df = pd.DataFrame()
         molecules = molecules["molecules"].tolist()
         fingerprints = [FingerprintMols.FingerprintMol(mol) for mol in molecules]
-        for i, fingerprint in tqdm(enumerate(fingerprints)):
+        for i, fingerprint in tqdm(enumerate(fingerprints), total=len(fingerprints)):
             df = df.append(pd.Series({"rdkit_fingerprint_{}".format(j): int(element) for j, element in enumerate(fingerprint)}), ignore_index=True)   
         np.savetxt(os.path.join(self.folder, "daylight_descriptors.txt"), list(df), fmt="%s")
         return df.astype(float)

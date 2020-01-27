@@ -12,26 +12,28 @@ LABELS = "labels"
 
 class ProcessorSDF():
 
-    def __init__(self, fp, descriptors, MACCS, csv, columns, debug=False):
+    def __init__(self, fp, descriptors, MACCS, csv, columns, label, debug=False):
         self.fp = fp
         self.descriptors = descriptors
         self.MACCS = MACCS
         self.external_data = csv
         self.columns = columns
         self.fitted = False
+        self.label = label
         self.debug = debug
 
 
     def similarity_filter(self, sdfs_to_compare=None, cut=0.7, *sdfs):
 
         assert sdfs_to_compare is not None, "Must provide comparison sdfs"
-        print('Similarity filtering with', sdfs_to_compare)
+        print('Similarity filtering with', os.path.abspath(sdfs_to_compare[0]), os.path.abspath(sdfs_to_compare[1]))
         mol_ref = []
         for sdf in tqdm(sdfs_to_compare):
             mol_ref += [mol for mol in Chem.SDMolSupplier(sdf) if mol]
         fps_ref = [Chem.Fingerprints.FingerprintMols.FingerprintMol(x) for x in mol_ref]
         mols_filtered = []
         for sdf in sdfs:
+            print('Sdf checked', os.path.abspath(sdf))
             mols_tar= np.array([mol for mol in Chem.SDMolSupplier(sdf)])
             fps_tar = [Chem.Fingerprints.FingerprintMols.FingerprintMol(x) for x in mols_tar]
             idxs = []
@@ -41,10 +43,8 @@ class ProcessorSDF():
                         idxs.append(i)
                         break
             print('Detected ' , len(idxs), ' similarities')
-        #    similarities = [float(FingerprintSimilarity(fp1, fp2)) for fp1 in tqdm(fps_tar) for fp2 in fps_ref]
-        #    cloned =  set([int(i/len(fps_ref)) for i,sim in enumerate(similarities) if sim > cut])
-        #    idxs = [ind for ind in list(range(len(fps_tar))) if ind not in cloned]
-            mols_filtered.append(mols_tar[idxs])
+            good_idxs = [i for i in range(len(mols_tar)) if i not in idxs]
+            mols_filtered.append(mols_tar[good_idxs])
         
         return mols_filtered
  
@@ -102,7 +102,6 @@ class ProcessorSDF():
             if mol_name not in self.mol_names:
                 self.mol_names.append(mol_name)
                 inactives_non_repited.append(mol)
-    
         #keep balance sets
 
         balance = False
@@ -128,7 +127,7 @@ class ProcessorSDF():
     
         molecules = pd.concat([actives_df, inactives_df])
     
-        print("Non Repited Active, Non Repited Inactive")
+        print("Non Repeated Active, Non Repeated Inactive")
         print(actives_df.shape[0], inactives_df.shape[0])
         print("Shape Dataset")
         print(molecules.shape[0])
@@ -171,7 +170,6 @@ class ProcessorSDF():
         # Excluding labels
         if not self.debug:
             X = self.data.iloc[:, :-1]
-            np.save("mols", X)
             y = np.array(self.data.iloc[:,-1])
         else: 
             X = self.data.iloc[:2,:-1]
@@ -202,13 +200,18 @@ class ProcessorSDF():
         return self.fit(sdf_active, sdf_inactive, sdfs_to_compare).transform(folder)
         
     def sanitize(self, X, y, cv, feature_to_check='external_descriptors', folder='.'):
-  
         # function to remove non-docked instances and prepare datasets to model
         assert feature_to_check, "Need to provide external data path"
-
         self.headers, self.headers_fp, self.headers_ext, self.headers_de, self.headers_maccs = self._retrieve_header(folder=folder)
         # sorting mol_names to coincide with the indexing of csv
-        self.mol_names, X, y = zip(*sorted(zip(self.mol_names, X, y)))
+        #ordering names and y so that they have the same order than in x! (X is order at this point!)
+
+        if self.external_data:
+            self.mol_names, y = zip(*sorted(zip(self.mol_names, y)))
+        else:
+            self.mol_names, X, y = zip(*sorted(zip(self.mol_names, X, y)))
+
+
         X = np.array(X)
 
         if self.debug: self.mol_names = self.mol_names[:2]
@@ -247,6 +250,12 @@ class ProcessorSDF():
         self.y = np.array(self.y)
         self.X = X[indxs_to_maintain, :]
         self.mol_names = mols_to_maintain
+
+        ###### saving 
+        mols_ordered = mols_to_maintain + molecules_to_remove
+        np.save('MOL_NAMES_{}'.format(self.label), mols_ordered)
+        ######
+
         n_active_corrected = len([label for label in self.y if label==1])
         n_inactive_corrected = len([label for label in self.y if label==0])
         if cv > n_inactive_corrected  or cv > n_active_corrected:
