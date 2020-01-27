@@ -34,7 +34,8 @@ class Glide_Docker(object):
         #Formats
         self.systems_mae = fm.convert_to_mae(self.systems)
         self.ligands_to_dock_mae = fm.convert_to_mae(self.ligands_to_dock)
-
+        print('Systems', self.systems_mae)
+        print('Ligands', self.ligands_to_dock_mae)
         #Set molecule number to schrodinger to 
         #correctly center the grid
         system = self.systems[0]

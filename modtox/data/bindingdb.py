@@ -11,6 +11,7 @@ import argparse
 import pickle
 import rdkit
 import pybel
+from rdkit import DataStructs
 from tqdm import tqdm
 from rdkit import Chem
 from multiprocessing import Pool
@@ -40,12 +41,13 @@ class BindingDB():
         self.inactive_inchi, self.inactive_names = self.filtering(self.inactive_inchi, self.inactive_names)
         self.cleaning()
         if not os.path.exists(self.folder_output): os.mkdir(self.folder_output)
-        active_output = pybel.Outputfile("sdf", os.path.join(self.folder_output, "actives.sdf"), overwrite=True)
-        inactive_output = pybel.Outputfile("sdf", os.path.join(self.folder_output, "inactives.sdf"), overwrite=True)
-        for mol in self.active_mols:
-            active_output.write(mol)
-        for mol in self.inactive_mols:
-            inactive_output.write(mol)
+        w = Chem.SDWriter(os.path.join(self.folder_output, "actives.sdf"))
+        for m in self.active_mols: 
+            w.write(m)
+
+        w = Chem.SDWriter(os.path.join(self.folder_output, "inactives.sdf"))
+        for m in self.inactive_mols: 
+            w.write(m)
 
         return os.path.join(self.folder_output, "actives.sdf"), os.path.join(self.folder_output, "inactives.sdf"), len(self.active_mols), len(self.active_mols)
    
@@ -66,18 +68,19 @@ class BindingDB():
     def similarity_calc(self, train, test):
         #use when excesive memory usage
         noaccep = [] 
+        print('Computing similarities...')
         for idx, fp_test in enumerate(tqdm(test)):
             accep = True
             while accep:
                 for i, fp_train in enumerate(train):
-                    sim = rdkit.DataStructs.FingerprintSimilarity(fp_train, fp_test)
+                    sim = DataStructs.FingerprintSimilarity(fp_train, fp_test)
                     if sim > 0.7: 
                         noaccep.append(idx)
                         accep = False
                 accep = False
         return noaccep
 
-    def cleaning(self):
+    def cleaning(self, cut=0.7):
                 # recording instances from the training data
         if self.train:
             with open(os.path.join(self.folder_output, self.used_mols), 'w') as r:
@@ -103,36 +106,42 @@ class BindingDB():
                 fps_test_active = [Chem.Fingerprints.FingerprintMols.FingerprintMol(m) for m in mols_test_active]
                 fps_test_inactive = [Chem.Fingerprints.FingerprintMols.FingerprintMol(m) for m in mols_test_inactive]
                 fps_train = []
+                print('Computing fingerprints train..')
                 for mol in tqdm(mols_train):
                     try: 
                         fps_train.append(Chem.Fingerprints.FingerprintMols.FingerprintMol(mol))
                     except:
                         pass
-
-                similarities_active = [rdkit.DataStructs.FingerprintSimilarity(fp_train, fp_test) for fp_test in tqdm(fps_test_active) for fp_train in fps_train]
-                similarities_inactive = [rdkit.DataStructs.FingerprintSimilarity(fp_train, fp_test) for fp_test in tqdm(fps_test_inactive) for fp_train in fps_train]
-
-                noacce_active =  set([int(i/len(fps_train)) for i,sim in enumerate(similarities_active) if sim >0.7])
-                noacce_inactive =  set([int(i/len(fps_train)) for i,sim in enumerate(similarities_inactive)if sim>0.7])
-                idx_active= [ind for ind in list(range(len(fps_test_active))) if ind not in noacce_active]
-                idx_inactive= [ind for ind in list(range(len(fps_test_inactive))) if ind not in noacce_inactive]
-                self.active_inchi = np.array(active_inchi)[idx_active]
-                self.inactive_inchi = np.array(inactive_inchi)[idx_inactive]
-                
-                self.active_mols = self.active_mols[idx_active]
-                self.inactive_mols = self.inactive_mols[idx_inactive]
-
+                print('Similarities analysis...')
+                for k, fps_tar in enumerate([fps_test_active, fps_test_inactive]):
+                    idxs = []
+                    for i,fp1 in tqdm(enumerate(fps_tar), total=len(fps_tar)):
+                        for fp2 in fps_train:
+                            if DataStructs.FingerprintSimilarity(fp1, fp2) > cut:
+                                idxs.append(i)
+                                break
+                    print('Detected ' , len(idxs), ' similarities')
+                    if k == 0:
+                        good_idxs = [i for i in range(len(mols_test_active)) if i not in idxs]                
+                        self.active_inchi = np.array(active_inchi)[good_idxs]
+                        self.active_mols = self.active_mols[good_idxs]
+                    else:
+                        good_idxs = [i for i in range(len(mols_test_inactive)) if i not in idxs]                
+                        self.inactive_inchi = np.array(inactive_inchi)[good_idxs]
+                        self.inactive_mols = self.inactive_mols[good_idxs]
+                      
                 print('Active before cleaning: {}, after: {}'.format(len(active_inchi), len(self.active_inchi)))
                 print('Inactive before cleaning: {}, after: {}'.format(len(inactive_inchi), len(self.inactive_inchi)))
         return 
 
     def reading_from_bindingdb(self):
 
-       mols = [mol for mol in pybel.readfile("sdf", self.sdf)]
-       inchis = [mol.data['Ligand InChI'] for mol in mols]
-       names = [mol.data['PubChem CID'] for mol in mols]
-       #ki = [mol.data['Ki (nM)'] for mol in mols]
-       ic = [mol.data['IC50 (nM)'] for mol in mols]
+       suppl = Chem.SDMolSupplier(self.sdf)
+       mols = [mol for mol in suppl if mol]
+       ic = [mol.GetProp('IC50 (nM)') for mol in mols]
+       inchis = [mol.GetProp('Ligand InChI') for mol in mols]
+       names = [mol.GetProp('_Name') for mol in mols]
+       print('Read', len(mols))
        novalued = []
        ic_clean = []
        if self.debug: ic = ic[:3]
@@ -165,26 +174,39 @@ class BindingDB():
        # filtering actives and inactives
        # setting thresholds
        #actives if IC < 1000 nM; inconclusives if 1000<IC<10000; inactives if IC > 10000
-       
        actives = [i for i,j in enumerate(ic_clean) if float(j) <= 1000]
        inactives = [i for i,j in enumerate(ic_clean) if float(j) >= 10000]
        inconclusives = [i for i,j in enumerate(ic_clean) if 1000 < float(j) < 10000]
 
        self.active_inchi = np.array(inchis)[actives]
        self.inactive_inchi = np.array(inchis)[inactives]
-       self.active_names = np.array(names)[actives]
-       self.inactive_names = np.array(names)[inactives]
        self.active_mols = np.array(mols)[actives]
        self.inactive_mols = np.array(mols)[inactives]
+       
+       self.active_names = []
+       self.inactive_names = []
+       i = 0
        for mol in self.active_mols:
-           mol.data['Name'] = mol.data['PubChem CID']
+           name = 'bin_{}'.format(i)
+           mol.SetProp('_Name', name)
+           self.active_names.append(name)
+        #   if len(mol.GetProp('_Name')) < 1: mol.SetProp('_Name', str(i))         
+        #   self.active_names.append(mol.GetProp('_Name'))
+           i += 1
        for mol in self.inactive_mols:
-           mol.data['Name'] = mol.data['PubChem CID']
-
+           name = 'bin_{}'.format(i)
+           mol.SetProp('_Name', name)
+           self.inactive_names.append(name)
+          # if len(mol.GetProp('_Name')) < 1: mol.SetProp('_Name', str(i))         
+          # self.inactive_names.append(mol.GetProp('_Name')
+           i += 1
+       print('Actives', len(self.active_names))
+       print('Inactives', len(self.inactive_names))
        return () 
 
 
     def process_bind(self):
+
         active_output, inactive_output, n_actives, n_inactives = self.split_sdf()
         if not self.debug: 
             output_active_proc = pr.ligprep(active_output, output="active_processed.mae")

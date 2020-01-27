@@ -131,7 +131,8 @@ class GenericModel(object):
                     sklearn_pipeline_str = generate_pipeline_code(expr_to_tree(cl._optimized_pipeline, cl._pset), cl.operators)
                     sklearn_pipeline = eval(sklearn_pipeline_str, cl.operators_context)
                     cl._set_param_recursive(sklearn_pipeline.steps, 'random_state', self.random_state)
-                except AttributeError:
+                except AttributeError as err:
+                    print(err)
                     pass
                 # 
                 if self.tpot: pickle.dump(sklearn_pipeline, f)
@@ -151,9 +152,9 @@ class GenericModel(object):
                 proba = np.array([c.predict(X) for c in models])
             else:
                 pred = np.array([ cross_val_predict(c, X, y, cv=self.cv) for c in models])
-            for k, pp in enumerate(pred):
-                cm = confusion_matrix(y, pp)
-                print(models[k], cm)
+                for k, pp in enumerate(pred):
+                    cm = confusion_matrix(y, pp)
+                    print(models[k], cm)
             try:
                 if self.fitted:
                     proba = np.array([c.predict_proba(X) for c in models])
@@ -189,7 +190,7 @@ class GenericModel(object):
            except RuntimeError:
                prediction_proba = np.array([[0,1] if pred == 1 else [1,0] for pred in prediction])
                pass
-           pickle.dump(sklearn_pipeline, f)
+           pickle.dump(self.last_clf.fitted_pipeline_, f)
        else:
            prediction = cross_val_predict(self.last_clf, X, y, cv=self.cv)
            try:
@@ -351,13 +352,96 @@ class GenericModel(object):
             
         else:
             self.last_model = self.loaded_models[0]
+            print(self.last_model)
             self.prediction_test, self.predictions_proba_test = self._last_predict(self.X_test_trans, y_removed)
             self.indiv_pred = None
-        self.results = [ pred == true for pred, true in zip(self.prediction_test, self.Y_test)] #last classifier
         self.Y_test = np.concatenate((self.Y_test, y_removed))
+        print('After prediction', self.Y_test.shape, self.prediction_test.shape)
+        self.results = [ pred == true for pred, true in zip(self.prediction_test, self.Y_test)] #last classifier
         if len(X_removed)>0:
             self.X_test_trans = np.concatenate((self.X_test_trans, X_trans_removed))
 
-        return self.results
+        return self.prediction_test, self.Y_test
 
+
+class CombinedModel(object):
+
+    def __init__(self, csv_train, csv_test, features_to_check):
+        self.csv_train = csv_train
+        self.csv_test = csv_test
+        self.__path__()
+        self.features_to_check = features_to_check
+        self.__extract_values__()
+        self.data_train = pd.DataFrame()
+        self.data_test = pd.DataFrame()
+
+    def __path__(self):
+        if self.csv_train is not None: self.csv_train = os.path.abspath(self.csv_train)
+        if self.csv_test is not None: self.csv_test = os.path.abspath(self.csv_test)
+
+    def __extract_values__(self):
+        self.possible_values = []
+        for ext in self.features_to_check:
+            if ext == 'external_descriptors': 
+                self.possible_values.append([None, (self.csv_train, self.csv_test)])
+            else:
+                self.possible_values.append([False, (True, True)])
+
+    def iteration(self,i):
+
+        feature_to_check = self.features_to_check[i]
+        bools_train = [x[1][0] if j==i else x[0] for j,x in enumerate(self.possible_values)]
+        bools_test = [x[1][1] if j==i else x[0] for j,x in enumerate(self.possible_values)]
+        print('-------> modtox', bools_train[0], 'fp', bools_train[1], 'descriptors', bools_train[2], 'maccs', bools_train[3])
+        print('-------> modtox', bools_test[0], 'fp', bools_test[1], 'descriptors', bools_test[2], 'maccs', bools_test[3])
+        print('feature to check', feature_to_check)
+        return bools_train, bools_test, feature_to_check
+
+
+    def combined_prediction(self, i, mol_train, mol_test, Y_TRUE_TRAIN, Y_TRUE_TEST, Y_PRED_TRAIN, Y_PRED_TEST):
+
+
+        mol_train, Y_TRUE_TRAIN, Y_PRED_TRAIN = zip(*sorted(zip(mol_train, Y_TRUE_TRAIN, Y_PRED_TRAIN)))
+        mol_test, Y_TRUE_TEST, Y_PRED_TEST = zip(*sorted(zip(mol_test, Y_TRUE_TEST, Y_PRED_TEST)))
+
+        Y_TRUE_TEST = np.array(Y_TRUE_TEST)
+        Y_TRUE_TRAIN = np.array(Y_TRUE_TRAIN)
+        Y_PRED_TEST = np.array(Y_PRED_TEST)
+        Y_PRED_TRAIN = np.array(Y_PRED_TRAIN)
+
+        assert Y_TRUE_TEST.shape == Y_PRED_TEST.shape , 'Mismatch in shapes pred and true'
+        assert Y_TRUE_TRAIN.shape == Y_PRED_TRAIN.shape , 'Mismatch in shapes pred and true'
+
+        np.save('Y_TRUE_TEST_{}'.format(i), Y_TRUE_TEST)
+        np.save('Y_PRED_TEST_{}'.format(i), Y_PRED_TEST)
+        np.save('Y_TRUE_TRAIN_{}'.format(i), Y_TRUE_TRAIN)
+        np.save('Y_PRED_TRAIN_{}'.format(i), Y_PRED_TRAIN)
+
+        self.data_train['PRED TRAIN {}'.format(i)] = Y_PRED_TRAIN
+        self.data_test['PRED TEST {}'.format(i)] = Y_PRED_TEST
+        print(self.data_train)
+        print(self.data_test)
+     
+    def final_prediction(self):
+
+
+         self.data_train['MEAN'] = np.mean((self.data_train['PRED TRAIN 1'], self.data_train['PRED TRAIN 2'], self.data_train['PRED TRAIN 3'],  self.data_train['PRED TRAIN 0']), axis=0)
+         self.data_test['MEAN'] = np.mean((self.data_test['PRED TEST 1'], self.data_test['PRED TEST 2'], self.data_test['PRED TEST 3'],  self.data_test['PRED TEST 0']), axis=0)
+         cm_train = confusion_matrix(self.data_train['TRUE TRAIN'], round(self.data_train['MEAN']))
+         cm_test = confusion_matrix(self.data_test['TRUE TEST'], round(self.data_test['MEAN']))
+         print(cm_train)
+         print(cm_test)
+    
+         #selecting only values of complete agreement 
+         agree = [i for i,val in enumerate(self.data_train['MEAN']) if val == 0.0 or val == 1.0]
+         ypred = self.data_train['MEAN'][agree]
+         ytrue = self.data_train['TRUE TRAIN'][agree]
+         cm_train_pure = confusion_matrix(ytrue, ypred)
+    
+         agree = [i for i,val in enumerate(self.data_test['MEAN']) if val == 0.0 or val == 1.0]
+         ypred = self.data_test['MEAN'][agree]
+         ytrue = self.data_test['TRUE TEST'][agree]
+         cm_test_pure = confusion_matrix(ytrue, ypred)
+         print(cm_train_pure)
+         print(cm_test_pure)
 
