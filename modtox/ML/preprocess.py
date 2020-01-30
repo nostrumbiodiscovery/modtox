@@ -215,6 +215,7 @@ class ProcessorSDF():
         preprocessor = ColumnTransformer(transformers=[('mol', transformer, molecular_data)])
         pre = Pipeline(steps=[('transformer', preprocessor)])
         X_trans = pre.fit_transform(X)
+        print(X_trans)
         np.save("X", X_trans)
         np.save("Y", y)
         return X_trans, y
