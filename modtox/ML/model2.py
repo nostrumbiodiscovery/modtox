@@ -18,7 +18,7 @@ CLF = ["SVM", "XGBOOST", "KN", "TREE", "NB", "NB_final"]
 
 class Imputer(object):
 
-    def __init__(self, imputer_type, strategy='mean', fill_value=None, missing_values=np.nan, n_clusters=None):
+    def __init__(self, imputer_type, strategy='constant', fill_value=0, missing_values=np.nan, n_clusters=None):
 
         self.imputer_type = imputer_type
         self.strategy = strategy
@@ -308,10 +308,12 @@ class GenericModel(object):
         self.Y = y
         f = open(os.path.join(self.folder, self.filename_model), 'wb')
         fs = open(os.path.join(self.folder, "scaler.pkl"), 'wb')
+        fi = open(os.path.join(self.folder, "imputer.pkl"), 'wb')
         #imputing and scaling
      
         self.X_trans = self.scaler.fit_transform(self.imputer.fit_transform(self.X))        
         pickle.dump(self.scaler, fs)
+        pickle.dump(self.imputer, fi)
         if len(self.X_removed) > 0:
             self.X_trans_removed = np.zeros(shape=self.X_removed.shape)
 
@@ -330,6 +332,7 @@ class GenericModel(object):
         self.fitted = True
         f.close()    
         fs.close()
+        fi.close()
         self.Y = np.concatenate((self.Y, self.y_removed))
         if len(self.X_removed) > 0:
             self.X_trans = np.concatenate((self.X_trans, self.X_trans_removed))
@@ -420,6 +423,8 @@ class CombinedModel(object):
         np.save('Y_TRUE_TRAIN_{}'.format(i), Y_TRUE_TRAIN)
         np.save('Y_PRED_TRAIN_{}'.format(i), Y_PRED_TRAIN)
 
+        self.data_train['TRUE TRAIN'.format(i)] = Y_TRUE_TRAIN
+        self.data_test['TRUE TEST'.format(i)] = Y_TRUE_TEST
         self.data_train['PRED TRAIN {}'.format(i)] = Y_PRED_TRAIN
         self.data_test['PRED TEST {}'.format(i)] = Y_PRED_TEST
         print(self.data_train)

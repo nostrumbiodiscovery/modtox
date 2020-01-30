@@ -100,7 +100,7 @@ def main(traj, resname, top, clf, tpot, cv, scoring='balanced_accuracy', mol_to_
             assert sdf_active_test !=None and sdf_inactive_test != None, "Sdf's must be provided! (use --sdf_active_train ,...)"
             if csv_test is not None: csv_test = os.path.abspath(csv_test)
             with hp.cd(TEST_FOLDER):
-                y_pred  = predict_model(model, sdf_active_train, sdf_inactive_train, sdf_active_test, sdf_inactive_test, csv_test, clf, tpot, cv, majvoting, fp, descriptors, MACCS, columns, feature_to_check, train_folder, weighting, debug, postprocess=False)
+                y_pred  = predict_model(model, sdf_active_train, sdf_inactive_train, sdf_active_test, sdf_inactive_test, csv_test, clf, tpot, cv, majvoting, fp, descriptors, MACCS, columns, feature_to_check, train_folder, weighting, debug, postprocess=True)
 
 
     if combine_model:

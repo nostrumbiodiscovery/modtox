@@ -1,4 +1,5 @@
 import os
+import time
 import glob
 import modtox.Helpers.formats as fm
 import subprocess
@@ -36,6 +37,28 @@ class GreasyObj():
         assert extension_inactive in ACCEPTED_FORMATS, "ligand must be a pdb, sdf or mae at the moment"
         assert extension_receptor in ['zip'], "receptor must be zip type"
 
+    def sorting(self, i, *args):
+        print('Ordering non-sorted files', args)
+        sorted_files = []
+        for fil in args:
+            newname2 = fil.split('.')[0] + '_sorted.' + fil.split('.')[1]
+            command_sorting = "/opt/schrodinger2019-4/utilities/glide_sort  -o {} {}".format(newname2, fil) 
+            print('from', fil, newname2)
+            subprocess.call(command_sorting.split())
+            time.sleep(3)
+            sorted_files.append(newname2)
+        command_greasy = "/opt/schrodinger2019-1/utilities/glide_merge -o {}/$new $old".format(self.folder)
+        newname =  "input_merged_{}.maegz".format(int(i/2))
+        oldname = "{} {}".format(sorted_files[0], sorted_files[1])
+        command_greasy = command_greasy.replace("$old", oldname)
+        command_greasy = command_greasy.replace("$new", newname)
+        try:
+            subprocess.check_output(command_greasy.split())
+        except subprocess.CalledProcessError as e:
+            print(e.output)
+            assert False
+        return command_greasy
+        
 
     def merge_glides(self, inp_files):
 
@@ -44,13 +67,23 @@ class GreasyObj():
         new_files = []
         if not self.debug:
             for i in range(0, len(inp_files), 2):
+                issorted = True
+                print('------>', i)
                 command_greasy = "/opt/schrodinger2019-1/utilities/glide_merge $old -o {}/$new".format(self.folder)
                 newname = "input_merged_{}.maegz".format(int(i/2))
                 oldname = "{} {}".format(inp_files[i], inp_files[i+1])
                 command_greasy = command_greasy.replace("$old", oldname)
                 command_greasy = command_greasy.replace("$new", newname)
                 new_files.append(os.path.join(self.folder, newname))
-                subprocess.call(command_greasy.split())
+                try:
+                    subprocess.check_output(command_greasy.split())
+                except subprocess.CalledProcessError as e:
+                    issorted = False
+                    command_greasy = self.sorting(i, inp_files[i], inp_files[i+1])
+                    print('sorted')
+                if issorted:
+                    subprocess.call(command_greasy.split())
+        print(new_files)
         return new_files
 
 

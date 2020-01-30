@@ -113,7 +113,7 @@ def retrieve_classifier(classifier, X=None, Y=None, tpot=False, scoring='balance
         if tpot:
             clf = get_tpot_classifier(cv=cv, fast=fast, scoring=scoring, generations=generations,random_state=random_state, population_size=population_size, model=model)
         else:
-            clf = SVM
+            clf = LR
     elif classifier == "stack":
         if tpot:
             clf = get_tpot_classifiers(cv=cv, fast=fast, scoring=scoring, generations=generations, random_state=random_state, population_size=population_size)
