@@ -307,9 +307,11 @@ class GenericModel(object):
         self.X = X
         self.Y = y
         f = open(os.path.join(self.folder, self.filename_model), 'wb')
+        fs = open(os.path.join(self.folder, "scaler.pkl"), 'wb')
         #imputing and scaling
      
         self.X_trans = self.scaler.fit_transform(self.imputer.fit_transform(self.X))        
+        pickle.dump(self.scaler, fs)
         if len(self.X_removed) > 0:
             self.X_trans_removed = np.zeros(shape=self.X_removed.shape)
 
@@ -327,6 +329,7 @@ class GenericModel(object):
  
         self.fitted = True
         f.close()    
+        fs.close()
         self.Y = np.concatenate((self.Y, self.y_removed))
         if len(self.X_removed) > 0:
             self.X_trans = np.concatenate((self.X_trans, self.X_trans_removed))

@@ -63,7 +63,7 @@ def optimize_clf(X,Y, stack, clf):
     #choosing stratified fraction of the total data to optimize hyperparameters
     _, X_test, _, Y_test = train_test_split(X, Y, test_size=0.1, random_state=42, stratify=Y)
     
-    optimized = False 
+    optimized = False
     if stack:
         print('Stack')
         estimators = []
@@ -84,7 +84,8 @@ def optimize_clf(X,Y, stack, clf):
 
     else:
         if optimized: #svm
-            estimator = TREE_OPT
+            #estimator = DecisionTreeClassifier(class_weight='balanced', criterion='gini', max_depth=6, min_samples_leaf=3, min_samples_split=8, splitter= 'best')
+            estimator = svm.SVC(C=1.0, class_weight='balanced', kernel='rbf', tol=0.1)
         else:
             clas = clf[0]    
             params = clf[1]
@@ -100,7 +101,7 @@ def optimize_clf(X,Y, stack, clf):
        #     best_params = gscv.best_params_
        #     estimator = gscv.best_estimator_
  
-        print('best params', best_params)
+            print('best params', best_params)
 
         return estimator       
   
@@ -112,7 +113,7 @@ def retrieve_classifier(classifier, X=None, Y=None, tpot=False, scoring='balance
         if tpot:
             clf = get_tpot_classifier(cv=cv, fast=fast, scoring=scoring, generations=generations,random_state=random_state, population_size=population_size, model=model)
         else:
-            clf = LR
+            clf = SVM
     elif classifier == "stack":
         if tpot:
             clf = get_tpot_classifiers(cv=cv, fast=fast, scoring=scoring, generations=generations, random_state=random_state, population_size=population_size)
