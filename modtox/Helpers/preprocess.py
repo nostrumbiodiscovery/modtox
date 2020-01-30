@@ -26,7 +26,7 @@ def ligprep(sdf, folder='.', template="ligprep.in", input_file="ligprep.in", sch
     subprocess.call(command.split())
 
     while not os.path.exists(output):
-        time.sleep(60)
+        time.sleep(30)
 
 
     return output

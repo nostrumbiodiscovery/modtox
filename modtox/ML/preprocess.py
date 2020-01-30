@@ -134,6 +134,19 @@ class ProcessorSDF():
 
         return molecules
 
+    def _load_sdf(self, sdf):
+        molecules = [ mol for mol in Chem.SDMolSupplier(sdf, removeHs=False) if mol ]
+        w = Chem.SDWriter('data_to_predict.sdf')
+        for m in molecules: w.write(m) 
+        molecules_df = pd.DataFrame({TITLE_MOL: molecules })
+        return molecules_df
+
+    def _load_inchies(self, inchies):
+        molecules = [Chem.MolFromInchi(inchi, removeHs=False) for inchi in inchies]
+        molecules_df = pd.DataFrame({TITLE_MOL: molecules })
+        return molecules_df
+         
+
     def _retrieve_header(self, folder='.', exclude=COLUMNS_TO_EXCLUDE):
         headers = []
         #Return training headers
@@ -162,6 +175,16 @@ class ProcessorSDF():
         sdf_active = os.path.abspath(sdf_active)
         sdf_inactive = os.path.abspath(sdf_inactive)
         self.data = self._load_train_set(sdf_active, sdf_inactive, sdfs_to_compare)
+        self.fitted = True
+        return self
+
+    def fit_sdf(self, sdf):
+        self.data = self._load_sdf(sdf)
+        self.fitted = True
+        return self
+
+    def fit_inchies(self, inchies):
+        self.data = self._load_inchies(inchies)
         self.fitted = True
         return self
 
@@ -198,6 +221,42 @@ class ProcessorSDF():
 
     def fit_transform(self, sdf_active, sdf_inactive, sdfs_to_compare=None, folder='.'):
         return self.fit(sdf_active, sdf_inactive, sdfs_to_compare).transform(folder)
+
+    def transform_mol(self, folder, exclude=COLUMNS_TO_EXCLUDE):
+        assert self.fitted, "Please fit the processor"
+        # Excluding labels
+        X = self.data
+        np.save("mols_sdf", X)
+        molecular_data = [ TITLE_MOL, ]; numeric_features = []; features = []
+        if self.fp:
+            numeric_features.extend('fingerprint')
+            features.extend([('fingerprint', Fingerprints(folder))])
+        if self.descriptors:
+            numeric_features.extend('descriptors')
+            features.extend([('descriptors', Descriptors(folder))])
+        if self.MACCS:
+            numeric_features.extend('fingerprintMACCS')
+            features.extend([('fingerprintMACCS', Fingerprints_MACS(folder))])
+        if self.external_data:
+            numeric_features.extend(['external_descriptors'])
+            features.extend([('external_descriptors', ExternalData(self.external_data, self.mol_names, exclude=exclude, folder=folder))])
+
+        transformer = FeatureUnion(features)
+        preprocessor = ColumnTransformer(transformers=[('mol', transformer, molecular_data)])
+        pre = Pipeline(steps=[('transformer', preprocessor)])
+        X_trans = pre.fit_transform(X)
+        np.save("X_sdf", X_trans)
+        return X_trans
+
+
+    def fit_tranform_modtox(self, sdf_active, sdf_inactive, folder='.'):
+        return self.fit(sdf_active, sdf_inactive).transform_mol(folder)
+
+    def fit_transform_sdf(self, sdf, folder='.'):
+        return self.fit_sdf(sdf).transform_mol(folder)
+
+    def fit_transform_inchies(self, inchies, folder='.'):
+        return self.fit_inchies(inchies).transform_mol(folder)
         
     def sanitize(self, X, y, cv, feature_to_check='external_descriptors', folder='.'):
         # function to remove non-docked instances and prepare datasets to model
