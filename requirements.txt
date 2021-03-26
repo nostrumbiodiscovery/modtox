@@ -15,3 +15,4 @@ requests
 chembl_webresource_client
 tqdm
 pytest
+requests-cache>=0.6.0.dev1 # not directly required, pinned by Snyk to avoid a vulnerability
