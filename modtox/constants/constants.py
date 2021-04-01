@@ -1,6 +1,6 @@
 
 
-SCHR="/opt/schrodinger2018-2/"
+SCHR="/opt/schrodinger2020-1/"
 
 MACCS_EXPLANATION = "A : Any valid periodic table element symbol\n \
 Q : Hetro atoms; any non-C or non-H atom\n \
