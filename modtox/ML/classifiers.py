@@ -2,7 +2,6 @@ import xgboost as xgb
 import warnings
 import numpy as np
 from sklearn import svm
-from pactools.grid_search import GridSearchCVProgressBar
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.model_selection import GridSearchCV,RandomizedSearchCV
 from sklearn.ensemble import VotingClassifier
@@ -11,7 +10,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
 from sklearn.naive_bayes import BernoulliNB
 from sklearn.metrics import matthews_corrcoef
-from sklearn.metrics.scorer import make_scorer
+from sklearn.metrics import make_scorer
 from tpot import TPOTClassifier
 
 #parameters
@@ -230,7 +229,3 @@ def get_tpot_classifier(scoring='balanced_accuracy', generations=20, population_
                                         random_state=random_state, verbosity=2, config_dict=tpot_conf, template=template)
 
     return pipeline_optimizer
-
-
-
-

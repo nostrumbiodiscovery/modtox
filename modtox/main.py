@@ -1,16 +1,10 @@
 import time
-import shutil
-import itertools
 import sys
-import matplotlib.pyplot as plt
 import glob
 import os
 import argparse
-import subprocess
 import numpy as np
-import pandas as pd
-import umap
-from tpot import TPOTClassifier
+
 import modtox.Helpers.preprocess as pr
 import modtox.Helpers.formats as ft
 import modtox.ML.preprocess as Pre
@@ -24,8 +18,6 @@ import modtox.data.bindingdb as bdb
 import modtox.data.dude as dd
 import modtox.cpptraj.analisis as an
 import modtox.docking.glide.analyse as gl
-from sklearn.model_selection import train_test_split
-from sklearn.metrics import confusion_matrix
 
 
 folder = "/home/moruiz/cyp/new_test"
@@ -337,6 +329,3 @@ if __name__ == "__main__":
 
     set_prepare, dock, analysis, build, predict, greasy, top, traj, resname, clf, tpot, cv, mol_to_read, substrate, folder_to_get, dude, pubchem, binding, sdf_active_train, sdf_inactive_train, sdf_active_test, sdf_inactive_test, csv_train, csv_test, database_train, database_test, majvoting, train, test, fp, descriptors, MACCS, columns, feature_to_check, scoring, weighting, combine_model, ligprep = parse_args()
     main(traj=traj, resname=resname, top=top, clf=clf, tpot=tpot, cv=cv, scoring=scoring, dude=dude, pubchem=pubchem, binding=binding, greasy=greasy, set_prepare=set_prepare, dock=dock, build=build, predict=predict, mol_to_read=mol_to_read, substrate=substrate, folder_to_get=folder_to_get, sdf_active_train=sdf_active_train, sdf_inactive_train=sdf_inactive_train, sdf_active_test=sdf_active_test, sdf_inactive_test=sdf_inactive_test, csv_train=csv_train, csv_test=csv_test, database_train=database_train, database_test=database_test, majvoting=majvoting, train=train, test=test, fp=fp, descriptors=descriptors, MACCS=MACCS, columns=columns, feature_to_check=feature_to_check, weighting=weighting, combine_model=combine_model, ligprep=ligprep)
-
-
-

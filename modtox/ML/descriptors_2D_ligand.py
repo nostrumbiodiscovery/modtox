@@ -1,54 +1,14 @@
-#IMPORT MODULES AND FILE
-import pandas as pd
 from rdkit import Chem
-from scipy import stats
-from sklearn import linear_model
 from rdkit.Chem import AllChem
-from sklearn.naive_bayes import GaussianNB
 from tqdm import tqdm
-from sklearn.neighbors import NearestNeighbors
 from rdkit.Chem import MACCSkeys
 from rdkit.Chem.Fingerprints import FingerprintMols
-import rdkit.Chem.Descriptors as dc
-from sklearn.ensemble import RandomForestRegressor
-from sklearn.model_selection import KFold, cross_val_score
-import rdkit.Chem.Crippen as cr
-import mordred as md
 from mordred import Calculator, descriptors
 import numpy as np
 import pandas as pd
-import sklearn
 from rdkit import DataStructs
-from sklearn.decomposition import KernelPCA
-from sklearn.compose import ColumnTransformer
 from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.impute import SimpleImputer
-from sklearn.linear_model import SGDClassifier
-from sklearn.model_selection import train_test_split
-from sklearn.pipeline import Pipeline, FeatureUnion
-from sklearn.preprocessing import StandardScaler
 import os
-from nltk import TweetTokenizer
-import matplotlib.pyplot as plt
-from matplotlib.colors import ListedColormap
-from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import StandardScaler
-from sklearn.datasets import make_moons, make_circles, make_classification
-from sklearn.neural_network import MLPClassifier
-from sklearn.neighbors import KNeighborsClassifier
-from sklearn.svm import SVC
-from sklearn.model_selection import cross_val_score
-from sklearn.gaussian_process import GaussianProcessClassifier
-from sklearn.gaussian_process.kernels import RBF
-from sklearn.tree import DecisionTreeClassifier
-from sklearn.ensemble import RandomForestClassifier, AdaBoostClassifier
-from sklearn.naive_bayes import GaussianNB
-from sklearn.discriminant_analysis import QuadraticDiscriminantAnalysis
-from sklearn.svm import SVR
-from sklearn.model_selection import GridSearchCV
-from sklearn.model_selection import learning_curve
-from sklearn.kernel_ridge import KernelRidge
-import matplotlib.pyplot as plt
 
 def fpList_to_bit(fp_list):
     return DataStructs.CreateFromBitString("".join(fp_list))

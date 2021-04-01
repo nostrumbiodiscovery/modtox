@@ -1,9 +1,7 @@
 import pytraj as pt
-import sys
 import os
 from matplotlib import pyplot as plt
 import argparse
-import glob
 import numpy as np
 import modtox.Helpers.masks as mk
 
