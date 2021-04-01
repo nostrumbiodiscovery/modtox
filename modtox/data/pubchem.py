@@ -4,10 +4,7 @@ import pandas as pd
 import itertools
 import numpy as np
 import csv
-import uuid
 import pubchempy as pcp
-import argparse
-import pickle
 import rdkit
 from tqdm import tqdm
 from rdkit import Chem

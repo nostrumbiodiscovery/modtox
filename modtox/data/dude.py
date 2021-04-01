@@ -4,7 +4,7 @@ from rdkit.Chem.Fingerprints import FingerprintMols
 from rdkit import DataStructs
 from tqdm import tqdm
 from rdkit.Chem import AllChem
-import requests
+
 try:
     from urllib import quote  # Python 2.X
 except ImportError:

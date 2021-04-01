@@ -1,7 +1,6 @@
 import matplotlib.pyplot as plt
 import matplotlib
 matplotlib.use('Agg')
-import pylab as pl
 import shap  # package used to calculate Shap values
 import os
 from matplotlib.lines import Line2D
@@ -577,4 +576,3 @@ class PostProcessor():
     
 
     def tree_image(): pass
-
