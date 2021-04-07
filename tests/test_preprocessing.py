@@ -12,9 +12,9 @@ csv = os.path.join(data_dir, "glide_features.csv")
 @pytest.mark.parametrize(
     ("fp", "descriptors", "maccs"),
     [
-        (True, False, False),
-        (False, True, False),
-        (False, False, True),
+        (True, False, False),  # fingerprints
+        (False, True, False),  # descriptors
+        (False, False, True),  # MACCS fingerprints
     ],
 )
 def test_feature_extraction(fp, descriptors, maccs):
@@ -24,6 +24,7 @@ def test_feature_extraction(fp, descriptors, maccs):
     preprocessor = preprocess.ProcessorSDF(
         csv=csv, fp=fp, descriptors=descriptors, MACCS=maccs, columns=None, label=None
     )
+    # import pdb; pdb.set_trace()
     X, y = preprocessor.fit_transform(
         sdf_active=sdf_active_train, sdf_inactive=sdf_inactive_train
     )

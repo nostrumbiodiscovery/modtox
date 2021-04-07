@@ -6,19 +6,19 @@ import sys
 from modtox.cpptraj import analysis
 from .config import check_file, check_remove_folder
 
-sys.path.remove("/opt/AmberTools/amber16/lib/python2.7/site-packages")
+md_directory = "data/md_trajectories"
 
 
 @pytest.mark.parametrize(
     ("data", "residue", "expected_line"),
     [
         (
-            "/shared/data-nbdcalc01/ModTox/ywest_modtox_storage/2qyk_holo/",
+            os.path.join(md_directory, "2qyk_holo"),
             "NPV",
             "#Clustering: 10 clusters 6566 frames",
         ),
         (
-            "/shared/data-nbdcalc01/ModTox/ywest_modtox_storage/HROT_3nxu/3nxu_holo",
+            os.path.join(md_directory, "3nxu_holo"),
             "RIT",
             "",
         ),
