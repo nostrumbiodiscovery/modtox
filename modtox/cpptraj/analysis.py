@@ -136,7 +136,7 @@ class CpptajBuilder(object):
         print("Clustering done succesfully")
 
 def parse_args(parser):
-    parser.add_argument('traj', nargs="+", help='Trajectory to analise')
+    parser.add_argument('traj', nargs="+", help='Trajectory to analyse')
     parser.add_argument('resname', type=str, help='Resname of the ligand')
     parser.add_argument('--top', type=str, help='Topology of your trajectory')
     parser.add_argument('--RMSD', action="store_true", help='Calculate RMSD plot')
@@ -146,7 +146,8 @@ def parse_args(parser):
     parser.add_argument('--clust_sieve', type=int, help='Sieve for clustering', default=10)
     parser.add_argument('--rmsd_type', type=str, help='Type of RMSD [BS (default), CA, all]', default="BS")
 
-def analise(traj, resname, top, RMSD, cluster, last, clust_type, rmsd_type, sieve, output_dir='.'):
+
+def analyse(traj, resname, top, RMSD, cluster, last, clust_type, rmsd_type, sieve, output_dir='.'):
 
     if os.path.exists(output_dir): return
     if not os.path.exists(output_dir): os.makedirs(output_dir)
@@ -181,4 +182,4 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description='Analyze molecular dynamics trajectory (RMSD & clustering)')
     parse_args(parser)
     args = parser.parse_args()
-    analise(args.traj, args.resname, args.top, args.RMSD, args.cluster, args.last, args.clust_type, args.rmsd_type, args.clust_sieve)
+    analyse(args.traj, args.resname, args.top, args.RMSD, args.cluster, args.last, args.clust_type, args.rmsd_type, args.clust_sieve)

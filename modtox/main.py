@@ -16,7 +16,7 @@ import modtox.docking.greasy.greasy_preparation as gre
 import modtox.data.pubchem as pchm
 import modtox.data.bindingdb as bdb
 import modtox.data.dude as dd
-import modtox.cpptraj.analisis as an
+import modtox.cpptraj.analysis as an
 import modtox.docking.glide.analyse as gl
 
 
@@ -106,7 +106,7 @@ def set_preparation(traj, resname, top, RMSD, cluster, last, clust_type, rmsd_ty
     #folder where used molecules during train are stored    
     if train: folder_to_get = os.path.abspath(DATASET_FOLDER)
     print("Extracting clusters from MD...")
-    an.analise(traj, resname, top, RMSD, cluster, last, clust_type, rmsd_type, sieve, output_dir=ANALYSIS_FOLDER)
+    an.analyse(traj, resname, top, RMSD, cluster, last, clust_type, rmsd_type, sieve, output_dir=ANALYSIS_FOLDER)
     print("Reading files....")
     if database == 'pubchem': 
         DBase = pchm.PubChem(pubchem, train, test,substrate, folder_output=DATASET_FOLDER, n_molecules_to_read=mol_to_read, folder_to_get=folder_to_get, production=False, debug=debug)
