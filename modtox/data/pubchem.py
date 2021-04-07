@@ -206,22 +206,26 @@ class PubChem():
         cols = data.columns.values
         active_cols = [col for col in cols if 'Activity Outcome' in col]
         activity_labels = [data.loc[1,lab] for lab in active_cols]
-        split_labels = [ac.split() for ac in activity_labels]
-        if self.substrate not in [ac.split()[0] for ac in activity_labels]: print('Not present in', activity_labels)
+        # split_labels = [ac.split() for ac in activity_labels]
+        if self.substrate not in [ac.split()[0] for ac in activity_labels]:
+            print('Not present in', activity_labels)
+            return
         else:
             print('Label found')
             label = self.substrate + ' ' + 'Activity Outcome'
             useful_col = active_cols[activity_labels.index(label)]
-            if self.n_molecules_to_read: end = self.n_molecules_to_read + 7
-            else: end = len(data)
-            useful_names = data.ix[8:end, 'PUBCHEM_CID']
-            nonnamed = [i + 8 for i,name in enumerate(useful_names) if np.isnan(name)]
+            if self.n_molecules_to_read:
+                end = self.n_molecules_to_read + 7
+            else:
+                end = len(data)
+            useful_names = data['PUBCHEM_CID'].iloc[8:end, ]
+            nonnamed = [i + 8 for i, name in enumerate(useful_names) if np.isnan(name)]
             idxs = list(range(8, end))
             idxs = [ids for ids in idxs if ids not in nonnamed]
-            useful_names = data.ix[idxs, 'PUBCHEM_CID']
-            useful_activities = data.ix[idxs, useful_col] # we add 8 to avoid the initial uninformative lines
-        activities = {int(name):activity for name, activity in zip(useful_names, useful_activities)}
-        return activities
+            useful_names = data['PUBCHEM_CID'].iloc[idxs, ]
+            useful_activities = data[useful_col].iloc[idxs, ]  # we add 8 to avoid the initial uninformative lines
+            activities = {int(name): activity for name, activity in zip(useful_names, useful_activities)}
+            return activities
 
     def process_pubchem(self, readfromfile=False):
         self.actype = 'active'
