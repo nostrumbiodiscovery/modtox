@@ -15,7 +15,7 @@ features_path = os.path.join("data", "features")
 def test_model_building(classifier, tpot):
 
     X = np.load(os.path.join(features_path, "X.npy"))
-    y = np.load(os.path.join(features_path, "Y.npy"))
+    y = np.load(os.path.join(features_path, "y.npy"))
     X_removed = np.load(os.path.join(features_path, "X_removed.npy"))
     y_removed = np.load(os.path.join(features_path, "y_removed.npy"))
 
@@ -27,7 +27,7 @@ def test_model_building(classifier, tpot):
         tpot=tpot,
         X_removed=X_removed,
         y_removed=y_removed,
-        generations=2,
+        generations=1,
     )
     Model.fit(X_train, y_train)
 
