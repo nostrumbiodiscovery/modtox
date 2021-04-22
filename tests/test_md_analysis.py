@@ -1,7 +1,6 @@
 import glob
 import os
 import pytest
-import sys
 
 from modtox.cpptraj import analysis
 from .config import check_file, check_remove_folder

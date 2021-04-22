@@ -48,35 +48,6 @@ def test_greasy(active, inactive, systems):
     assert False not in [filecmp.cmp(output, ou) for output, ou in zip(outputs, refs)]
 
 
-# DATABASE TESTS
-
-@pytest.mark.parametrize("dude, tmp", [
-    (DUDE, TMP),
-])
-def test_preparation_dude(dude, tmp):
-    dude = tc.retrieve_database_dude(dude=dude, tmp=tmp)
-    sdf_active, sdf_inactive = dude.process_dude()
-    assert filecmp.cmp(os.path.join(TMP, 'used_mols.txt'), os.path.join(DATA_PATH, 'used_mols_dude.txt'))
-
-
-@pytest.mark.parametrize("substrate, pubchem, nmols, tmp", [
-    (SUBSTRATE, PUBCHEM, NMOLS, TMP),
-])
-def test_preparation_pubchem(substrate, pubchem, nmols, tmp):
-    pubchem = tc.retrieve_database_pubchem(substrate=substrate, pubchem=pubchem, nmols=nmols, tmp=tmp)
-    sdf_active, sdf_inactive = pubchem.process_pubchem(readfromfile=False)
-    assert filecmp.cmp(os.path.join(TMP, 'used_mols.txt'), os.path.join(DATA_PATH, 'used_mols_pubchem.txt'))
-
-
-@pytest.mark.parametrize("binding, tmp", [
-    (BINDING, TMP),
-])
-def test_preparation_bindingdb(binding, tmp):
-    binding = tc.retrieve_database_bindingdb(binding=binding, tmp=tmp)
-    sdf_active, sdf_inactive = binding.process_bind()
-    assert filecmp.cmp(os.path.join(TMP, 'used_mols.txt'), os.path.join(DATA_PATH, 'used_mols_bindingdb.txt'))
-
-
 # PREPROCESS TESTS
 @pytest.mark.parametrize("sdf_active, sdf_inactive, glide_features", [
     (ACTIVE, INACTIVE, GLIDE_FEATURES),
@@ -119,8 +90,6 @@ def test_preprocess_filter_features(sdf_active, sdf_inactive, glide_features):
     pre = tc.retrieve_preprocessor(csv=glide_features, columns=['rdkit_fingerprintMACS_5', 'rdkit_fingerprintMACS_50'])
     X, y = pre.fit_transform(sdf_active=sdf_active, sdf_inactive=sdf_inactive, folder=TMP)
     X, y, _, _, _, _ = pre.sanitize(X, y, cv=5, folder=TMP)
-    import pdb;
-    pdb.set_trace()
     X, _ = pre.filter_features(X)
     X = np.array(X)
     np.savetxt(os.path.join(TMP, 'preprocess_filter.out'), X, delimiter=',')

@@ -324,6 +324,7 @@ class ProcessorSDF:
         if feature_to_check == 'external_descriptors':
             to_remove_index = len(self.headers_de) + len(self.headers_maccs) + len(self.headers_fp)
             X = np.delete(X, to_remove_index, axis=1)
+
         mols_to_maintain = [mol for mol in self.mol_names if mol not in molecules_to_remove]
         indxs_to_maintain = [np.where(np.array(self.mol_names) == mol)[0][0] for mol in mols_to_maintain]
         indxs_removed = [i for i in range(len(y)) if i not in indxs_to_maintain]
