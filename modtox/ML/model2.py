@@ -272,26 +272,10 @@ class GenericModel(object):
             indiv_fit_removed = [y_pred_removed for _ in range(len(models))]
             proba_fit_removed = [y_proba_removed for _ in range(len(models))]
 
-            # self.prediction_fit = np.concatenate((self.prediction_fit, y_pred_removed))
             self.indiv_fit = [np.concatenate((x, y)) for x, y in zip(self.indiv_fit, indiv_fit_removed)]
-            # indiv_fit_removed 5 x (33,)
-            # self.indiv_fit 5 x (169,)
-
-            # 136 -> 169 -----> 202 to match the rest
-
-            # ??? not used
             self.prediction_proba_fit = np.concatenate((self.prediction_proba_fit, y_proba_removed))
 
             Y = np.concatenate((Y, y_removed))
-
-            try:
-                np.save("self.indiv_fit.np", self.indiv_fit)
-                np.save("self.prediction_fit", self.prediction_fit)
-            except:
-                print("saving did not work")
-
-            print("self.indiv_fit", len(self.indiv_fit), "\n", self.indiv_fit)
-            print("self.prediction_fit", self.prediction_fit.shape, "\n", self.prediction_fit)
 
         self.clf_results = self._stack_final_results(self.indiv_fit, self.prediction_fit, Y)
 
