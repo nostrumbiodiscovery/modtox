@@ -1,5 +1,7 @@
 import filecmp
 import os
+
+from modtox.data.chembl import ChEMBL
 from .config import retrieve_database_bindingdb, retrieve_database_dude, retrieve_database_pubchem, check_remove_folder
 
 
@@ -56,3 +58,19 @@ def test_bindingdb():
     assert filecmp.cmp(os.path.join(output_folder, 'used_mols.txt'), os.path.join(data_dir, 'used_mols_bindingdb.txt'))
 
     check_remove_folder(output_folder)
+
+
+def test_chembl():
+    """
+    Tests extraction of actives and inactives SDFs from a ChEMBL CSV.
+    """
+    data = os.path.join(data_dir, "P07711.csv")
+    output = "chembl_test"
+    threshold = 100
+    parser = ChEMBL(csv=data, folder_output=output, threshold=threshold)
+    actives, inactives = parser.get_data()
+
+    output_sdfs = [os.path.join(output, "actives_sanitized.sdf"), os.path.join(output, "inactives_sanitized.sdf")]
+
+    for sdf in output_sdfs:
+        assert os.path.exists(sdf)
