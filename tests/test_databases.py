@@ -67,7 +67,7 @@ def test_chembl():
     data = os.path.join(data_dir, "P07711.csv")
     output = "chembl_test"
     threshold = 100
-    parser = ChEMBL(csv=data, folder_output=output, threshold=threshold)
+    parser = ChEMBL(csv=data, folder_output=output, activity_threshold=threshold)
     actives, inactives = parser.get_data()
 
     output_sdfs = [os.path.join(output, "actives_sanitized.sdf"), os.path.join(output, "inactives_sanitized.sdf")]

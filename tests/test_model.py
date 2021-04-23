@@ -1,3 +1,4 @@
+import glob
 import numpy as np
 import os
 import pytest
@@ -33,3 +34,7 @@ def test_model_building(classifier, tpot):
 
     y_pred = Model.predict(X_test, y_test, X_removed=X_removed, y_removed=y_removed)
     assert y_pred
+
+    output_files = glob.glob("*pkl")
+    for file in output_files:
+        os.remove(file)

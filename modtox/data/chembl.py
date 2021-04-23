@@ -10,7 +10,7 @@ chembl_url = "https://www.ebi.ac.uk/chembl/api/data/molecule/{}.sdf"
 
 class ChEMBL:
 
-    def __init__(self, csv, threshold, folder_output="."):
+    def __init__(self, csv, activity_threshold, mw_threshold=700, folder_output="."):
         """
         Initializes ChEMBL processor extracts data from a standard ChEMBL CSV file.
 
@@ -18,13 +18,16 @@ class ChEMBL:
         -----------
         csv : str
             Path to the CSV file downloaded from ChEMBL.
-        threshold : float
+        activity_threshold : float
             Threshold for separating actives and inactives based on Ki.
+        mw_threshold : float
+            Maximum allowed molecular weight.
         folder_output : str, optional
             Folder to save the SD files with actives and inactives.
         """
         self.dataframe = self.load_csv(csv)
-        self.threshold = threshold
+        self.activity_threshold = activity_threshold
+        self.mw_threshold = mw_threshold
         self.folder_output = folder_output
         self.id_column = "Molecule ChEMBL ID"
         self.activity_column = "Standard Value"
@@ -34,7 +37,8 @@ class ChEMBL:
         """
         Runs the whole pipeline:
         - filters out duplicates based on ChEMBL IDs and SMILES
-        - splits them into actives and inactives based on the user-define threshold
+        - filters out MW > 700
+        - splits them into actives and inactives based on the user-define activity_threshold for Ki
         - downloads SD files for each molecule
         - assigns stereochemistry and sanitizes the molecules.
 
@@ -58,21 +62,22 @@ class ChEMBL:
         """
         Preprocess the dataframe:
         - remove compounds without associated activity
-        - remove duplicates based on ChEMBL ID and SMILEs
-        - split into actives and inactives dataframes based on threshold
+        - remove duplicates based on ChEMBL ID and SMILES
+        - split into actives and inactives dataframes based on activity_threshold
 
         Returns
         --------
         df_actives : pandas.Dataframe
-            ChEMBL dataframe with active compounds only (Ki >= threshold)
+            ChEMBL dataframe with active compounds only (Ki <= activity_threshold)
         df_inactives : pandas.Dataframe
-            ChEMBL dataframe with inactive compounds only (Ki < threshold)
+            ChEMBL dataframe with inactive compounds only (Ki > activity_threshold)
         """
         df = self.dataframe
         df = df.drop(df[df[self.activity_column].isnull()].index)  # drop NaNs in the activity column
+        df = df.drop(df[df['Molecular Weight'] > self.mw_threshold].index)
         df = df.drop_duplicates(subset=[self.id_column, "Smiles"])
-        df_actives = df[df[self.activity_column] < self.threshold]
-        df_inactives = df[df[self.activity_column] >= self.threshold]
+        df_actives = df[df[self.activity_column] <= self.activity_threshold]
+        df_inactives = df[df[self.activity_column] > self.activity_threshold]
 
         self.save_csv(self.folder_output, "actives.csv", df_actives)
         self.save_csv(self.folder_output, "inactives.csv", df_inactives)
