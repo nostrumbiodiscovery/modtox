@@ -210,12 +210,6 @@ class GenericModel(object):
             with open(f, "w+b") as file:
                 pickle.dump(last_fitted, file)
 
-        if len(y_removed) > 0:
-            y_pred_removed = np.zeros((len(y_removed),), dtype=int)
-            y_proba_removed = [[1, 0] for _ in range(len(y_removed))]
-            prediction = np.concatenate((prediction, y_pred_removed))
-            prediction_proba = np.concatenate((prediction_proba, y_proba_removed))
-
         return prediction, prediction_proba
 
     def _last_predict(self, X, y_removed):
@@ -225,12 +219,6 @@ class GenericModel(object):
         except AttributeError:
             proba = np.array([[0, 1] if pred == 1 else [1, 0] for pred in prediction])
             pass
-
-        if len(y_removed) > 0:
-            y_pred_removed = np.zeros((len(y_removed),), dtype=int)
-            y_proba_removed = [[1, 0] for i in range(len(y_removed))]
-            prediction = np.concatenate((prediction, y_pred_removed))
-            proba = np.concatenate((proba, y_proba_removed))
 
         return prediction, proba
 
@@ -263,20 +251,6 @@ class GenericModel(object):
             X_stack = self._stack(X, self.indiv_fit, self.proba_fit)
             self.prediction_fit, self.prediction_proba_fit = self._last_fit(X=X_stack, y=Y, y_removed=y_removed, f=f)
 
-        # adding trivial predictions of 0's from nondocked molecules
-        if len(y_removed) > 0:
-
-            y_pred_removed = np.zeros((len(y_removed),), dtype=int)
-            y_proba_removed = [[1, 0] for _ in range(len(y_removed))]
-
-            indiv_fit_removed = [y_pred_removed for _ in range(len(models))]
-            proba_fit_removed = [y_proba_removed for _ in range(len(models))]
-
-            self.indiv_fit = [np.concatenate((x, y)) for x, y in zip(self.indiv_fit, indiv_fit_removed)]
-            self.prediction_proba_fit = np.concatenate((self.prediction_proba_fit, y_proba_removed))
-
-            Y = np.concatenate((Y, y_removed))
-
         self.clf_results = self._stack_final_results(self.indiv_fit, self.prediction_fit, Y)
 
     def _pipeline_predict(self, X, Y, y_removed):
@@ -297,16 +271,6 @@ class GenericModel(object):
             self.indiv_pred, self.proba_predict = self._extract_pred_proba(X, Y, models=models)
             X_pred_stack = self._stack(X, self.indiv_pred, self.proba_predict)
             self.prediction_test, self.predictions_proba_test = self._last_predict(X_pred_stack, y_removed)
-
-        if len(y_removed) > 0:
-            y_pred_removed = np.zeros((len(y_removed),), dtype=int)
-            y_proba_removed = [[1, 0] for i in range(len(y_removed))]
-            indiv_pred_removed = [y_pred_removed for i in range(len(models))]
-            proba_pred_removed = [y_proba_removed for i in range(len(models))]
-            self.prediction_test = np.concatenate((self.prediction_test, y_pred_removed))
-            self.predictions_proba_test = np.concatenate((self.predictions_proba_test, y_proba_removed))
-            self.indiv_pred = [np.concatenate((x, y)) for x, y in zip(self.indiv_pred, indiv_pred_removed)]
-            Y = np.concatenate((Y, y_removed))
 
         self.clf_results = self._stack_final_results(self.indiv_pred, self.prediction_test, Y)
 
