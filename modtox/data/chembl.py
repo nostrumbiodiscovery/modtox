@@ -5,12 +5,15 @@ import requests
 from rdkit import Chem
 from rdkit.Chem import rdmolops
 
+import modtox.Helpers.preprocess as pr
+import modtox.Helpers.formats as ft
+
 chembl_url = "https://www.ebi.ac.uk/chembl/api/data/molecule/{}.sdf"
 
 
 class ChEMBL:
 
-    def __init__(self, csv, activity_threshold, mw_threshold=700, folder_output="."):
+    def __init__(self, csv, activity_threshold, mw_threshold=700, folder_output=".", debug=False):
         """
         Initializes ChEMBL processor extracts data from a standard ChEMBL CSV file.
 
@@ -24,8 +27,11 @@ class ChEMBL:
             Maximum allowed molecular weight.
         folder_output : str, optional
             Folder to save the SD files with actives and inactives.
+        debug : bool
+            Set debug to True to avoid running LigPrep.
         """
         self.dataframe = self.load_csv(csv)
+        self.debug = debug
         self.activity_threshold = activity_threshold
         self.mw_threshold = mw_threshold
         self.folder_output = folder_output
@@ -40,7 +46,8 @@ class ChEMBL:
         - filters out MW > 700
         - splits them into actives and inactives based on the user-define activity_threshold for Ki
         - downloads SD files for each molecule
-        - assigns stereochemistry and sanitizes the molecules.
+        - assigns stereochemistry and sanitizes the molecules
+        - runs Schrodinger LigPrep, if not in debug mode.
 
         Returns
         --------
@@ -56,7 +63,20 @@ class ChEMBL:
         actives_file = self.download_sdf(df=self.actives_df, file_name="actives")
         inactives_file = self.download_sdf(df=self.inactives_df, file_name="inactives")
 
-        return actives_file, inactives_file
+        # Run ligprep, if not in debug mode
+        if not self.debug:
+            print("Running ligand preparation...")
+            active_processed = pr.ligprep(actives_file, output="active_processed.mae")
+            active_processed = ft.mae_to_sd(active_processed,
+                                            output=os.path.join(self.folder_output, 'actives.sdf'))
+            inactive_processed = pr.ligprep(inactives_file, output="inactive_processed.mae")
+            inactive_processed = ft.mae_to_sd(inactive_processed,
+                                              output=os.path.join(self.folder_output, 'inactives.sdf'))
+        else:
+            active_processed = actives_file
+            inactive_processed = inactives_file
+
+        return active_processed, inactive_processed
 
     def preprocess(self):
         """
@@ -72,13 +92,19 @@ class ChEMBL:
         df_inactives : pandas.Dataframe
             ChEMBL dataframe with inactive compounds only (Ki > activity_threshold)
         """
+        mw_column = 'Molecular Weight'
+
         df = self.dataframe
         df = df.drop(df[df[self.activity_column].isnull()].index)  # drop NaNs in the activity column
-        df = df.drop(df[df['Molecular Weight'] > self.mw_threshold].index)
-        df = df.drop_duplicates(subset=[self.id_column, "Smiles"])
+        df = df.drop(df[df[mw_column].isnull()].index)
+        df = df.drop(df[df[mw_column].astype(float) > self.mw_threshold].index)  # filter out high MW
+        df = df.drop_duplicates(subset=[self.id_column, "Smiles"])  # drop duplicates
+
+        # Split into actives and inactives based on user-defined threshold
         df_actives = df[df[self.activity_column] <= self.activity_threshold]
         df_inactives = df[df[self.activity_column] > self.activity_threshold]
 
+        # Save actives and inactives to separate CSVs
         self.save_csv(self.folder_output, "actives.csv", df_actives)
         self.save_csv(self.folder_output, "inactives.csv", df_inactives)
 
@@ -139,8 +165,12 @@ class ChEMBL:
         dataframe : pandas.DataFrame
             Dataframe from CSV file.
         """
-        dataframe = pd.read_csv(csv, delimiter=";")
-        print(f"Loading {csv}.")
+        try:
+            dataframe = pd.read_csv(csv, delimiter=";")
+        except:
+            dataframe = pd.read_csv(csv, delimiter=",")
+
+            print(f"Loading {csv}.")
         return dataframe
 
     @staticmethod
@@ -165,6 +195,11 @@ class ChEMBL:
     def structure_cleanup(file):
         """
         Reads in created SD files, sanitizes the molecules and assigns stereochemistry.
+
+        Parameters
+        ----------
+        file : str
+            Path to SD file.
         """
         supplier = Chem.SDMolSupplier(file.name)
         output_file = "{}_sanitized.sdf".format(os.path.splitext(file.name)[0])
