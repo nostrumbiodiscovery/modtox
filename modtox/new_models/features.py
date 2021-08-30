@@ -1,284 +1,249 @@
+"""
+Contains two main functions:
+    1.  add_features(): processes Glide features ('glide_processing.py') and 
+                        adds mordred descriptors and/or topological fingerprints. 
+        Usage: python features.py --csv glide_features.csv --mordred True/False --fingerprints True/False
+    -------------------------------------------------------------------------------------    
+    2.  all_combs():    generates dataframes for all combinations between Glide 
+                        features, mordred descriptors and topological fingerprints.
+        Usage: python features.py --csv glide_features.csv --all
+    -------------------------------------------------------------------------------------
+"""
+
 import argparse
 import pandas as pd
-from pandas.core.reshape.merge import merge
 from tqdm import tqdm
 from rdkit import Chem
 from mordred import Calculator, descriptors
-import random
+from math import floor
+import os
+import itertools
+
+from modtox.utils import utils as u
 
 MOL_NAME_COLUMN = "Title"
 ACTIVITY_COLUMN = 'Activity'
 ACTIVES_SDF = 'actives.sdf'
 INACTIVES_SDF = 'inactives.sdf'
+EXTERNAL_SET_PROP = 0.05
 
 
-def run(csv, topological_fingerprints=True, mordred_descriptors=True):
+def add_features(balanced_glide_csv, topological_fingerprints=True, mordred_descriptors=True, 
+                                        active_sdf=ACTIVES_SDF, inactive_sdf=INACTIVES_SDF, savedir=os.getcwd()):
     """
-    Run the whole flow of extracting Glide features, calculating fingerprints and descriptors, etc.
-
-    Parameters
-    ----------
-    csv : str
-        Path to CSV file with Glide features.
-    topological_fingerprints : bool
-        Toggle to calculate topological fingerprints from rdkit.
-    mordred_descriptors : bool
-        Toggle to calculate Mordred descriptors.
-
-    Returns
-    -------
-        Dataframe with final model input.
+    Adds extra features to balanced Glide features csv. 
+        1.  Glide CSV processing (glide_processing.py).
+        2.  Evaluate arguments and calculate extra descriptors.
+            If not calculated, set to empty dataframe. 
+        3.  Merge the three dataframes.
+        4.  Save to .csv file. 
+    -------------------------------------------------------------
+    INPUT:  'glide_features.csv', finger/mordred = T/F
+    OUTPUT: Glide dataframe with the specified features added. 
     """
+    balanced_glide, all_mols, all_mol_names = get_balanced_glide(balanced_glide_csv, active_sdf, inactive_sdf)
 
-    actives, inactives, glide = retrieve_molecules(csv)
-    features = generate_features(actives, inactives, topological_fingerprints, mordred_descriptors)
-    model_input = merge_all(features, glide)
-    return model_input
+    dfs = ["glide"] # To use as file name. 
+    if eval(topological_fingerprints):
+        fingerprints = calculate_fingerprints(all_mols, all_mol_names)
+        dfs.append("fingerprints")
+    else:
+        fingerprints = pd.DataFrame()
 
+    if eval(mordred_descriptors):
+        mordred = calculate_mordred(all_mols, all_mol_names)
+        dfs.append("mordred")
+    else:
+        mordred = pd.DataFrame()
 
-def retrieve_molecules(csv):
+    features = u.merge_ifempty(mordred, fingerprints, "Title")
+    glide_features = u.merge_ifempty(balanced_glide, features, "Title")
+    
+    filename = "_".join(dfs)
+    
+    glide_features = glide_features.sort_index()
+    glide_features = u.drop_before_column(glide_features, "Title")
+    u.save_to_csv(glide_features, "Features dataframe", os.path.join(savedir, filename))
+    
+    return glide_features
+
+def all_combs(balanced_glide_csv, combo, active_sdf=ACTIVES_SDF, inactive_sdf=INACTIVES_SDF, savedir=os.getcwd()):
     """
-    Retrieves molecules from the Glide features CSV file and compares with the original actives and inactives SD files.
-
-    Parameters
-    ----------
-    csv : str
-        Path to CSV file with Glide features.
-
-    Returns
-    -------
-        SDMolSupplier with actives, inactives and updated Glide features CSV.
+    Generates all possible features combinations (Glide, mordred and fingerprints)
+    and stores in specified directory ($FEATURES_DIR), created if not exists. 
+        1.  Glide CSV processing (glide_processing.py).
+        2.  Calculate fingerprints and mordred.
+        3.  Generate all combinations.
+        4.  Add 'Activity' column if not in df.columns
+        5.  Merge the three dataframes and save to CSV. 
+    -------------------------------------------------------------------------------
+    INPUT:  'glide_features.csv'
+    OUTPUT: Dictionary as df_name: <pd.DataFrame> and CSV files
     """
-    # Get docked molecules (true and false positives)
-    glide = pd.read_csv(csv)
-    glide.sort_values(MOL_NAME_COLUMN, inplace=True)
-    docked_molecule_names = glide[MOL_NAME_COLUMN].astype(str).tolist()
+    is_glide = "glide" in combo
+    is_mordred = "mordred" in combo
+    is_fingerprints = "fingerprints" in combo
 
-    # Tag true positives (True) and false positives (False) in the glide.DataFrame
-    #                                                 from name e.g.: "sdf/active_sanitzed.sdf:38"
-    activity = ["/active" in element for element in docked_molecule_names]
-    glide[ACTIVITY_COLUMN] = activity
+    # Import balanced glide
+    if is_glide:
+        balanced_glide_df, all_mols, all_mol_names = get_balanced_glide(balanced_glide_csv, 
+                                                                        active_sdf, inactive_sdf)
+    # Calculate descriptors
+    if is_mordred:
+        print("Calculating mordred descriptors...")
+        mordred_df = calculate_mordred(all_mols, all_mol_names)
+    
+    if is_fingerprints:
+        print("Calculating topological fingerprints...")    
+        fingerprints_df = calculate_fingerprints(all_mols, all_mol_names)
 
-    # Get all molecules from SD files (true positives and true negatives) 
-    # as a dictionary to remove repeated molecules -> 'CHEMBL02914': (<rdkit.obj>, _Name) 
-    print("Reading in the SD files.")
+    # Create directory if non-existent
+    features_dir = os.path.join(savedir, "features")
+    if not os.path.exists(features_dir):
+        os.makedirs(features_dir)
+        print(f"Features directory created at: '{features_dir}'")
+    
+    # Generate all possible combinations of the provided
+    # and remove first element (empty)
+    combs = list()
+    for L in range(0, len(combo)+1):
+        for subset in itertools.combinations(combo, L):
+            combs.append(list(subset))
+    del combs[0]
+
+    # Empty dictionary to populate with pd.DataFrames
+    d = {}
+    
+    # Iterate over combinations
+    for comb in combs:
+        # Set variables to dataframe for each loop
+        if is_glide: glide = balanced_glide_df.copy()
+        if is_mordred: mordred = mordred_df.copy()
+        if is_fingerprints: fingerprints = fingerprints_df.copy()
+
+        # If name not in combination, set to empty dataframe
+        if "glide" not in comb:
+            glide = pd.DataFrame()
+        if "mordred" not in comb:
+            mordred = pd.DataFrame()
+        if "fingerprints" not in comb:
+            fingerprints = pd.DataFrame()        
+        
+        # Merge all
+        features = u.merge_ifempty(mordred, fingerprints, "Title")
+        final_df = u.merge_ifempty(glide, features, "Title")
+        
+        # Add activity column if non-existent (if Glide dataframe was set 
+        # to empty, no 'Activity' column is present)
+        if not ACTIVITY_COLUMN in list(final_df.columns):
+            molecule_names = final_df[MOL_NAME_COLUMN].astype(str).tolist()
+            activity = ["/active" in element for element in molecule_names]
+            final_df[ACTIVITY_COLUMN] = activity    
+
+        df_name = ", ".join(comb)  # for printing
+        file_name = "_".join(comb)
+        
+        final_df = final_df.sort_index()
+        
+        final_df = u.drop_before_column(final_df, "Title")
+
+        # Save dataframe to dictionary and CSV
+        d[file_name] = final_df
+        u.save_to_csv(final_df, f"Features ({df_name})", os.path.join(features_dir, file_name))
+    return d
+
+def get_balanced_glide(balanced_glide, active_sdf, inactive_sdf):
+    """
+    Retrieves all molecules and its names from the active/inactive 
+    sdf file to match with the ones in balanced glide. It is necessary
+    because balancing is random. 
+    ----------------------------------------------------------------
+    INP: balanced_glide.csv, actives/inactives sdf files.
+    OUT: all_molecules <rdkit.obj> list and names list.
+    """
+    balanced_glide_df = pd.read_csv(balanced_glide)
+    mols_in_bal_glide = balanced_glide_df[MOL_NAME_COLUMN].to_list()
+
+    # Retrieve molecules from SDF files in dict to avoid duplicates.
+    # For enantiomers:  last molecule in SDF file is selected, same as 
+    #                   docking (glide_features.csv)
     actives = {
-        mol.GetProp("chembl_id"): (mol, mol.GetProp("_Name")) 
-        for mol in Chem.SDMolSupplier(ACTIVES_SDF)
-        if ":" in mol.GetProp("_Name")  
+        mol.GetProp("_Name"): mol 
+        for mol in Chem.SDMolSupplier(active_sdf)
+        if mol.GetProp("_Name") in mols_in_bal_glide
     }
 
     inactives = {
-        mol.GetProp("chembl_id"): (mol, mol.GetProp("_Name")) 
-        for mol in Chem.SDMolSupplier(INACTIVES_SDF)
-        if ":" in mol.GetProp("_Name") 
+        mol.GetProp("_Name"): mol 
+        for mol in Chem.SDMolSupplier(inactive_sdf)
+        if mol.GetProp("_Name") in mols_in_bal_glide
     }
+
+    actives.update(inactives)
+    all_molecules_dict = actives
+
+    all_molecules = all_molecules_dict.values()
+    all_molecule_names = all_molecules_dict.keys()
     
-    # Iterate over dictionary keys, append <rdkit.obj> if _Name... is/not in docked_molecule_names
-        # actives[chmblid] = (<rdkit.obj>, _Name)
-            # actives[chmblid][0] = <rdkit.obj>
-            # actives[chmblid][1] = _Name
+    # Drop all columns until "Title", reindex, convert to float and fill NaN
+    balanced_glide_df = u.drop_before_column(balanced_glide_df, MOL_NAME_COLUMN)
     
-    # True positives
-    docked_actives = [
-        actives[chmblid][0]  
-        for chmblid in actives.keys()
-        if actives[chmblid][1] in docked_molecule_names and
-           ":" in actives[chmblid][1]
-    ]
+    return balanced_glide_df, all_molecules, all_molecule_names
 
-    # False negatives
-    skipped_actives = [
-        actives[chmblid][0]
-        for chmblid in actives.keys()
-        if actives[chmblid][1] not in docked_molecule_names and
-           ":" in actives[chmblid][1]        
-    ]
-
-    # False positives
-    docked_inactives = [
-        inactives[chmblid][0]
-        for chmblid in inactives.keys()
-        if inactives[chmblid][1] in docked_molecule_names and
-           ":" in inactives[chmblid][1]
-    ]
-
-    # True negatives
-    skipped_inactives = [
-        inactives[chmblid][0]
-        for chmblid in inactives.keys()
-        if inactives[chmblid][1] not in docked_molecule_names and
-           ":" in inactives[chmblid][1]
-    ]
-    
-    print(
-        f"Retrieved {len(skipped_actives + docked_actives)} active " 
-        f"and {len(skipped_inactives + docked_inactives)} inactive molecules."
-    )
-
-    # From dictionary to <rdkit.obj> list
-    actives = [actives[key][0] for key in actives.keys()]
-    inactives = [inactives[key][0] for key in inactives.keys()]
-    
-    # Balance sets
-    print("Balancing sets...")
-    while len(actives) != len(inactives):
-        if len(actives) > len(inactives):
-            random_index = random.randint(0, len(actives) - 1)
-            del actives[random_index]
-        if len(actives) < len(inactives):
-            random_index = random.randint(0, len(inactives) - 1)
-            del inactives[random_index]
-    
-    print(f"Sets balanced. {len(actives)} active molecules and {len(inactives)} inactives.")
-    
-    updated_glide = insert_zero_rows(skipped_actives, skipped_inactives, glide)
-    updated_glide.to_csv("updated_glide_features.csv")
-
-    return actives, inactives, updated_glide
-
-
-def insert_zero_rows(skipped_actives, skipped_inactives, dataframe):
+def calculate_fingerprints(all_molecules, all_molecule_names):
     """
-    Inserts mock rows to the Glide CSV for the compounds that could not be docked.
-
-    Parameters
-    ----------
-    skipped_actives : List
-        List of active, undocked rdkit molecules.
-    skipped_inactives : List
-        List of inactive, undocked rdkit molecules.
-    dataframe : pd.DataFrame
-        Dataframe to insert the rows.
-
-    Returns
-    -------
-        Original dataframe with inserted zero rows.
+    Calculates fingerprints of supplied list.
+    -------------------------------------------------------------
+    INP: <rdkit.obj> list for calculation
+         all molecule names to add "Title" column
+    OUT: Fingerprints dataframe (with "Title")
     """
-
-    # Create new DataFrame to append to existing (glide)
-    cols = [col for col in dataframe.columns]
-    row_df = pd.DataFrame(columns=cols)
-
-    # Iterate over <rdkit.obj>
-    for mol in skipped_inactives + skipped_actives:
-
-        # if ":" not in mol.GetProp("_Name"):
-        #     continue  # skipping the ones without molecule name
-
-        df_dict = {key: 0 for key in dataframe.columns}
-        df_dict[ACTIVITY_COLUMN] = mol in skipped_actives
-        df_dict[MOL_NAME_COLUMN] = mol.GetProp("_Name")
-        row_df = row_df.append(df_dict, ignore_index=True)
-
-    dataframe = dataframe.append(row_df)
-    return dataframe
-
-def generate_features(actives, inactives, topological_fingerprints, mordred_descriptors):
-    
-    all_molecules = actives + inactives
-    all_molecules = [
-        mol
-        for mol in all_molecules
-        if ":" in mol.GetProp("_Name")
-    ]
-
-    all_molecule_names = [
-        mol.GetProp("_Name") 
-        for mol in all_molecules
-        if ":" in mol.GetProp("_Name")
-    ]
-
-    if eval(mordred_descriptors):
-        print("Calculating Mordred descriptors...")
-        mordred = pd.DataFrame()
-        mordred_descriptors = Calculator(descriptors, ignore_3D=True)
-        mordred = pd.concat(
-            [mordred, mordred_descriptors.pandas(mols=all_molecules)], axis=1
+    daylight_fingerprints = [Chem.RDKFingerprint(mol) for mol in all_molecules]
+    fingerprints = pd.DataFrame()
+    for i, fingerprint in tqdm(enumerate(daylight_fingerprints)):
+        fingerprints = fingerprints.append(
+            pd.Series(
+                {
+                    "rdkit_fingerprint_{}".format(j): int(element)
+                    for j, element in enumerate(fingerprint)
+                }
+            ),
+            ignore_index=True,
         )
-        mordred.insert(0, "Title", all_molecule_names)
-        print("Mordred", mordred.shape)
-        mordred.to_csv("mordred.csv")
-    else:
-        mordred = pd.DataFrame()
+    fingerprints.insert(0, "Title", all_molecule_names)
 
-    if eval(topological_fingerprints):
-        print("Calculating fingerprints...")
-        daylight_fingerprints = [Chem.RDKFingerprint(mol) for mol in all_molecules]
-        fingerprints = pd.DataFrame()
-        for i, fingerprint in tqdm(enumerate(daylight_fingerprints)):
-            fingerprints = fingerprints.append(
-                pd.Series(
-                    {
-                        "rdkit_fingerprint_{}".format(j): int(element)
-                        for j, element in enumerate(fingerprint)
-                    }
-                ),
-                ignore_index=True,
-            )
-        fingerprints.insert(0, "Title", all_molecule_names)
-        print("Fingerprints", fingerprints.shape)
-        fingerprints.to_csv("fingerprints.csv")
-    else:
-        fingerprints = pd.DataFrame()
-    
-    features = merge_features(mordred, fingerprints)
-    return features
+    return fingerprints
 
-def merge_features(mordred, fingerprints):
-    '''
-    Merges mordred and fingerprints, checking for empty dataframes. 
-    '''
-    try:
-        # Try to merge both
-        features = pd.merge(mordred, fingerprints, on="Title")
-    except:
-        # If both empty, return empty DataFrame
-        if mordred.empty and fingerprints.empty:
-            features = pd.DataFrame()
-        # Else if, return the only populated DataFrame
-        elif mordred.empty:    
-            features = fingerprints
-        elif fingerprints.empty:
-            features = mordred
-    return features
-
-def merge_all(features, glide):
+def calculate_mordred(all_molecules, all_molecule_names):
     """
-    Merges calculated features with Glide input and returns a CSV file with model input.
-
-    Parameters
-    ----------
-    features : pd.DataFrame
-        Dataframe containing calculated features such as fingerprints and descriptors.
-    glide : pd.DataFrame
-        Dataframe containing Glide features.
-
-    Returns
-    -------
-        Dataframe with the final model input.
+    Calculates mordred descriptors of supplied list.
+    -------------------------------------------------------------
+    INP: <rdkit.obj> list for calculation
+         all molecule names to add "Title" column
+    OUT: Mordred descriptors dataframe (with "Title")
     """
-    print("Creating model input...")
+    mordred = pd.DataFrame()
+    mordred_descriptors = Calculator(descriptors, ignore_3D=True)
+    mordred = pd.concat(
+        [mordred, mordred_descriptors.pandas(mols=all_molecules)], axis=1
+    )
+    mordred.insert(0, "Title", all_molecule_names)
+
+    return mordred
 
 
-    file = "model_input.csv"
-
-    if features.empty:
-        final_df = glide
-    else:
-        final_df = pd.merge(glide, features, on="Title")
-    
-    final_df.to_csv(file)
-    print(f"Saved to {file}!")
-
-    return final_df
+    """
+    Calculating fingerprints and mordred descriptors duplicates 
+    (no idea why).
+    """
+    mols = df
 
 
 def parse_args(parser):
     parser.add_argument("--csv", help="Path to CSV file with Glide features.")
     parser.add_argument("--topological", help="Calculate rdkit topological fingerprints - True or False.")
     parser.add_argument("--mordred", help="Calculate Mordred descriptors - True or False.")
-
+    parser.add_argument("--all", help="Generates all combinations of Glide features, mordred descriptors and topological fingerprints.")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
@@ -286,4 +251,7 @@ if __name__ == "__main__":
     )
     parse_args(parser)
     args = parser.parse_args()
-    run(args.csv, args.topological, args.mordred)
+    if args.all:
+        all_combs(args.csv)
+    else:
+        add_features(args.csv, args.topological, args.mordred)
