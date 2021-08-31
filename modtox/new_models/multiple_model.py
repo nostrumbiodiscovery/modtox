@@ -2,10 +2,10 @@ import argparse
 import pandas as pd
 import os
 
-import modtox.new_models.glide_processing as gp
-import modtox.new_models.features as ft
-import modtox.new_models.single_model as sm
-from modtox.utils import utils as u
+from modtox.modtox.new_models.glide_processing import process_glide
+from modtox.modtox.new_models import features
+from modtox.modtox.new_models import single_model
+from modtox.modtox.utils import utils
 
 MODELS = ["knn", "lr", "svc", "tree", "nb"]
 DESCRIPTORS = ["glide", "mordred", "fingerprints"]
@@ -13,18 +13,19 @@ CWD = os.getcwd()
 
 ACTIVES_SDF = "actives.sdf"
 INACTIVES_SDF = "inactives.sdf"
+EXT_PROP = 0.05
 
-def run(glide_features, descriptors_inp, models_inp, active_sdf=ACTIVES_SDF, inactive_sdf=INACTIVES_SDF, savedir=CWD):
-    gp.run(glide_features, active_sdf, inactive_sdf)
+def score_models(glide_features, descriptors_inp, models_inp, active_sdf=ACTIVES_SDF, inactive_sdf=INACTIVES_SDF, ext_prop=EXT_PROP, savedir=CWD):
+    process_glide(glide_features, active_sdf, inactive_sdf, savedir=savedir)
     balanced_glide_csv = os.path.join(savedir, "balanced_glide.csv")
 
     sel_descriptors = retrieve_descriptors(descriptors_inp)
     sel_models = retrieve_models(models_inp)
     
-    features_df_dict = ft.all_combs(balanced_glide_csv, sel_descriptors, active_sdf, inactive_sdf)
+    features_df_dict = features.all_combs(sel_descriptors, balanced_glide_csv, active_sdf, inactive_sdf, savedir=savedir)
 
     cols = [
-        "Glide features",
+        "Glide_features",
         "Mordred_descriptors",
         "Topological_fingerprints",
         "Model",
@@ -38,19 +39,19 @@ def run(glide_features, descriptors_inp, models_inp, active_sdf=ACTIVES_SDF, ina
     for df_name in features_df_dict.keys():
         df = features_df_dict[df_name] 
         print(f"For {df_name}...")
-        main_df, external_df, train, int, ext = sm.preprocess(df)
+        main_df, external_df, train, int, ext = single_model.preprocess(df, ext_prop=ext_prop)
         for model in sel_models:
-            model = sm.fit_model(model, train)
+            model = single_model.fit_model(model, train)
             y_pred_int = model.predict(int[0])
             y_pred_ext = model.predict(ext[0])
             model_str = " ".join(str(model).split()) 
             print(f"\tFor {model_str}:")
 
-            acc_int, conf_int = sm.score_set(int[1], y_pred_int)
+            acc_int, conf_int = single_model.score_set(int[1], y_pred_int)
             print(f"\t\tInternal test accuracy: {acc_int}")
             print(f"\t\tInternal test confusion matrix: {conf_int}")
 
-            acc_ext, conf_ext = sm.score_set(ext[1], y_pred_ext)
+            acc_ext, conf_ext = single_model.score_set(ext[1], y_pred_ext)
             print(f"\t\tExternal test accuracy: {acc_ext}")
             print(f"\t\tExternal test confusion matrix: {conf_ext}")
 
@@ -69,7 +70,7 @@ def run(glide_features, descriptors_inp, models_inp, active_sdf=ACTIVES_SDF, ina
 
     scoring_df["Accuracy_test"] = pd.to_numeric(scoring_df["Accuracy_test"], errors="coerce", downcast="float")        
     scoring_df = scoring_df.sort_values("Accuracy_test", ascending=False)
-    u.save_to_csv(scoring_df, "Descriptors/models score", os.path.join(savedir, "scoring"))
+    utils.save_to_csv(scoring_df, "Descriptors/models score", os.path.join(savedir, "scoring.csv"))
     return scoring_df
 
 
