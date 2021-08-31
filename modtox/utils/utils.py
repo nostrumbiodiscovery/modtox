@@ -78,3 +78,47 @@ def get_data(csv):
     np.save("y.npy", y_trans)
 
     return X, y_trans
+
+def save_to_csv(dataframe, df_name, filename):
+    """
+    Saves a dataframe to csv and prints it to terminal. 
+    """
+    file_name = str(filename)
+    dataframe.to_csv(file_name)
+    print(f"{str(df_name).capitalize()} saved to {file_name}!")
+
+def merge_ifempty(df1, df2, where):
+    '''
+    Merges dataframes, checking if are empty. 
+    '''
+    try:
+        # Try to merge both
+        result = pd.merge(df1, df2, on=where)
+    except:
+        # If both empty, return empty DataFrame
+        if df1.empty and df2.empty:
+            result = pd.DataFrame()
+        # Else if, return the only populated DataFrame
+        elif df1.empty:    
+            result = df2
+        elif df2.empty:
+            result = df1
+    return result
+
+def drop_before_column(dataframe, column):
+
+    dataframe.columns = dataframe.columns.str.replace(" ","_")
+
+    # Drops all columns before specified column
+    cols = dataframe.columns.to_list()
+    i = cols.index(column)
+
+    # Converts to float before dropping
+    for col in cols[i+1:]:
+        dataframe[col] = pd.to_numeric(dataframe[col], errors="coerce", downcast="float")
+    
+    dataframe.drop(columns=cols[0:i], inplace=True)
+    # Resets index and fills NaN
+    dataframe.reset_index(drop=True, inplace=True)
+    return dataframe
+    

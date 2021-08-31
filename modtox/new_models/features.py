@@ -1,13 +1,29 @@
 """
-Contains two main functions:
-    1.  add_features(): processes Glide features ('glide_processing.py') and 
-                        adds mordred descriptors and/or topological fingerprints. 
-        Usage: python features.py --csv glide_features.csv --mordred True/False --fingerprints True/False
-    -------------------------------------------------------------------------------------    
-    2.  all_combs():    generates dataframes for all combinations between Glide 
-                        features, mordred descriptors and topological fingerprints.
-        Usage: python features.py --csv glide_features.csv --all
-    -------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------
+This script calculates other descriptors and merges them into balanced Glide features 
+dataframe. 
+
+Can be used as individual script or implemented in a pipeline. 
+---------------------------------------------------------------------------------------------------------------------
+USAGE (as script)
+Contains two main functions, which can be called using different flags:
+    
+    1.  add_features(): adds mordred descriptors and/or topological fingerprints to balanced 
+        Glide dataframe.
+        Usage(*): python features.py [--csv glide_features.csv] [--mordred True/False] [--topological True/False]
+            OUTPUT: balanced glide + descriptors CSV. 
+
+    2.  all_combs():    generates 7 dataframes, for all different combinations of Glide features,
+                        mordred descriptors and topological fingerprints. 
+        Usage(*): python features.py [--csv glide_features.csv] --all
+            OUTPUT: 7 CSV files, all combinations (glide.csv, mordred.csv, fingerprints.csv, glide_mordred.csv...)
+
+    * Be aware that --all flag overwrites --topological and --mordred.
+    * If --csv flag is not provided, it loads 'balanced_glide.csv' from current working 
+    directory. Default options can be defined in '_parameters.py'. 
+---------------------------------------------------------------------------------------------------------------------
+---------------------------------------------------------------------------------------------------------------------
 """
 
 import argparse
@@ -15,35 +31,33 @@ import pandas as pd
 from tqdm import tqdm
 from rdkit import Chem
 from mordred import Calculator, descriptors
-from math import floor
 import os
 import itertools
 
-from modtox.utils import utils as u
+from modtox.modtox.utils import utils
+from modtox.modtox.new_models._parameters import *
 
-MOL_NAME_COLUMN = "Title"
-ACTIVITY_COLUMN = 'Activity'
-ACTIVES_SDF = 'actives.sdf'
-INACTIVES_SDF = 'inactives.sdf'
-EXTERNAL_SET_PROP = 0.05
-
-
-def add_features(balanced_glide_csv, topological_fingerprints=True, mordred_descriptors=True, 
-                                        active_sdf=ACTIVES_SDF, inactive_sdf=INACTIVES_SDF, savedir=os.getcwd()):
+"""
+--------------------------------------------------------------------------------------------
+MAIN FUNCTIONS
+--------------------------------------------------------------------------------------------
+"""
+def add_features(balanced_glide_csv=BALANCED_GLIDE, topological_fingerprints=True, mordred_descriptors=True, 
+                                        active_sdf=ACTIVES_SDF, inactive_sdf=INACTIVES_SDF, savedir=SAVEDIR):
     """
-    Adds extra features to balanced Glide features csv. 
-        1.  Glide CSV processing (glide_processing.py).
-        2.  Evaluate arguments and calculate extra descriptors.
-            If not calculated, set to empty dataframe. 
-        3.  Merge the three dataframes.
-        4.  Save to .csv file. 
+    Adds one or both descriptors to balanced Glide features file.
+    Default arguments defined in '_parameters.py'.
     -------------------------------------------------------------
-    INPUT:  'glide_features.csv', finger/mordred = T/F
-    OUTPUT: Glide dataframe with the specified features added. 
+    OUTPUT: CSV file with balanced Glide features + descriptors.
+    RETURN: Dataframe with balanced Glide features + descriptors.
     """
+    # Can't be chained to 'glide_processing.py' because set balancing is random. 
+    # Instead, read from output of 'glide_processing.py'.
     balanced_glide, all_mols, all_mol_names = get_balanced_glide(balanced_glide_csv, active_sdf, inactive_sdf)
 
-    dfs = ["glide"] # To use as file name. 
+    dfs = ["glide"] # To use as file name.
+    # eval() is mandatory because argparse passes strings, not bool.  
+    # If set to False, descriptors are set to empty dataframe. 
     if eval(topological_fingerprints):
         fingerprints = calculate_fingerprints(all_mols, all_mol_names)
         dfs.append("fingerprints")
@@ -56,30 +70,37 @@ def add_features(balanced_glide_csv, topological_fingerprints=True, mordred_desc
     else:
         mordred = pd.DataFrame()
 
-    features = u.merge_ifempty(mordred, fingerprints, "Title")
-    glide_features = u.merge_ifempty(balanced_glide, features, "Title")
+    # Merges non-empty dataframes. 
+    features = utils.merge_ifempty(mordred, fingerprints, MOL_NAME_COLUMN)
+    glide_features = utils.merge_ifempty(balanced_glide, features, MOL_NAME_COLUMN)
     
     filename = "_".join(dfs)
     
+    # Sorted and formatted for testing purposes.  
     glide_features = glide_features.sort_index()
-    glide_features = u.drop_before_column(glide_features, "Title")
-    u.save_to_csv(glide_features, "Features dataframe", os.path.join(savedir, filename))
+    # Drops all columns before "Title" (indexing and others)
+    glide_features = utils.drop_before_column(glide_features, MOL_NAME_COLUMN)
+
+    utils.save_to_csv(glide_features, "Features dataframe", os.path.join(savedir, filename + ".csv"))
     
     return glide_features
 
-def all_combs(balanced_glide_csv, combo, active_sdf=ACTIVES_SDF, inactive_sdf=INACTIVES_SDF, savedir=os.getcwd()):
+def all_combs(combo, balanced_glide_csv=BALANCED_GLIDE, active_sdf=ACTIVES_SDF, inactive_sdf=INACTIVES_SDF, savedir=SAVEDIR):
     """
     Generates all possible features combinations (Glide, mordred and fingerprints)
-    and stores in specified directory ($FEATURES_DIR), created if not exists. 
-        1.  Glide CSV processing (glide_processing.py).
+    and stores in specified directory ($SAVEDIR/features), created if not exists. 
+        1.  Read from balanced Glide. 
         2.  Calculate fingerprints and mordred.
         3.  Generate all combinations.
-        4.  Add 'Activity' column if not in df.columns
-        5.  Merge the three dataframes and save to CSV. 
+        4.  Merge the three dataframes.
+        5.  Add 'Activity' column if not present and save to CSV
     -------------------------------------------------------------------------------
-    INPUT:  'glide_features.csv'
-    OUTPUT: Dictionary as df_name: <pd.DataFrame> and CSV files
+    INPUT:  combo: list of descriptors to combine
+            'balanced_glide.csv'
+    RETURN: Dictionary as {df_name: <pd.DataFrame>}
+    OUTPUT: CSV files with the specified dataframes
     """
+    # True/False for each descriptor
     is_glide = "glide" in combo
     is_mordred = "mordred" in combo
     is_fingerprints = "fingerprints" in combo
@@ -97,7 +118,7 @@ def all_combs(balanced_glide_csv, combo, active_sdf=ACTIVES_SDF, inactive_sdf=IN
         print("Calculating topological fingerprints...")    
         fingerprints_df = calculate_fingerprints(all_mols, all_mol_names)
 
-    # Create directory if non-existent
+    # Create 'features' directory if non-existent
     features_dir = os.path.join(savedir, "features")
     if not os.path.exists(features_dir):
         os.makedirs(features_dir)
@@ -116,7 +137,8 @@ def all_combs(balanced_glide_csv, combo, active_sdf=ACTIVES_SDF, inactive_sdf=IN
     
     # Iterate over combinations
     for comb in combs:
-        # Set variables to dataframe for each loop
+        # Set variables to dataframe for each loop.
+        # copy() defines a new identical dataframe instead of referring.
         if is_glide: glide = balanced_glide_df.copy()
         if is_mordred: mordred = mordred_df.copy()
         if is_fingerprints: fingerprints = fingerprints_df.copy()
@@ -129,9 +151,9 @@ def all_combs(balanced_glide_csv, combo, active_sdf=ACTIVES_SDF, inactive_sdf=IN
         if "fingerprints" not in comb:
             fingerprints = pd.DataFrame()        
         
-        # Merge all
-        features = u.merge_ifempty(mordred, fingerprints, "Title")
-        final_df = u.merge_ifempty(glide, features, "Title")
+        # Merge all in "Title"
+        features = utils.merge_ifempty(mordred, fingerprints, MOL_NAME_COLUMN)
+        final_df = utils.merge_ifempty(glide, features, MOL_NAME_COLUMN)
         
         # Add activity column if non-existent (if Glide dataframe was set 
         # to empty, no 'Activity' column is present)
@@ -141,17 +163,22 @@ def all_combs(balanced_glide_csv, combo, active_sdf=ACTIVES_SDF, inactive_sdf=IN
             final_df[ACTIVITY_COLUMN] = activity    
 
         df_name = ", ".join(comb)  # for printing
-        file_name = "_".join(comb)
+        file_name = "_".join(comb)  # for saving file
         
+        # Sorted and formatted for testing purposes.
         final_df = final_df.sort_index()
-        
-        final_df = u.drop_before_column(final_df, "Title")
+        final_df = utils.drop_before_column(final_df, MOL_NAME_COLUMN)
 
         # Save dataframe to dictionary and CSV
         d[file_name] = final_df
-        u.save_to_csv(final_df, f"Features ({df_name})", os.path.join(features_dir, file_name))
+        utils.save_to_csv(final_df, f"Features ({df_name})", os.path.join(features_dir, file_name + ".csv"))
     return d
 
+"""
+--------------------------------------------------------------------------------------------
+HELPER FUNCTIONS
+--------------------------------------------------------------------------------------------
+"""
 def get_balanced_glide(balanced_glide, active_sdf, inactive_sdf):
     """
     Retrieves all molecules and its names from the active/inactive 
@@ -164,9 +191,10 @@ def get_balanced_glide(balanced_glide, active_sdf, inactive_sdf):
     balanced_glide_df = pd.read_csv(balanced_glide)
     mols_in_bal_glide = balanced_glide_df[MOL_NAME_COLUMN].to_list()
 
-    # Retrieve molecules from SDF files in dict to avoid duplicates.
-    # For enantiomers:  last molecule in SDF file is selected, same as 
-    #                   docking (glide_features.csv)
+    # Retrieve molecules from SDF files in dict to avoid duplicates if
+    # are present in balanced glide dataframe. 
+        # For enantiomers:  last molecule in SDF file is selected, same as 
+        #                   docking (glide_features.csv)
     actives = {
         mol.GetProp("_Name"): mol 
         for mol in Chem.SDMolSupplier(active_sdf)
@@ -185,8 +213,8 @@ def get_balanced_glide(balanced_glide, active_sdf, inactive_sdf):
     all_molecules = all_molecules_dict.values()
     all_molecule_names = all_molecules_dict.keys()
     
-    # Drop all columns until "Title", reindex, convert to float and fill NaN
-    balanced_glide_df = u.drop_before_column(balanced_glide_df, MOL_NAME_COLUMN)
+    # Drop all columns until "Title", reindex, convert to float. 
+    balanced_glide_df = utils.drop_before_column(balanced_glide_df, MOL_NAME_COLUMN)
     
     return balanced_glide_df, all_molecules, all_molecule_names
 
@@ -231,27 +259,28 @@ def calculate_mordred(all_molecules, all_molecule_names):
 
     return mordred
 
-
-    """
-    Calculating fingerprints and mordred descriptors duplicates 
-    (no idea why).
-    """
-    mols = df
-
-
+"""
+--------------------------------------------------------------------------------------------
+ARGPARSE
+--------------------------------------------------------------------------------------------
+"""
 def parse_args(parser):
-    parser.add_argument("--csv", help="Path to CSV file with Glide features.")
+    parser.add_argument("--csv", help="Path to CSV file with Glide features. If flag not supplied, assumed to be in CWD as 'balanced_glide.csv'.")
     parser.add_argument("--topological", help="Calculate rdkit topological fingerprints - True or False.")
     parser.add_argument("--mordred", help="Calculate Mordred descriptors - True or False.")
-    parser.add_argument("--all", help="Generates all combinations of Glide features, mordred descriptors and topological fingerprints.")
+    parser.add_argument("--all", help="Generates all combinations of Glide features, mordred descriptors and topological fingerprints."
+                                        " Be aware that overwrites --topological and --mordred flags.")
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
         description="Supply path to the CSV file with Glide features and decide which 2D descriptors should be calculated."
+        " Add --all flag to obtain all possible combinations between Glide features, mordred descriptors and topological"
+        f" fingerprints. Saved in CSV files in {SAVEDIR}/features."
     )
     parse_args(parser)
     args = parser.parse_args()
     if args.all:
-        all_combs(args.csv)
+        combo = ["glide", "mordred", "fingerprints"]
+        all_combs(combo, balanced_glide_csv=args.csv)
     else:
         add_features(args.csv, args.topological, args.mordred)

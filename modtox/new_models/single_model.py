@@ -1,7 +1,23 @@
+"""
+--------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------------
+This script builds and tests the model from the balanced Glide features with or without
+other descriptors. 
+    1. Preprocess the feeded dataframe (drop irrelevant columns, imputation, format...)
+    2. Fits the data to the model specified.
+    3. Scores the fitted model. 
+
+Can be used as individual script or implemented in a pipeline. 
+--------------------------------------------------------------------------------------------
+USAGE (as script)*
+python single_model.py --csv glide_mordred.csv --model knn
+    * Both arguments are required. 
+--------------------------------------------------------------------------------------------
+--------------------------------------------------------------------------------------------
+"""
+
 import argparse
 
-from numpy.lib.npyio import load
-from os import RTLD_NOW
 import numpy as np
 import pandas as pd
 import random
@@ -17,17 +33,42 @@ from sklearn.naive_bayes import BernoulliNB
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import LabelEncoder
 
+from modtox.modtox.new_models._parameters import *
 
-INTERNAL_PROPORTION = 0.3
-EXTERNAL_PROPORTION = 0.05
-ACTIVITY_COLUMN = "Activity"
-
-def generate_single_model(csv, user_model, int_prop=INTERNAL_PROPORTION, ext_prop=EXTERNAL_PROPORTION):
+"""
+--------------------------------------------------------------------------------------------
+MAIN FUNCTION
+--------------------------------------------------------------------------------------------
+"""
+def generate_single_model(csv, user_model, test_prop=INTERNAL_PROPORTION, ext_prop=EXTERNAL_PROPORTION):
+    """
+    Fits the supplied data into the model specified by the user. 
     
+    Parameters 
+    ----------
+    csv : str 
+        Path to CSV file with any combination of data from three dataframes: 
+        Glide features, mordred descriptors and topological fingerprints.
+    
+    user_model : str
+        User selected model between knn, lr, svc, tree or nb.
+
+    test_prop : float, default = 0.3 
+        Proportion of data used to test the model. Default is set at 
+        '_parameters.py' file.
+
+    ext_prop : float, default = 0.05
+        Proportion of external set extracted to validate the model. 
+        Default is set at '_parameters.py' file.
+
+    Returns
+    -------
+
+    """
     print(f"Pre-processing {csv} (dropping columns, imputation and splitting into sets)... ", end="")
     df = pd.read_csv(csv, index_col=0)
 
-    main_df, external_df, train, int, ext = preprocess(df, int_prop, ext_prop)
+    main_df, external_df, train, int, ext = preprocess(df, test_prop, ext_prop)
     print("Done.")
 
     model = fit_model(user_model, train)
@@ -44,7 +85,11 @@ def generate_single_model(csv, user_model, int_prop=INTERNAL_PROPORTION, ext_pro
 
     return main_df, external_df, acc_int, conf_int, acc_ext, conf_ext
 
-
+"""
+--------------------------------------------------------------------------------------------
+HELPER FUNCTIONS
+--------------------------------------------------------------------------------------------
+"""
 def preprocess(df, int_prop=INTERNAL_PROPORTION, ext_prop=EXTERNAL_PROPORTION):
     df = load_model_input(df)
 
@@ -105,7 +150,11 @@ def score_set(y, y_pred):
     #print("Final score:", accuracy)
     return accuracy, conf_matrix
 
-
+"""
+--------------------------------------------------------------------------------------------
+'preprocess()' helper functions
+--------------------------------------------------------------------------------------------
+"""
 def load_model_input(df):
   
     COLUMNS_TO_EXCLUDE = ["Title"]
@@ -193,6 +242,11 @@ def split(X, y, prop):
 
     return X_train, X_test, y_train, y_test
 
+"""
+--------------------------------------------------------------------------------------------
+ARGPARSE
+--------------------------------------------------------------------------------------------
+"""
 def parse_args(parser):
     """
     Parses command line arguments.
@@ -206,7 +260,6 @@ def parse_args(parser):
     parser.add_argument(
         "--model", help="Choose one of the available models: knn, lr, svc, tree or nb."
     )
-
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
