@@ -24,6 +24,7 @@ import random
 from math import floor
 
 from sklearn.model_selection import train_test_split
+from sklearn.model_selection import cross_val_score
 from sklearn.metrics import confusion_matrix
 from sklearn.neighbors import KNeighborsClassifier
 from sklearn.linear_model import LogisticRegression
@@ -65,44 +66,41 @@ def generate_single_model(csv, user_model, test_prop=INTERNAL_PROPORTION, ext_pr
     -------
 
     """
+    # Read CSV and format pandas dataframe
     print(f"Pre-processing {csv} (dropping columns, imputation and splitting into sets)... ", end="")
     df = pd.read_csv(csv, index_col=0)
+    df = load_model_input(df)
 
-    main_df, external_df, train, int, ext = preprocess(df, test_prop, ext_prop)
-    print("Done.")
+    # Extract 5% external validation, label and imputation
+    main_df, external_df, X, y, X_ext, y_ext = extract_external_val(df, ext_prop)
+    
+    # Retrieve model from user
+    model = retrieve_model(user_model)
 
-    model = fit_model(user_model, train)
-    y_pred_int = model.predict(int[0])
-    y_pred_ext = model.predict(ext[0])
+    # Method 1: from the 95% remaining 30% test, 70% train.
+        # Fits model to train set
+        # Predicts with test set
+        # Predicts with external data set
+    acc_test, conf_test, acc_ext, conf_ext = train_test_external(model, X, y, X_ext, y_ext)
 
-    acc_int, conf_int = score_set(int[1], y_pred_int)
-    print(f"Internal test accuracy: {acc_int}")
-    print(f"Internal test confusion matrix: {conf_int}")
-
-    acc_ext, conf_ext = score_set(ext[1], y_pred_ext)
+    # Method 2: 5% external validation, 95% cross-validation (k=5). 
+    # Only extracts scoring. None of the built models has seen the
+    # external data.
+    cv_score = cross_validation(model, X, y)
+    
+    print(f"Internal test accuracy: {acc_test}")
+    print(f"Internal test confusion matrix: {conf_test}")
     print(f"External test accuracy: {acc_ext}")
     print(f"External test confusion matrix: {conf_ext}")
-
-    return main_df, external_df, acc_int, conf_int, acc_ext, conf_ext
+    print(f"Cross validation score: {cv_score}")
+    
+    return main_df, external_df, acc_test, conf_test, acc_ext, conf_ext, cv_score
 
 """
 --------------------------------------------------------------------------------------------
 HELPER FUNCTIONS
 --------------------------------------------------------------------------------------------
-"""
-def preprocess(df, int_prop=INTERNAL_PROPORTION, ext_prop=EXTERNAL_PROPORTION):
-    df = load_model_input(df)
-
-    main_df, external_df = extract_external_val(df, ext_prop)
-    X, y = labelXy(main_df)
-    X_ext, y_ext = labelXy(external_df)
-
-    X_imp = imputation(X)
-    X_ext_imp = imputation(X_ext)
-
-    X_train, X_test, y_train, y_test = split(X_imp, y, int_prop)
-    
-    return main_df, external_df, (X_train, y_train), (X_test, y_test), (X_ext_imp, y_ext)
+"""    
 
 def retrieve_model(user_model):
     """
@@ -137,7 +135,7 @@ def retrieve_model(user_model):
     # print(f"Retrieved model {user_model}.")
     return models[user_model.lower()]
 
-def fit_model(user_model, XY_train):
+def fit_model(user_model, X_train, y_train):
     model = retrieve_model(user_model)
     model.fit(XY_train[0], XY_train[1])
     return model
@@ -150,11 +148,6 @@ def score_set(y, y_pred):
     #print("Final score:", accuracy)
     return accuracy, conf_matrix
 
-"""
---------------------------------------------------------------------------------------------
-'preprocess()' helper functions
---------------------------------------------------------------------------------------------
-"""
 def load_model_input(df):
   
     COLUMNS_TO_EXCLUDE = ["Title"]
@@ -206,7 +199,13 @@ def extract_external_val(df, prop):
             external_df = external_df.append(df.loc[idx])
             df.drop(index=idx, inplace=True)
 
-    return df, external_df
+    # Label and imputation
+    X, y = labelXy(df)
+    X_ext, y_ext = labelXy(external_df)
+    X = imputation(X)
+    X_ext = imputation(X_ext)
+    main_df = df
+    return main_df, external_df, X, y, X_ext, y_ext
 
 def labelXy(df):
     activity_column = "Activity"    
@@ -234,13 +233,31 @@ def imputation(X):
     # print("Imputation done.")
     return X_imp
 
-def split(X, y, prop):
+def split(X, y, prop=INTERNAL_PROPORTION):
     # Split into training and test sets
     X_train, X_test, y_train, y_test = train_test_split(
         X, y, test_size=prop, random_state=42
     )
 
     return X_train, X_test, y_train, y_test
+
+def cross_validation(model, X, y):
+    scores = cross_val_score(model, X, y)
+    mean = "%.2f" % float(scores.mean())
+    std = "%.2f" % float(scores.std())
+    cv_score = f"{mean} +/- {std}"
+    return cv_score
+
+def train_test_external(model, X, y, X_ext, y_ext):
+    X_train, X_test, y_train, y_test = split(X, y)
+    model.fit(X_train, y_train)
+    
+    y_pred = model.predict(X_test)
+    acc_test, conf_test = score_set(y_test, y_pred)
+    
+    y_ext_pred = model.predict(X_ext)
+    acc_ext, conf_ext = score_set(y_ext, y_ext_pred)
+    return acc_test, conf_test, acc_ext, conf_ext
 
 """
 --------------------------------------------------------------------------------------------

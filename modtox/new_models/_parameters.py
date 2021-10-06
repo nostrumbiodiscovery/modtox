@@ -11,6 +11,7 @@ GLIDE_FEATURES = 'glide_features.csv'
 
 # Output filenames
 BALANCED_GLIDE = 'balanced_glide.csv'
+SCORING = 'scoring.csv'
 
 # Saving directory
 SAVEDIR = os.getcwd()
