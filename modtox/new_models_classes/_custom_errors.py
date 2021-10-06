@@ -1,0 +1,3 @@
+class FeatureError(Exception):
+    pass
+

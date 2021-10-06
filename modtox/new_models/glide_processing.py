@@ -261,5 +261,5 @@ if __name__ == "__main__":
     if not csv: csv = GLIDE_FEATURES
     if not a: a = ACTIVES_SDF
     if not i: i = INACTIVES_SDF
-    
-    process_glide(csv, a,)
+
+    process_glide(csv, a, i)
