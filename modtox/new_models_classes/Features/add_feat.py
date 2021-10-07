@@ -10,9 +10,7 @@ from modtox.modtox.new_models_classes.Features.feat_enum import Features
 from modtox.modtox.new_models_classes.mol import BaseMolecule, MoleculeFromChem
 
 class AddFeature(ABC):
-    """Base class for calculating/adding features. All subclasses
-    must store its features names in self.feature_names"""
-    
+    """Base class for calculating/adding features."""
     def __init__(self, *molecules: BaseMolecule, **kwargs) -> None:
         super().__init__()
         self.molecules = molecules
@@ -20,11 +18,8 @@ class AddFeature(ABC):
     @abstractmethod
     def calculate(self):
         """Calculates the feature. Must be called from init method
-        Must return as: 
-        Feature.xyz, { 
-                      Molecule1: {'F1': 0, 'F2': 2.1, ...},
-                      Molecule2: {'F1': 1.5, 'F2': 2.4, ...}, ...
-                      } 
+        Must return a nested dict as: 
+        { Molecule1: {'F1': 0, 'F2': 2.1, ...}, Molecule2: {'F1': 1.5, 'F2': 2.4, ...}, ...} 
         """
 
 class AddGlide(AddFeature):
@@ -43,15 +38,15 @@ class AddGlide(AddFeature):
     def calculate(self):
         df = self.format_glide(self.glide_csv)
         glide_d = df.to_dict("index")        
-        self.feature_names = df.columns
+        features_names = df.columns
         mol_names = [mol.name for mol in self.molecules]
         
         features_dict = dict()
-        for (name, mol) in zip(mol_names, self.molecules):
+        for (name, mol) in zip(mol_names, self.molecules):  
             if name in glide_d.keys():
                 features_dict[mol] = glide_d[name]
             else:
-                features_dict[mol] = dict.fromkeys(self.feature_names, 0)
+                features_dict[mol] = dict.fromkeys(features_names, 0)
         return features_dict
     
     @staticmethod
