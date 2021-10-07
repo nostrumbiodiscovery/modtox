@@ -128,6 +128,19 @@ class Collection:
             random_item = random.choice(mol_list)
         return mol_list.pop(mol_list.index(random_item))
 
+
+
+class CollectionFromSDF(BaseCollection):
+    def __init__(self, actives_sdf, inactives_sdf) -> None:
+        self.read_sdf(actives_sdf, inactives_sdf)
+        self.molecules = self.actives + self.inactives
+
+        
+        self.features_added = list()
+        self.dataframes = list()
+
+        self.summary = {"initial_molecules": len(self.molecules)}
+    
     def read_sdf(self, actives_sdf, inactives_sdf):
         self.actives = [
             MoleculeFromChem(mol) 
