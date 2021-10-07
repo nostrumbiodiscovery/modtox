@@ -13,7 +13,7 @@ class AddFeature(ABC):
     """Base class for calculating/adding features. All subclasses
     must store its features names in self.feature_names"""
     
-    def __init__(self, *molecules: BaseMolecule) -> None:
+    def __init__(self, *molecules: BaseMolecule, **kwargs) -> None:
         super().__init__()
         self.molecules = molecules
     
@@ -52,7 +52,7 @@ class AddGlide(AddFeature):
                 features_dict[mol] = glide_d[name]
             else:
                 features_dict[mol] = dict.fromkeys(self.feature_names, 0)
-        return Features.glide, features_dict
+        return features_dict
     
     @staticmethod
     def format_glide(csv_path):
@@ -73,9 +73,9 @@ class AddTopologicalFingerprints(AddFeature):
         for mol in tqdm(self.molecules):
             topo = Chem.RDKFingerprint(mol.molecule)
             mol.topo = topo  # For similarity calculation (stores rdkit obj to avoid calculating again.)
-            d = { f"rdkit_fp_{i}": int(fp) for i, fp in enumerate(topo) }
+            d = {f"rdkit_fp_{i}": int(fp) for i, fp in enumerate(topo)}
             features_dict[mol] = d
-        return Features.topo, features_dict
+        return features_dict
 
 class AddMordred(AddFeature):
     """Calculates Mordred descriptors"""
@@ -85,7 +85,7 @@ class AddMordred(AddFeature):
         for mol in tqdm(self.molecules):
             mord = Calculator(descriptors, ignore_3D=True).pandas([mol.molecule], quiet=True)
             features_dict[mol] = mord.to_dict("index")[0]
-        return Features.mordred, features_dict
+        return features_dict
 
 
 
