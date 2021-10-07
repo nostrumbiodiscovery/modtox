@@ -11,6 +11,7 @@ class BaseMolecule:
     molecule: Chem    
     features: Dict[Features, Dict[str, float or int]]
     similarities: List[float]
+    scaffold: str
 
     def __init__(self) -> None:
         self.features = dict()
