@@ -4,10 +4,13 @@ import numpy as np
 from sklearn.impute import SimpleImputer
 from sklearn.preprocessing import LabelEncoder
 
-class DataSet:
+# High coupling with Selector
+class DataSet: 
     """Represents a combination of features. Is dynamically 
     modified by FeaturesSelector subclasses, so all attributes
-    are set as properties."""
+    are set as properties.
+    Selector class modifies class attributes. It is done like this
+    to allow iterative feature selection (still not implemented)."""
 
     df: pd.DataFrame
 

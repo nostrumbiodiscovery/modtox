@@ -14,37 +14,34 @@ import numpy as np
 
 from collections import Counter
 
+
+# NO UNIT TESTS FOR COLLECTION
 class BaseCollection:
     "Object gathering the features of collection of molecules."
-    actives_sdf: str
-    inactives_sdf: str
+    
     glide_features_csv: str
     molecules: List[BaseMolecule]
+    
     def __init__(self) -> None:
         pass
 
-    def add_features(self, *features, glide_csv=None):
-        pass
-    #     if features is None:
-    #         raise FeatureError("Must specify which features to calculate.")
+    def add_features(self, *features: Features, glide_csv=None):
+        if features is None:
+            raise FeatureError("Must specify which features to calculate.")
         
-    #     feat_map = {
-    #         Features.glide: AddGlide,
-    #         Features.mordred: AddMordred,
-    #         Features.topo: AddTopologicalFingerprints
-    #     }
+        feat_map = {  # Maybe move this to feat_enum for consistency.
+            Features.glide: AddGlide,
+            Features.mordred: AddMordred,
+            Features.topo: AddTopologicalFingerprints
+        }
 
-    #     for ft in features:
-    #         feat_dict = feat_map[ft](self.molecules, glide_csv=glide_csv)  # Only needed for glide features, but others accept kwargs.
-    #         for mol in self.molecules:
-    #             mol.add_feature(ft, feat_dict[mol])
-
-    def add_topo(self):
-        feat_dict = AddTopologicalFingerprints(*self.molecules).calculate()
-        for mol in self.molecules:
-            mol.add_feature(Features.topo, feat_dict[mol])
+        for ft in features:
+            feat_dict = feat_map[ft](self.molecules, glide_csv=glide_csv).calculate()  # glide_csv only needed for glide features, but others accept kwargs.
+            for mol in self.molecules:
+                mol.add_feature(ft, feat_dict[mol])
             
     def calculate_similarities(self):
+        """Calculates similarities for all the molecules."""
         if Features.topo not in self.features_added:
             self.add_features(Features.topo)
         
@@ -56,6 +53,9 @@ class BaseCollection:
             self.similarities[mol] = sim     
 
     def balance(self, seed=None):
+        # Rewrite method, maybe add a layer of abstraction for different balancing methods.
+        """Balances the collection preferentially removing
+        the molecules without glide features (all glide features == 0). """
         self.waste = list()
         while len(self.actives) != len(self.inactives):
             if len(self.actives) > len(self.inactives):
@@ -67,11 +67,13 @@ class BaseCollection:
         return
 
     def extract_external_set(self, proportion, seed=None):
+        """Defines which molecules belong to the external set
+        by seting the Molecule.is_external attribute to True (default = False).
+        Also appends external molecules to a self.external_set"""
         num_mols = len(self.molecules)    # Total number of molecules
         ext_size = int(num_mols * proportion)  # Molecules to extract. 1/2 actives, 1/2 inactives
-        if not ext_size % 2 == 0:
-            ext_size = ext_size - 1
-        
+        if not ext_size % 2 == 0: ext_size -= 1
+    
         random.seed(seed)  # For testing purposes
 
         self.external_set = list()
@@ -92,6 +94,9 @@ class BaseCollection:
         return self.external_set
         
     def to_dataframe(self, *features):
+        """Converts collection to df to build the model.
+        If no features are supplied, all features are added
+        (see Molecule.to_record() method)."""
         records = list()
         for molecule in self.molecules:
             records.append(molecule.to_record(*features))
@@ -113,6 +118,7 @@ class BaseCollection:
         return mol_list.pop(mol_list.index(random_item))
 
 class CollectionFromSDF(BaseCollection):
+    """Builds the collection from two SDF files."""
     def __init__(self, actives_sdf, inactives_sdf) -> None:
         self.read_sdf(actives_sdf, inactives_sdf)
         self.molecules = self.actives + self.inactives
@@ -134,7 +140,13 @@ class CollectionFromSDF(BaseCollection):
             if ":" in mol.GetProp("_Name")
         ]
 
+class CollectionFromTarget(BaseCollection):
+    """Builds a collection by target retrieving
+    by target UniProt accession code."""
+    pass
+
 class CollectionSummarizer:
+    """Class responsible for formatting output for user review."""
     def __init__(self, collection: BaseCollection, savedir=os.getcwd()) -> None:
         self.collection = collection
         self.savedir = savedir

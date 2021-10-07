@@ -16,14 +16,14 @@ class FeaturesSelector(ABC):
     def select(self):
         """Selects features and modifies DataSet."""
 
+# High coupling with DataSet
 class ChiPercentileSelector(FeaturesSelector):
     def __init__(self, dataset: DataSet, percentile=50) -> None:
         super().__init__(dataset)
         self.percentile = percentile
 
     def select(self):
-        """Select best features and modify dataframe and returns
-        number of features"""
+        """Select x% best features. Modifies the df from DataSet."""
         X_abs = np.abs(self.dataset.X)
         selector = SelectPercentile(chi2, percentile=self.percentile)
         X_new = selector.fit_transform(X_abs, self.dataset.y)

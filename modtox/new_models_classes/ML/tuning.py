@@ -1,3 +1,4 @@
+from abc import ABC, abstractmethod
 from typing import Dict
 from sklearn.ensemble import VotingClassifier
 from sklearn.model_selection import RandomizedSearchCV, GridSearchCV
@@ -6,10 +7,10 @@ from sklearn.model_selection import HalvingRandomSearchCV, HalvingGridSearchCV
 
 from modtox.modtox.new_models_classes.ML import _clfs
 
-class HyperparameterTuner:
+class HyperparameterTuner(ABC):
     """Base class for hyperparameter tuning
     All subclasses must have a 'search' method that returns
-    a fitted estimator with the best parameters."""
+    a FITTED estimator with the best parameters."""
     score: float
     best_params: Dict
     name: str
@@ -22,6 +23,7 @@ class HyperparameterTuner:
         self.estimators_random_search = _clfs.estims  # [('knn', KNeighborsClassifier()), ...]
         self.params_random_search = _clfs.params  # {'knn__p': [1, 2], ...}
     
+    @abstractmethod
     def search(self):
         """Returns a VotingClassifier with the best parameters.
         Must define: 
@@ -40,7 +42,6 @@ class RandomSearch(HyperparameterTuner):
     def __init__(self, X, y, voting="hard") -> None:
         super().__init__(X, y)
         self.votclf = VotingClassifier(estimators=self.estimators_random_search, voting=voting)
-        self.name = "random_search_cross_validation"
 
     def search(self, cv=5, n_iter=10, random_state=None) -> RandomizedSearchCV:
         clf = RandomizedSearchCV(
@@ -59,7 +60,6 @@ class RandomHalvingSearch(HyperparameterTuner):
     def __init__(self, X, y, voting="hard") -> None:
         super().__init__(X, y)
         self.voting = voting
-        self.name = "random_search_cross_validation"
         
     def search(self, random_state=None) -> VotingClassifier:
         best_estimators = list()
@@ -74,19 +74,23 @@ class RandomHalvingSearch(HyperparameterTuner):
         self.best_params = self.get_best_params(fitted_votclf)
         return fitted_votclf
 
+# Same class changing the Halving to Grid. Maybe abstract behaviour. 
 class GridHalvingSearch(HyperparameterTuner):
-    def __init__(self, X, y) -> None:
+    def __init__(self, X, y, voting="hard") -> None:
         super().__init__(X, y)
-
+        self.voting = voting
+        
     def search(self, random_state=None) -> VotingClassifier:
-        estims = list()
-        for name, clf in _clfs.estimators.items():
+        best_estimators = list()
+        # Search for each parameter combination of each classifier and create VotingClassifier with best estimators.
+        for name, clf in self.estimators.items():
             hclf = HalvingGridSearchCV(clf, self.halving_dist[name], random_state=random_state)
             best_estim = hclf.fit(self.X, self.y).best_estimator_
-            estims.append((name, best_estim))
-        votclf = VotingClassifier(estimators=estims, voting="hard")
+            best_estimators.append((name, best_estim))
+        votclf = VotingClassifier(estimators=best_estimators, voting=self.voting)
         fitted_votclf = votclf.fit(self.X, self.y)
         self.score = fitted_votclf.score(self.X, self.y)
         self.best_params = self.get_best_params(fitted_votclf)
-        return votclf
-        
+        return fitted_votclf
+
+    

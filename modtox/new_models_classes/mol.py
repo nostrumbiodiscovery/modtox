@@ -112,17 +112,6 @@ class MoleculeFromSMILES(BaseMolecule):
         self.is_external = False  # Default is False, extracting external set can set to True   
 
 
-# class UnknownMolecule(BaseMolecule):
-#     """Molecule to classify after model is trained."""
-#     def __init__(self, smiles, name=None) -> None:
-#         self.molecule = Chem.MolFromSmiles(smiles)
-#         self.name = name
-#         self.scaffold = MurckoScaffoldSmiles(mol=self.molecule)        
-#         self.features = dict()
-#         self.similarities = list()
-    
-#     def classify(self):
-#         raise NotImplementedError
 
 
 

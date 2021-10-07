@@ -55,7 +55,7 @@ params = {  # Transforms 'distributions' to {'knn__p': [1, 2] } for VotingClassi
     for param, params in param_dict.items() 
 }
 
-halving_dist = {
+halving_dist = {  # Some parameters raise warnings (should be looked at). For Halving, errors are raised instead of warnings, so it had to be modified.
     "knn": {
         'n_neighbors': list(range(1,10)) + list(range(10,100,5)), 
         'weights': ["uniform", "distance"], 
