@@ -1,11 +1,8 @@
 from functools import partial
 from multiprocessing import Pool
-import numpy as np
-import pandas as pd
-from sklearn.preprocessing import LabelEncoder
+import glob, os
 
 COLUMNS_TO_EXCLUDE = ["Title", "Rank", "ID", "Unnamed: 0"]
-
 
 def parallelize(func, iterable, n_workers, **kwargs):
     """
@@ -31,3 +28,11 @@ def parallelize(func, iterable, n_workers, **kwargs):
 
     return output
 
+
+def get_latest_file(ext):
+    list_of_files = glob.glob(os.path.join(os.getcwd(), ext)) 
+    try:
+        latest_file = max(list_of_files, key=os.path.getctime)
+        return latest_file
+    except ValueError:
+        return None

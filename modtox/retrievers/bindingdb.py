@@ -1,13 +1,11 @@
-
-from molret.classes.helper_classes import Database, StandardTypes
-import xml.etree.ElementTree as ET
 import requests
 import json
 
-from molret.classes._custom_exceptions import *
-from molret.classes.act import Activity, Standard
-from molret.helpers import units
-from molret.retrievers.retrieverABC import Retriever, RetSum
+from modtox.modtox.utils.enums import Database, StandardTypes
+from modtox.modtox.utils._custom_errors import ServerError, BadRequestError, UnsupportedStandardRelation
+from modtox.modtox.Molecules.act import Standard, Activity
+from modtox.modtox.constants import constants as k
+from modtox.modtox.Retrievers.retrieverABC import Retriever, RetSum
 
 class RetrieveBDB(Retriever):
     def __init__(self) -> None:
@@ -80,7 +78,7 @@ class RetrieveBDB(Retriever):
         
     @staticmethod
     def _normalize_standard(std_type, std_val):
-        if std_type not in units.units:
+        if std_type not in k.bdb_units:
             raise UnsupportedStandardRelation(
                 f"Standard relation '{std_val[0]}' not supported."
             )
@@ -98,7 +96,7 @@ class RetrieveBDB(Retriever):
             std_val = str(std_val)[1:]
             std_val = float(std_val)
 
-        std_unit = units.units[std_type]
+        std_unit = k.bdb_units[std_type]
         std_type = StandardTypes[std_type]
     
         return std_type, std_rel, std_val, std_unit
