@@ -174,3 +174,15 @@ MACCS_VOC = {
     165: "RING",
     166: "FRAGMENTS"
 }
+
+bdb_units = {
+        "Ki": "nM",
+        "IC50": "nM",
+        "Kd": "nM",
+        "EC50": "nM",
+        "kon": "M-1·s-1",
+        "koff": "s-1",
+        "pH": "",
+        "Temp": "ºC"
+    }
+    

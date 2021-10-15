@@ -1,13 +1,12 @@
-from molret.classes.helper_classes import Database, StandardTypes
+from modtox.modtox.utils.enums import Database, StandardTypes
 import pandas as pd
 import urllib.parse
 import urllib.request
 
 
-from molret.classes._custom_exceptions import *
-from molret.classes.act import Activity, Standard
-
-from molret.retrievers.retrieverABC import Retriever, RetSum
+from modtox.modtox.utils._custom_errors import ServerError, BadRequestError, UnsupportedStandardType
+from modtox.modtox.Molecules.act import Standard, Activity
+from modtox.modtox.Retrievers.retrieverABC import Retriever, RetSum
 
 class RetrieveChEMBL(Retriever):
     def __init__(self) -> None:

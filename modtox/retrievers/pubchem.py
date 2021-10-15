@@ -1,20 +1,19 @@
 
 from selenium import webdriver
-import pandas as pd
 import time
 from tqdm import tqdm
 import os
 import pubchempy as pcp
-from molret.helpers.helpers import get_latest_file
 import json
 
-dirdirname = os.path.dirname(os.path.dirname(__file__))
-DRIVER_PATH = os.path.join(dirdirname, "helpers/chromedriver")
+from modtox.modtox.utils import utils as u
+from modtox.modtox.utils.enums import Database, StandardTypes
+from modtox.modtox.utils._custom_errors import ServerError, BadRequestError, UnsupportedStandardType
+from modtox.modtox.Molecules.act import Standard, Activity
+from modtox.modtox.Retrievers.retrieverABC import Retriever, RetSum
 
-from molret.classes._custom_exceptions import *
-from molret.classes.act import Activity, Standard
-from molret.retrievers.retrieverABC import Retriever, RetSum
-from molret.classes.helper_classes import Database, StandardTypes
+dirdirname = os.path.dirname(os.path.dirname(__file__))
+DRIVER_PATH = os.path.join(dirdirname, "utils/chromedrivers/macOS_chromedriver")
 
 class RetrievePubChem(Retriever):
     def __init__(self) -> None:
@@ -68,7 +67,7 @@ class RetrievePubChem(Retriever):
             driver.find_element_by_xpath('//*[@id="Tested-Compounds"]/div[2]/div[1]'
             '/div/div/div[1]/div[2]/div/div/div[2]/div/div[2]/div/div[2]/a').click()
             
-            while not get_latest_file("*").endswith("bioactivity_protein.json"):
+            while not u.get_latest_file("*").endswith("bioactivity_protein.json"):
                 time.sleep(1)
             return "Successful"
 
@@ -101,7 +100,7 @@ class RetrievePubChem(Retriever):
             target=target)
     
     def _read_json(self):
-        file = get_latest_file("*json")
+        file = u.get_latest_file("*json")
         with open(file, "r") as f:
             unparsed_activities = json.load(f)        
         os.remove(file)
