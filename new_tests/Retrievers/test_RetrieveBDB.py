@@ -41,7 +41,7 @@ def test_normalize_standard_error():
     with pytest.raises(UnsupportedStandardRelation):
         a, b, c, d = r._normalize_standard(" randomstring", "50")
 
-@patch("modtox.modtox.Retrievers.bindingdb.RetrieveBDB._normalize_standard", autospec=True)
+@patch("modtox.modtox.Retrievers.bindingdb.RetrieveBDB._normalize_standard")
 def test_parse_activity(mock):
     mock.return_value = StandardTypes.IC50, "=", 70.0, "nM"
     unparsed_act = {

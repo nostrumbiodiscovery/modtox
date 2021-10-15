@@ -5,7 +5,7 @@ from unittest.mock import PropertyMock, patch
 
 @patch("modtox.modtox.Molecules.col.RetrieveBDB.activities", create=True, new_callable=PropertyMock)
 @patch("modtox.modtox.Molecules.col.RetrieveBDB.ids", create=True, new_callable=PropertyMock)
-@patch("modtox.modtox.Molecules.col.retrieve_by_target")
+@patch("modtox.modtox.Molecules.col.RetrieveBDB.retrieve_by_target")
 
 @patch("modtox.modtox.Molecules.col.RetrieveChEMBL.activities", create=True, new_callable=PropertyMock)
 @patch("modtox.modtox.Molecules.col.RetrieveChEMBL.ids", create=True, new_callable=PropertyMock)

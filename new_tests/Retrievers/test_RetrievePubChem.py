@@ -65,7 +65,7 @@ def test_normalize_standard_unsucessful():
     with pytest.raises(UnsupportedStandardType):    
         std = r._normalize_standard(unparsed_activity)
 
-@patch("modtox.modtox.Retrievers.pubchem.RetrievePubChem._normalize_standard", autospec=True)
+@patch("modtox.modtox.Retrievers.pubchem.RetrievePubChem._normalize_standard")
 def test_parse_activity(mock):
     mock.return_value = Standard(StandardTypes.Ki, "=", 11300.0, "nM")
     r = RetrievePubChem()
