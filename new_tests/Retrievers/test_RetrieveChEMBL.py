@@ -49,7 +49,7 @@ def test_normalize_standard_error():
     with pytest.raises(UnsupportedStandardType):
         r._normalize_standard(unparsed_activity)
 
-@patch("modtox.modtox.Retrievers.chembl.RetrieveChEMBL._normalize_standard", autospec=True)
+@patch("modtox.modtox.Retrievers.chembl.RetrieveChEMBL._normalize_standard")
 def test_parse_activity(mock):
     mock.return_value = Standard(StandardTypes.ID50, "=", 0.0000049, "M")
     r = RetrieveChEMBL()
