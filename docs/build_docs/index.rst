@@ -32,3 +32,6 @@ Documentation
 .. toctree::
    changelog/index.rst
 
+
+.. toctree::
+   python_docs/index.rst
