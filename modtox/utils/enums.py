@@ -14,6 +14,7 @@ class StandardTypes(Enum):
     Kd = auto()
     Inhibition = auto()
     ID50 = auto()
+    EC50 = auto()
 
 class Features(Enum):
     glide = auto()  # glide features

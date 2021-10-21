@@ -59,7 +59,9 @@ class AddGlide(AddFeature):
     def format_glide(csv_path):
         df = pd.read_csv(csv_path)
         # Drop columns before "Title"
-        cols_to_drop = [df.columns[i] for i in range(df.columns.get_loc("Title"))]
+        cols_to_drop = [
+            df.columns[i] for i in range(df.columns.get_loc("Title"))
+        ]
         cols_to_drop.append("Lig#")
         for col in cols_to_drop:
             df = df.drop(columns=col)

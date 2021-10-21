@@ -9,7 +9,6 @@ import numpy as np
 from sklearn.metrics import confusion_matrix, accuracy_score, precision_score, f1_score, recall_score
 import matplotlib.pyplot as plt
 
-@dataclass
 class ModelSummary:
     def __init__(self, selector, tuner, estimator, y_pred) -> None:
         self.selector = selector
@@ -55,10 +54,6 @@ class ModelSummary:
         return df
        
 class Model:
-    """Represents a model to predict new molecules.
-    1 to 1 relationship with: DataSet, FeatureSelector, HyperTuner.
-    Many to 1 relationship with Collection. """
-
     dataset: DataSet
     summary: Dict
 
