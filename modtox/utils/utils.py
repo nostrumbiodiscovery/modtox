@@ -1,6 +1,9 @@
 from functools import partial
 from multiprocessing import Pool
 import glob, os
+import requests
+import re
+import xml.etree.ElementTree as ET
 
 COLUMNS_TO_EXCLUDE = ["Title", "Rank", "ID", "Unnamed: 0"]
 
@@ -36,3 +39,10 @@ def get_latest_file(ext):
         return latest_file
     except ValueError:
         return None
+
+def smiles2inchi(smiles):
+    url = "https://www.chemspider.com/InChI.asmx/SMILESToInChI"
+    xml = requests.get(url, params={"smiles": smiles}).text
+    return ET.fromstring(xml).text
+
+
