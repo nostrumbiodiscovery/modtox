@@ -80,21 +80,21 @@ class RetrievePubChem(Retriever):
         if unparsed_activity["acname"] != 0:
             
             cid = unparsed_activity["cid"]
-            smile = self._cid2smiles(cid)
+            inchi = self._cid2inchi(cid)
             std = self._normalize_standard(unparsed_activity)
             target = unparsed_activity["protacxn"]
             
             tagged_activity = unparsed_activity["activityid"]
 
-            self.ids[smile] = cid
+            self.ids[inchi] = cid
             
-            if smile not in self.tagged_activities.keys():
-                self.tagged_activities[smile] = [tagged_activity]
+            if inchi not in self.tagged_activities.keys():
+                self.tagged_activities[inchi] = [tagged_activity]
             else:
-                self.tagged_activities[smile].append(tagged_activity)
+                self.tagged_activities[inchi].append(tagged_activity)
             
             return Activity(
-            smiles=smile, 
+            inchi=inchi, 
             standard=std, 
             database=Database.BindingDB, 
             target=target)
@@ -107,9 +107,9 @@ class RetrievePubChem(Retriever):
         return unparsed_activities
 
     @staticmethod   
-    def _cid2smiles(cid):
+    def _cid2inchi(cid):
         c = pcp.Compound.from_cid(cid)
-        return c.canonical_smiles
+        return c.inchi
     
     @staticmethod
     def _normalize_standard(unparsed_activity):

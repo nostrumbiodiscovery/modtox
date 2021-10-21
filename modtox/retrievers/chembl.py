@@ -7,6 +7,7 @@ import urllib.request
 from modtox.modtox.utils._custom_errors import ServerError, BadRequestError, UnsupportedStandardType
 from modtox.modtox.Molecules.act import Standard, Activity
 from modtox.modtox.Retrievers.retrieverABC import Retriever, RetSum
+from modtox.modtox.utils import utils as u
 
 class RetrieveChEMBL(Retriever):
     def __init__(self) -> None:
@@ -72,7 +73,7 @@ class RetrieveChEMBL(Retriever):
                 "standard_units", 
                 "standard_value"
             ]
-            query = activity.filter(target_chembl_id=chemblid).only(cols)
+            query = activity.filter(target_chembl_id=chemblid)
             df = pd.DataFrame.from_dict(query)
             df = df[df["standard_value"].notna()]
             df = df[cols]
@@ -86,11 +87,12 @@ class RetrieveChEMBL(Retriever):
             unparsed_activity["standard_value"] != 0):
 
             smile = unparsed_activity["canonical_smiles"]
-            self.ids[smile] = unparsed_activity["molecule_chembl_id"]
+            inchi = u.smiles2inchi(smile)
+            self.ids[inchi] = unparsed_activity["molecule_chembl_id"]
             std = self._normalize_standard(unparsed_activity)
 
         return Activity(
-            smiles=smile, 
+            inchi=inchi, 
             standard=std, 
             database=Database.BindingDB, 
             target=self.target)

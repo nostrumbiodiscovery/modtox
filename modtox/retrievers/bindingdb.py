@@ -6,6 +6,7 @@ from modtox.modtox.utils._custom_errors import ServerError, BadRequestError, Uns
 from modtox.modtox.Molecules.act import Standard, Activity
 from modtox.modtox.constants import constants as k
 from modtox.modtox.Retrievers.retrieverABC import Retriever, RetSum
+from modtox.modtox.utils import utils as u
 
 class RetrieveBDB(Retriever):
     def __init__(self) -> None:
@@ -60,6 +61,7 @@ class RetrieveBDB(Retriever):
         # Get activity information
         bdbm = unparsed_activity["monomerid"]
         smiles = unparsed_activity["smile"]
+        inchi = u.smiles2inchi(smiles)
         query = unparsed_activity["query"]
 
         # Get affinity and create standard
@@ -68,10 +70,10 @@ class RetrieveBDB(Retriever):
         std_type, std_rel, std_val, std_unit = self._normalize_standard(std_type, std_val)
         std = Standard(std_type=std_type, std_rel=std_rel, std_val=std_val, std_unit=std_unit)
         
-        self.ids[smiles] = f"BDBM{bdbm}"
+        self.ids[inchi] = f"BDBM{bdbm}"
 
         return Activity(
-            smiles=smiles, 
+            inchi=inchi, 
             standard=std, 
             database=Database.BindingDB, 
             target=query)
