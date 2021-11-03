@@ -6,6 +6,8 @@ from modtox.modtox.utils.enums import StandardTypes, Database
 
 @dataclass(frozen=True, order=True)
 class Standard:
+    """Represents a standard. 1 to 1 relationship with Activity.
+    """
     std_type: StandardTypes
     std_val: float or int
     std_unit: str
@@ -20,18 +22,11 @@ class Standard:
 
 @dataclass
 class Activity:
+    """Represents a activity. It is related to a molecule by InChI."""
     inchi: str
     standard: Standard
     database: Database
     target: str
-
-    def is_active(self, std_type, cutoff) -> bool or None:
-        self.activity = False
-        if self.std_type != std_type:
-            self.activity = None
-        elif self.std_type == std_type and self.std_val <= cutoff:
-            self.activity = True
-        return self.activity
 
     def __repr__(self) -> str:
         return f"{self.standard} ({self.database.name})"

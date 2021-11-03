@@ -10,6 +10,8 @@ from modtox.modtox.utils._custom_errors import UnsupportedStandardType
 
 @dataclass
 class Cluster:
+    """Dataclass for storing clustering information. 
+    """
     id: int
     members: int
     is_centroid: bool
@@ -18,7 +20,7 @@ class Cluster:
 class BaseMolecule:
     """Represents the base molecule. Should not instantiated."""
 
-    molecule: Chem
+    molecule: Chem.Mol
     features: Dict[Features, Dict[str, float or int]]
     scaffold: str
 
@@ -29,33 +31,30 @@ class BaseMolecule:
         """
         self.features = dict()
 
-    @property
-    def has_glide(self):
-        """Checks if molecule has original Glide features or have all
-        been set to 0.
-
-        Returns
-        -------
-        Bool
-            True for original features, False for all features set to 0.
-        """
-        if any(value != 0 for value in self.features[Features.glide].values()):
-            return True
-        else:
-            return False
-
     def add_cluster_info(
         self, cluster_id: int, members: int, is_centroid: bool
     ):
-        self.cluster = Cluster(cluster_id, members, is_centroid)
-
-    def add_feature(self, ft: Features, d: Dict[str, float or int]):
-        """Adds a feature to the features dictionary.
+        """Adds the cluster information calculated in the collection.
 
         Parameters
         ----------
-        ft : Features
-            Instance of the Enum Features class to be added.
+        cluster_id : int
+            Cluster index (arbitrary value). Not used for the moment.
+        members : int
+            Number of members in the cluster of the molecule. Used for removing
+            outliers.
+        is_centroid : bool
+            If the molecule is the centroid of its cluster.
+        """
+        self.cluster = Cluster(cluster_id, members, is_centroid)
+
+    def add_feature(self, ft: Features, d: Dict[str, float or int]):
+        """Adds a dictionary of features to the molecule's features dictionary.
+
+        Parameters
+        ----------
+        ft : Features (enum)
+            Instance of the Enum Features class being added.
         d : Dict[str, float or int]
             Formatted as as: {'F1': 0, 'F2': 1.1, ...}"""
 
@@ -63,8 +62,8 @@ class BaseMolecule:
 
     def to_record(self, *features: Features):
         """Converts the molecule to a record format. Contains the activity,
-        is_external and the specified features.If no *args are supplied, 
-        includes all features.
+        cluster info and the specified features.If no *args are supplied, 
+        includes all calculated features.
 
         Parameters
         ----------
@@ -79,12 +78,12 @@ class BaseMolecule:
         Raises
         ------
         FeatureError
-            Error raised when the specified Feature is not in the
+            When the specified Feature is not in the
             self.features or is not even a Features(Enum) instance. 
         """
 
         if not features:
-            features = [f for f in Features]
+            features = list(self.features.keys())
 
         record = {
             "Activity": self.activity,
@@ -110,17 +109,11 @@ class BaseMolecule:
 
 class MoleculeFromChem(BaseMolecule):
     """Molecule initialized from rdkit.Chem.Mol object with 
-    '_Name' property containing activity information."""
+    '_Name' property containing activity information. Currently used to
+    create molecules after reading SDF (SDMolSupplier)"""
 
-    molecule: Chem
-    scaffold: str
     name: str
-
     activity: bool
-    is_external: bool
-
-    features: Dict[Features, Dict[str, float or int]]
-    similarities: List[float]
 
     def __init__(self, molecule, prop_name="_Name") -> None:
         """[summary]
@@ -132,8 +125,6 @@ class MoleculeFromChem(BaseMolecule):
         prop_name : str, optional
             Contains the name of the molecule, which in turn contains
             the activity information, by default "_Name". 
-            This is to maintain the current workflow (10/2021), but it's
-            not practical.
         """
         super().__init__()
         self.molecule = molecule
@@ -146,10 +137,10 @@ class MoleculeFromChem(BaseMolecule):
 
 
 class MoleculeFromInChI(BaseMolecule):
-    """Molecule initialized from InChI. Must supply InChI and name."""
+    """Molecule initialized from InChI. Must supply InChI and name.
+    Currently used to create molecules after retrieving from database."""
 
     molecule: Chem
-    scaffold: str
     name: str or None
 
     activity: bool
@@ -157,27 +148,62 @@ class MoleculeFromInChI(BaseMolecule):
     features: Dict[Features, Dict[str, float or int]]
 
     def __init__(self, inchi: str, name: str = None) -> None:
+        """Initializes instance and defines activities (list of 
+        modtox.Activities) as well as activity tags {criterion -> activity}
+        e.g.: {"Ki, 100 nm": "Active"}
+
+        Parameters
+        ----------
+        inchi : str
+            InChI.
+        name : str, optional
+            Currently not used, by default None
+        """
         super().__init__()
         self.inchi = inchi
-        self.molecule = Chem.MolFromInchi(inchi, removeHs=True)
+        self.molecule = Chem.MolFromInchi(inchi)
         self.name = name
         self.activities = list()
         self.activity_tags = dict()
 
     def add_activity(self, activity):
+        """Adds modtox.Activity object to the list of activities.
+
+        Parameters
+        ----------
+        activity : Activity
+            Activiy object.
+        """
         self.activities.append(activity)
 
     def assess_activity(self, standard_type: StandardTypes, threshold: float):
+        """Catalogues the molecule in "Active", "Inactive", "No data" 
+        or "Contradictory" It sets a ref_criterion (first criterion provided).
+        PubChem tagged activity is added in the collection.
+    
+        Parameters
+        ----------
+        standard_type : StandardTypes
+            Type of standard assessed. 
+        threshold : float
+            Threshold of active/inactive.
+
+        Raises
+        ------
+        UnsupportedStandardType
+            If standard type has not been defined in enum class.
+        """
         if standard_type == "pubchem":
-            self.ref_criterion = "pubchem"
-            return
+            if not self.activity_tags:  # Means it's the first criterion supplied
+                self.ref_criterion = "pubchem"  
+            return  # Returns None, added by modtox.CollectionFromTarget
         
         if standard_type not in StandardTypes:
             raise UnsupportedStandardType(f"Standard {standard_type!r} not supported.")
         
         units = k.bdb_units[standard_type.name]
 
-        if not self.activity_tags:
+        if not self.activity_tags:  # Means it's the first criterion supplied
             self.ref_criterion = f"{standard_type.name}, {threshold} {units}"
 
         is_active = list()
@@ -198,6 +224,9 @@ class MoleculeFromInChI(BaseMolecule):
             self.activity_tags[f"{standard_type.name}, {threshold} {units}"] = "Contradictory data"
 
     def _add_properties_to_molecule(self):
+        """Adds the properties to the rdkit.Mol object to keep the information 
+        between exporting to SDF.
+        """
         Chem.AssignStereochemistry(self.molecule)
         AllChem.EmbedMolecule(self.molecule)
         self.molecule.SetProp("_MolFileChiralFlag","1")
@@ -206,4 +235,5 @@ class MoleculeFromInChI(BaseMolecule):
         try:
             self.molecule.SetProp("Activity", self.activity_tags.get(self.ref_criterion))
         except AttributeError:
-            pass
+            pass  # It's ugly, but maybe someone wants to export a collection without
+                  # tagging activity.

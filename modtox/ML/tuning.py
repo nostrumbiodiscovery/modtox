@@ -4,7 +4,7 @@ from sklearn.ensemble import VotingClassifier
 from sklearn.model_selection import RandomizedSearchCV, GridSearchCV
 from sklearn.experimental import enable_halving_search_cv  # noqa
 from sklearn.model_selection import HalvingRandomSearchCV, HalvingGridSearchCV
-
+from sklearn.metrics import matthews_corrcoef, accuracy_score
 from modtox.modtox.ML import _clfs
 
 
@@ -57,13 +57,15 @@ class HyperparameterTuner(ABC):
 
 
 class RandomSearch(HyperparameterTuner):
-    def __init__(self, X, y, voting="hard") -> None:
+    def __init__(self, X, y, voting="hard", **kwargs) -> None:
         super().__init__(X, y)
         self.votclf = VotingClassifier(
             estimators=self.estimators_random_search, voting=voting
         )
 
-    def search(self, cv=5, n_iter=10, random_state=None) -> RandomizedSearchCV:
+    def search(
+        self, cv=5, n_iter=10, random_state=None, **kwargs
+    ) -> RandomizedSearchCV:
         clf = RandomizedSearchCV(
             self.votclf,
             self.params_random_search,
@@ -79,43 +81,68 @@ class RandomSearch(HyperparameterTuner):
 
 
 class RandomHalvingSearch(HyperparameterTuner):
-    def __init__(self, X, y, voting="hard") -> None:
+    def __init__(self, X, y, voting="hard", score_func=accuracy_score, **kwargs) -> None:
         super().__init__(X, y)
         self.voting = voting
+        self.score_func = score_func
 
-    def search(self, random_state=None) -> VotingClassifier:
+    def search(self, random_state=42, **kwargs) -> VotingClassifier:
         best_estimators = list()
+        train_scores = dict()
         # Search for each parameter combination of each classifier and create VotingClassifier with best estimators.
         for name, clf in self.estimators.items():
             hclf = HalvingRandomSearchCV(
-                clf, self.halving_dist[name], random_state=random_state
+                clf,
+                self.halving_dist[name],
+                random_state=random_state,
+                scoring=self.score_func,
             )
-            best_estim = hclf.fit(self.X, self.y).best_estimator_
-            best_estimators.append((name, best_estim))
-        votclf = VotingClassifier(estimators=best_estimators, voting=self.voting)
+            fitted_clf = hclf.fit(self.X, self.y)
+            y_pred = fitted_clf.best_estimator_.predict(self.X)
+            best_estimators.append((name, fitted_clf.best_estimator_))
+            train_scores[clf.__class__.__name__] = self.score_func(self.y, y_pred)
+        
+        votclf = VotingClassifier(
+            estimators=best_estimators, voting=self.voting
+        )
         fitted_votclf = votclf.fit(self.X, self.y)
-        self.score = fitted_votclf.score(self.X, self.y)
-        self.best_params = self.get_best_params(fitted_votclf)
-        return fitted_votclf
+        train_scores[votclf.__class__.__name__] = fitted_votclf.score(
+            self.X, self.y
+        )
+
+        return fitted_votclf, train_scores
 
 
 # Same class changing the Halving to Grid. Maybe abstract behaviour.
 class GridHalvingSearch(HyperparameterTuner):
-    def __init__(self, X, y, voting="hard") -> None:
+    def __init__(self, X, y, voting="hard", score_func=accuracy_score, **kwargs) -> None:
         super().__init__(X, y)
         self.voting = voting
+        self.score_func = score_func
 
-    def search(self, random_state=None) -> VotingClassifier:
+    def search(self, random_state=42, **kwargs) -> VotingClassifier:
         best_estimators = list()
+        train_scores = dict()
         # Search for each parameter combination of each classifier and create VotingClassifier with best estimators.
         for name, clf in self.estimators.items():
             hclf = HalvingGridSearchCV(
-                clf, self.halving_dist[name], random_state=random_state
+                clf,
+                self.halving_dist[name],
+                random_state=random_state,
+                scoring=self.score_func,
             )
-            best_estim = hclf.fit(self.X, self.y).best_estimator_
-            best_estimators.append((name, best_estim))
-        votclf = VotingClassifier(estimators=best_estimators, voting=self.voting)
+            fitted_clf = hclf.fit(self.X, self.y)
+            y_pred = fitted_clf.best_estimator_.predict(self.X)
+            best_estimators.append((name, fitted_clf.best_estimator_))
+            train_scores[clf.__class__.__name__] = self.score_func(self.y, y_pred)
+        
+        votclf = VotingClassifier(
+            estimators=best_estimators, voting=self.voting
+        )
         fitted_votclf = votclf.fit(self.X, self.y)
-        self.score = fitted_votclf.score(self.X, self.y)
-        self.best_params = self.get_best_params(fitted_votclf)
-        return fitted_votclf
+        train_scores[votclf.__class__.__name__] = fitted_votclf.score(
+            self.X, self.y
+        )
+
+        return fitted_votclf, train_scores
+

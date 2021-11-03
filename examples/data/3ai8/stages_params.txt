@@ -1,0 +1,5 @@
+out = 0
+rsmp = none
+scl = normalize
+dim = none
+tun = none

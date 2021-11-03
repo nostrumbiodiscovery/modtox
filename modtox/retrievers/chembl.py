@@ -6,7 +6,7 @@ import urllib.request
 
 from modtox.modtox.utils._custom_errors import ServerError, BadRequestError, UnsupportedStandardType
 from modtox.modtox.Molecules.act import Standard, Activity
-from modtox.modtox.Retrievers.retrieverABC import Retriever, RetSum
+from modtox.modtox.Retrievers.retrieverABC import Retriever
 from modtox.modtox.utils import utils as u
 
 class RetrieveChEMBL(Retriever):
@@ -15,11 +15,17 @@ class RetrieveChEMBL(Retriever):
         self.activities = list()
 
     def retrieve_by_target(self, target):
-        """Wrapper function, returns query summary."""
+        """Wrapper function for the retrieval by target. 
+
+        Parameters
+        ----------
+        target : str
+            UniProt accession code. 
+
+        """
         try: 
             chemblid = self._uniprot2chembl(target)
             unparsed_activities = self._request_by_target(chemblid)
-            request = "Successful"
             
             for unparsed_activity in unparsed_activities:
                 activity = self._parse_activity(unparsed_activity)
@@ -27,17 +33,29 @@ class RetrieveChEMBL(Retriever):
             
         except ServerError as e:
             print(e)
-            request = "Server Error"
         except BadRequestError as e:
             print(e)
-            request = "No hits found"
 
-        return RetSum(
-            request=request, 
-            retrieved_molecules=len(self.ids), 
-            retrieved_activities=len(self.activities))
+
     
     def _uniprot2chembl(self, target):
+        """Converts the UniProt A/C to the ChEMBL target ID.
+        See UniProt mapping API for details: https://www.uniprot.org/help/api_idmapping
+        Parameters
+        ----------
+        target : str
+            UniProt A/C
+
+        Returns
+        -------
+        str
+            ChEMBL target ID
+
+        Raises
+        ------
+        BadRequestError
+            If the target is not present in ChEMBL database.
+        """
         self.target = target
         url = 'https://www.uniprot.org/uploadlists/'
         params = {
@@ -62,6 +80,23 @@ class RetrieveChEMBL(Retriever):
         return chemblid
 
     def _request_by_target(self, chemblid):
+        """Requests to the ChEMBL Python API.
+
+        Parameters
+        ----------
+        chemblid : str
+            ChEMBL target ID
+
+        Returns
+        -------
+        List[Dict[str, any]]
+            List of dictionary (records) for each activity in the ChEBML format.
+
+        Raises
+        ------
+        ServerError
+            If it is impossible to access the API.
+        """
         try:
             from chembl_webresource_client.new_client import new_client
             activity = new_client.activity
@@ -83,10 +118,29 @@ class RetrieveChEMBL(Retriever):
             raise ServerError(Database.ChEMBL.name)
         
     def _parse_activity(self, unparsed_activity):
-        if (unparsed_activity["standard_value"] is not None and    # Conditions for appending
+        """Converts a activity to a modtox.Activity object. Each activity contains:
+            - modtox.Standard
+            - molecule (InChI)
+            - database
+            - target
+        Also, adds the ChEMBL ID to the self.ids dict.
+
+        Parameters
+        ----------
+        unparsed_activity : Dict
+            Activity in the ChEMBL format (row).
+            
+        Returns
+        -------
+        modtox.Activity
+            If the normalization of the standard is successful.
+        """
+        if (unparsed_activity["standard_value"] is not None and    # Conditions for parsing activity
             unparsed_activity["standard_value"] != 0):
 
             smile = unparsed_activity["canonical_smiles"]
+            if smile is None:
+                return
             inchi = u.smiles2inchi(smile)
             self.ids[inchi] = unparsed_activity["molecule_chembl_id"]
             std = self._normalize_standard(unparsed_activity)
@@ -94,22 +148,42 @@ class RetrieveChEMBL(Retriever):
         return Activity(
             inchi=inchi, 
             standard=std, 
-            database=Database.BindingDB, 
+            database=Database.ChEMBL, 
             target=self.target)
     
     @staticmethod
     def _normalize_standard(unparsed_activity) -> Standard:
-        std_type = unparsed_activity["standard_type"]
-        
+        """Converts activity from ChEMBL format to modtox.Standard.
+
+        Parameters
+        ----------
+        unparsed_activity : Dict
+            Activity in the PubChem format (row).
+
+        Returns
+        -------
+        modtox.Standard
+            
+        Raises
+        ------
+        UnsupportedStandardType
+            If standard not in the StandardTypes enum class.
+
+        """
+        std_type = unparsed_activity["standard_type"].replace(" ", "").replace("/", "_")
+
         if std_type not in StandardTypes._member_names_:
             raise UnsupportedStandardType(
                 f"Standard type '{std_type}' not supported."
             )
-        std_type = StandardTypes[unparsed_activity["standard_type"]]
+        std_type = StandardTypes[std_type]
         std_rel = unparsed_activity["standard_relation"]
         std_val = float(unparsed_activity["standard_value"])
         std_unit = unparsed_activity["standard_units"]
         return Standard(std_type=std_type, std_rel=std_rel, std_val=std_val, std_unit=std_unit)
+
+        # Maybe it should be inside a try: block, excepting any exception and returning 
+        # None if something fails, same as PubChem retriever. 
 
     
 

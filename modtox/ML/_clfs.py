@@ -6,7 +6,7 @@ from sklearn.naive_bayes import BernoulliNB
 
 estimators = {
     "knn": KNeighborsClassifier(),
-    "svc": SVC(),
+    "svc": SVC(probability=True),
     "lr": LogisticRegression(),
     "tree": DecisionTreeClassifier(),
     "nb": BernoulliNB(),
@@ -38,7 +38,10 @@ distributions = {
         "min_samples_split": range(2, 20, 2),
         "min_samples_leaf": range(1, 22, 2),
     },
-    "nb": {"alpha": [1e-3, 1e-2, 1e-1, 1, 10, 100], "fit_prior": [True, False]},
+    "nb": {
+        "alpha": [1e-3, 1e-2, 1e-1, 1, 10, 100],
+        "fit_prior": [True, False],
+    },
 }
 
 estims = [
@@ -76,5 +79,8 @@ halving_dist = {  # Some parameters raise warnings (should be looked at). For Ha
         "min_samples_split": range(2, 20, 2),
         "min_samples_leaf": range(1, 22, 2),
     },
-    "nb": {"alpha": [1e-3, 1e-2, 1e-1, 1, 10, 100], "fit_prior": [True, False]},
+    "nb": {
+        "alpha": [1e-3, 1e-2, 1e-1, 1, 10, 100],
+        "fit_prior": [True, False],
+    },
 }

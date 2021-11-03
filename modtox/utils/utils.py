@@ -33,6 +33,22 @@ def parallelize(func, iterable, n_workers, **kwargs):
 
 
 def get_latest_file(ext):
+    """Gets the latest file in the CWD with the specified extension.
+
+    Parameters
+    ----------
+    ext : str
+        Such as "*csv".
+
+    Returns
+    -------
+    str : 
+        If there is a file with specified extension.
+    
+    None : 
+        If not.
+
+    """
     list_of_files = glob.glob(os.path.join(os.getcwd(), ext)) 
     try:
         latest_file = max(list_of_files, key=os.path.getctime)
@@ -41,6 +57,19 @@ def get_latest_file(ext):
         return None
 
 def smiles2inchi(smiles):
+    """Accesses the chemspider API to convert the smiles to 
+    a InChI.
+
+    Parameters
+    ----------
+    smiles : str
+        Molecule SMILES.
+
+    Returns
+    -------
+    str
+        Molecule InChI.
+    """
     url = "https://www.chemspider.com/InChI.asmx/SMILESToInChI"
     xml = requests.get(url, params={"smiles": smiles}).text
     return ET.fromstring(xml).text
