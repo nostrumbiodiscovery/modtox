@@ -40,7 +40,6 @@ class ModelSummary:
         self.tuner = tuner
         self.estimator = estimator
         self.y_pred = y_pred
-
     def plot_feature_selection(self):
         x, y = self.selector.get_scores()
         xmax = x[np.argmax(y)]

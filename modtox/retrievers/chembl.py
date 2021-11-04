@@ -6,8 +6,12 @@ import urllib.request
 
 from modtox.modtox.utils._custom_errors import ServerError, BadRequestError, UnsupportedStandardType
 from modtox.modtox.Molecules.act import Standard, Activity
+<<<<<<< HEAD
 from modtox.modtox.Retrievers.retrieverABC import Retriever
 from modtox.modtox.utils import utils as u
+=======
+from modtox.modtox.Retrievers.retrieverABC import Retriever, RetSum
+>>>>>>> 09ca8b5f8e348322ad0544fccdeac812b22fa2ba
 
 class RetrieveChEMBL(Retriever):
     def __init__(self) -> None:

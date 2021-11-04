@@ -12,7 +12,6 @@ class Standard:
     std_val: float or int
     std_unit: str
     std_rel: str
-
     def __str__(self):
         return f"{self.std_type.name} {self.std_rel} {self.std_val} {self.std_unit}"
 

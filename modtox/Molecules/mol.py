@@ -95,7 +95,6 @@ class BaseMolecule:
         for feature in features:
             if feature in self.features:
                 record.update(self.features[feature])
-
             elif isinstance(feature, Features):
                 raise FeatureError(
                     f"Feature {feature.name!r} has not been calculated for the collection."
