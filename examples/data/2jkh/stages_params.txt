@@ -1,0 +1,5 @@
+out = 10
+rsmp = none
+scl = none
+dim = PCA
+tun = grid

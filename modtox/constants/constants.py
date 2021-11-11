@@ -172,5 +172,23 @@ MACCS_VOC = {
     163: "6M RING",
     164: "O",
     165: "RING",
-    166: "FRAGMENTS"
+    166: "FRAGMENTS",
 }
+
+bdb_units = {
+    "Ki": "nM",
+    "IC50": "nM",
+    "Kd": "nM",
+    "EC50": "nM",
+    "kon": "M-1·s-1",
+    "koff": "s-1",
+    "pH": "",
+    "Temp": "ºC",
+    "ID50": "nM",
+    "Inhibition": "%",
+    "Kobs_1": "M-1 s-1",
+    "Activity": "%",
+    "Papp": "cm/s",
+    "Efficacy": "%"
+}
+
