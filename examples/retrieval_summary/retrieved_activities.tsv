@@ -1,0 +1,8 @@
+	Activities	Molecules	Avg stdev	Units	Activities/molecule
+Ki	1749	669	54.492004340445675	nM	2.6143497757847536
+IC50	974	567	2.373235076677722	nM	1.7178130511463845
+Kobs_1	12	12	0	M-1 s-1	1.0
+Inhibition	19	19	0	%	1.0
+Activity	12	11	1926.5445665600753	%	1.0909090909090908
+Papp	1	1	0	cm/s	1.0
+Efficacy	1	1	0	%	1.0

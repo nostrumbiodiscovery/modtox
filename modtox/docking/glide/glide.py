@@ -14,10 +14,11 @@ ACCEPTED_FORMATS = ["pdb", "mae", "sdf"]
 
 class Glide_Docker(object):
     
-    def __init__(self, systems, ligands_to_dock, test=False):
+    def __init__(self, systems, ligands_to_dock, greasy=False, debug=False):
         self.systems = systems
         self.ligands_to_dock = ligands_to_dock
-        self.test = test
+        self.debug = debug
+        self.greasy = greasy
 
     def dock(self, input_file="input.in", schr=cs.SCHR, host="localhost:1", cpus=1, output="glide_output", precision="SP",
         maxkeep=500, maxref=40, grid_mol=2):
@@ -33,7 +34,8 @@ class Glide_Docker(object):
         #Formats
         self.systems_mae = fm.convert_to_mae(self.systems)
         self.ligands_to_dock_mae = fm.convert_to_mae(self.ligands_to_dock)
-
+        print('Systems', self.systems_mae)
+        print('Ligands', self.ligands_to_dock_mae)
         #Set molecule number to schrodinger to 
         #correctly center the grid
         system = self.systems[0]
@@ -47,18 +49,20 @@ class Glide_Docker(object):
         self.grid_template = os.path.abspath(os.path.join(DIR, input_file))
         complexes = [COMPLEX_LINE.format(system, self.grid_mol) for system in self.systems_mae]
         ligands = [LIGAND_LINE.format(ligand) for ligand in self.ligands_to_dock_mae]
-
+        if self.greasy: dock = 'TRUE'
+        else: dock = 'FALSE'
+       
         # Templetize grid
         with open(self.grid_template, "r") as f:
             template = Template("".join(f.readlines()))
             content = template.safe_substitute(COMPLEXES="\n".join(complexes), LIGANDS="\n".join(ligands),
-         PRECISION=precision, MAXKEEP=maxkeep, MAXREF=maxref)
+         PRECISION=precision, MAXKEEP=maxkeep, MAXREF=maxref, DOCK=dock)
         with open(input_file, "w") as fout:
             fout.write(content)
 
         # Run docking
         print(self.docking_command)
-        if not self.test:
+        if not self.debug:
             subprocess.call(self.docking_command.split())
 
 

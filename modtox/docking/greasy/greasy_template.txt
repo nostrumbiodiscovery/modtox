@@ -1,0 +1,1 @@
+$SCHRODINGER/glide -NOJOBID  $input_file
